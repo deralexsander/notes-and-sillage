@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Catálogo Notes & Sillage</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+
+  <!-- Encabezado con buscador -->
+  <header>
+    <div class="brand-row">
+      <div>
+        <div class="brand-title">Notes & Sillage</div>
+        <div class="brand-tagline">Notas que cautivan, una estela que perdura.</div>
+      </div>
+    </div>
+    <div class="search-box">
+      <i class="search-icon" data-lucide="search" aria-hidden="true"></i>
+      <input type="text" id="searchInput" class="search-input" placeholder="Buscar por código (ej. H-13, F01) o aroma...">
+      <button class="search-clear-btn" type="button" data-action="clear-search" aria-label="Borrar búsqueda" title="Borrar búsqueda" hidden>
+        <i data-lucide="x" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Pestañas horizontales -->
+  <nav class="categories-bar" id="categoryBar">
+    <button class="pill-btn active" data-category="all">Todos</button>
+    <button class="pill-btn map-pill" data-category="mapa">Mapa Olfativo</button>
+    <button class="pill-btn" data-category="hombre">Hombre</button>
+    <button class="pill-btn" data-category="mujer">Mujer</button>
+    <button class="pill-btn" data-category="red-black">Línea Red & Black</button>
+    <button class="pill-btn" data-category="teen">Línea Teen</button>
+    <button class="pill-btn" data-category="colonia-h">Colonia Hombre</button>
+    <button class="pill-btn" data-category="colonia-m">Colonia Mujer</button>
+    <button class="pill-btn" data-category="splash">Splash</button>
+  </nav>
+
+  <!-- SECCIÓN MAPA OLFATIVO -->
+  <section class="map-section" id="mapSection" hidden>
+    <div class="map-tabs">
+      <button class="map-tab-btn active" id="btnMapMujer" data-action="map-gender" data-gender="mujer">Fragancias Femeninas</button>
+      <button class="map-tab-btn" id="btnMapHombre" data-action="map-gender" data-gender="hombre">Fragancias Masculinas</button>
+    </div>
+
+    <!-- Leyenda de colores -->
+    <div class="legend-container">
+      <div class="legend-title">Familias Olfativas (Puntos de Color)</div>
+      <div class="legend-grid">
+        <div class="legend-item"><span class="dot c-citrico"></span> Cítrico</div>
+        <div class="legend-item"><span class="dot c-frutal"></span> Frutal</div>
+        <div class="legend-item"><span class="dot c-chypre"></span> Chypre</div>
+        <div class="legend-item"><span class="dot c-floral"></span> Floral</div>
+        <div class="legend-item"><span class="dot c-verde"></span> Verde</div>
+        <div class="legend-item"><span class="dot c-maderoso"></span> Maderoso</div>
+        <div class="legend-item"><span class="dot c-oriental"></span> Oriental</div>
+        <div class="legend-item"><span class="dot c-fougere"></span> Fougère</div>
+        <div class="legend-item"><span class="dot c-aldehidico"></span> Aldehídico</div>
+        <div class="legend-item"><span class="dot c-aromatico"></span> Aromático</div>
+        <div class="legend-item"><span class="dot c-especiado"></span> Especiado</div>
+      </div>
+    </div>
+
+    <!-- Contenido de brújula renderizado desde el catálogo -->
+    <div id="mapContainerMujer" class="compass-card"></div>
+    <div id="mapContainerHombre" class="compass-card" hidden></div>
+  </section>
+
+  <!-- Contenedor del Catálogo Principal -->
+  <main class="catalog-container" id="catalogList">
+    <!-- Renderizado vía JavaScript -->
+  </main>
+
+  <!-- Barra flotante de carrito móvil -->
+  <div class="cart-float-bar" id="cartBar" data-action="open-cart" hidden>
+    <div class="cart-summary">
+      <span class="cart-count" id="cartCount">0 productos</span>
+      <span class="cart-total" id="cartTotal">$0</span>
+    </div>
+    <button class="view-cart-btn">Ver Pedido</button>
+  </div>
+
+  <!-- MODAL / BOTTOM SHEET DE EDICIÓN DEL CARRITO -->
+  <div class="cart-modal-overlay" id="cartModalOverlay" data-action="close-cart" hidden>
+    <div class="cart-modal">
+      <div class="cart-header">
+        <span class="cart-title">Tu Pedido</span>
+        <button class="close-btn" data-action="close-cart" aria-label="Cerrar pedido" title="Cerrar pedido">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="cart-items-list" id="cartItemsList">
+        <!-- Renderizado de items -->
+      </div>
+
+      <div class="cart-footer">
+        <div class="customer-name-field">
+          <label for="customerName">Nombre y apellido</label>
+          <input id="customerName" type="text" maxlength="80" autocomplete="name" aria-describedby="customerNameError" placeholder="Ej. Ana Pérez" required>
+          <p id="customerNameError" class="customer-name-error" role="alert" hidden>Escribe tu nombre y apellido para continuar.</p>
+        </div>
+        <div class="cart-footer-row">
+          <span class="cart-footer-total-label">Total a pagar:</span>
+          <span class="cart-footer-total-val" id="modalTotalVal">$0</span>
+        </div>
+        <div class="cart-actions-row">
+          <button class="clear-cart-btn" data-action="clear-cart">Vaciar</button>
+          <button class="whatsapp-send-btn" data-action="send-whatsapp">
+            <i data-lucide="message-circle" aria-hidden="true"></i>
+            Pedir por WhatsApp
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/base-datos.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
