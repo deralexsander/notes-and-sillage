@@ -67,7 +67,7 @@ El buscador indica que se puede escribir el **nombre del perfume**, el código o
 
 ### Notas olfativas (Red & Black)
 
-Cada perfume de la Línea Red & Black muestra, igual que Hombre y Mujer, **puntos de color** junto al código y su **familia olfativa** (ej. `Maderoso Aromático`). Los datos están en `js/base-datos.js`. Aún faltan Q 06 (Bianco Latte) y Q 56 (Born in Roma Uomo).
+Cada perfume de la Línea Red & Black muestra, igual que Hombre y Mujer, **puntos de color** junto al código y su **familia olfativa** (ej. `Maderoso Aromático`). Los datos están en `js/base-datos.js`.
 
 <img src="docs/img/10-notas-olfativas.png" alt="Tarjeta de Santal 33 con notas olfativas" width="220">
 
