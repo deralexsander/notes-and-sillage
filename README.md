@@ -26,7 +26,7 @@ El problema que resuelve es muy concreto: compartir una lista de perfumes por me
 Es un sitio **100 % estático** (HTML, CSS y JavaScript). No necesita servidor, base de datos ni backend, por lo que es gratuito de alojar y muy rápido. Está pensado primero para **celulares**, que es desde donde mis clientes lo abren.
 
 ### Portada del catálogo
-![Portada del catálogo](docs/img/01-catalogo-inicio.png)
+<img src="docs/img/01-catalogo-inicio.png" alt="Portada del catálogo" width="220">
 *Vista inicial: buscador, categorías en pestañas horizontales y tarjetas de producto con imagen, nombre, tamaño y precio.*
 
 ---
@@ -51,7 +51,7 @@ Cada fragancia tiene un código corto (por ejemplo `H-13` para hombre o `F-01` p
 
 | Búsqueda por código | Catálogo por categoría |
 | :---: | :---: |
-| ![Búsqueda por código](docs/img/02-busqueda-por-codigo.png) | ![Catálogo Mujer](docs/img/05-catalogo-mujer.png) |
+| <img src="docs/img/02-busqueda-por-codigo.png" alt="Búsqueda por código" width="220"> | <img src="docs/img/05-catalogo-mujer.png" alt="Catálogo Mujer" width="220"> |
 | *Resultado inmediato al escribir `H-13`, con botón para borrar la búsqueda.* | *Perfumería fina femenina con familia olfativa, tamaños y precio por tarjeta.* |
 
 ---
@@ -64,7 +64,7 @@ Familias consideradas: Cítrico, Frutal, Chypre, Floral, Verde, Maderoso, Orient
 
 | Mapa Femenino | Mapa Masculino |
 | :---: | :---: |
-| ![Mapa Olfativo Mujer](docs/img/03-mapa-olfativo-mujer.png) | ![Mapa Olfativo Hombre](docs/img/04-mapa-olfativo-hombre.png) |
+| <img src="docs/img/03-mapa-olfativo-mujer.png" alt="Mapa Olfativo Mujer" width="220"> | <img src="docs/img/04-mapa-olfativo-hombre.png" alt="Mapa Olfativo Hombre" width="220"> |
 | *Leyenda de colores y grupos de fragancias por intensidad.* | *Misma lógica aplicada a la línea masculina.* |
 
 ---
@@ -75,7 +75,7 @@ El cliente agrega productos y ve una barra flotante con la cantidad y el total. 
 
 | Barra flotante del carrito | Resumen del pedido |
 | :---: | :---: |
-| ![Barra de carrito](docs/img/06-barra-de-carrito.png) | ![Resumen del pedido](docs/img/07-resumen-del-pedido.png) |
+| <img src="docs/img/06-barra-de-carrito.png" alt="Barra de carrito" width="220"> | <img src="docs/img/07-resumen-del-pedido.png" alt="Resumen del pedido" width="220"> |
 | *Muestra cuántos productos hay y el total acumulado.* | *Edición de cantidades, nombre del cliente y botón de envío por WhatsApp.* |
 
 ---
