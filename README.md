@@ -35,7 +35,9 @@ Es un sitio **100 % estático** (HTML, CSS y JavaScript). No necesita servidor, 
 
 | Funcionalidad | Descripción |
 | :--- | :--- |
-| 🔎 **Búsqueda inteligente** | Busca por código (ej. `H-13`, `F01`) o por aroma. Normaliza tildes y variantes del código. |
+| 🔎 **Búsqueda inteligente** | Busca por nombre del perfume, código (ej. `H-13`, `F01`) o aroma. Normaliza tildes y variantes del código. |
+| 💡 **Corrección de búsqueda** | Si no hay resultados, sugiere el nombre más parecido de la base de datos (ej. `sandal 33` → «¿Quisiste decir Santal 33?»). |
+| 🌿 **Notas olfativas** | Las tarjetas de la Línea Red & Black muestran, igual que Hombre y Mujer, puntos de color y la familia olfativa (ej. «Maderoso Aromático»). |
 | 🗂️ **Categorías** | Hombre, Mujer, Línea Red & Black, Línea Teen, Colonia Hombre, Colonia Mujer y Splash. |
 | 🧭 **Mapa Olfativo** | Brújula visual que agrupa las fragancias por intensidad y familia olfativa. |
 | 🧴 **Selección de tamaño** | Cada perfume se ofrece en 100 ml, 50 ml y 20 ml, con el precio actualizado según el formato. |
@@ -45,7 +47,7 @@ Es un sitio **100 % estático** (HTML, CSS y JavaScript). No necesita servidor, 
 
 ---
 
-## 🔎 3. Búsqueda por Código o Aroma
+## 🔎 3. Búsqueda por Nombre, Código o Aroma
 
 Cada fragancia tiene un código corto (por ejemplo `H-13` para hombre o `F-01` para mujer). El cliente puede escribirlo tal como lo conoce, con o sin guion, y el catálogo lo encuentra al instante.
 
@@ -53,6 +55,21 @@ Cada fragancia tiene un código corto (por ejemplo `H-13` para hombre o `F-01` p
 | :---: | :---: |
 | <img src="docs/img/02-busqueda-por-codigo.png" alt="Búsqueda por código" width="220"> | <img src="docs/img/05-catalogo-mujer.png" alt="Catálogo Mujer" width="220"> |
 | *Resultado inmediato al escribir `H-13`, con botón para borrar la búsqueda.* | *Perfumería fina femenina con familia olfativa, tamaños y precio por tarjeta.* |
+
+### ¿Quisiste decir...?
+
+El buscador indica que se puede escribir el **nombre del perfume**, el código o el aroma. Si el texto tiene un error de tipeo y no encuentra nada, el catálogo propone el nombre más parecido **solo entre los perfumes de la base de datos**. Al tocar la sugerencia se completa la búsqueda y se muestra el resultado.
+
+| Texto del buscador | Sugerencia de corrección |
+| :---: | :---: |
+| <img src="docs/img/08-buscador-placeholder.png" alt="Buscador con texto de ayuda" width="220"> | <img src="docs/img/09-sugerencia-busqueda.png" alt="Sugerencia ¿Quisiste decir Santal 33?" width="220"> |
+| *Texto de ayuda breve para que se lea completo en el celular.* | *Al escribir `sandal 33` sugiere `Santal 33`.* |
+
+### Notas olfativas (Red & Black)
+
+Cada perfume de la Línea Red & Black muestra, igual que Hombre y Mujer, **puntos de color** junto al código y su **familia olfativa** (ej. `Maderoso Aromático`). Los datos están en `js/base-datos.js`. Aún faltan Q 06 (Bianco Latte) y Q 56 (Born in Roma Uomo).
+
+<img src="docs/img/10-notas-olfativas.png" alt="Tarjeta de Santal 33 con notas olfativas" width="220">
 
 ---
 

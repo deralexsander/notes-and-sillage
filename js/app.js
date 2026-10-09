@@ -134,6 +134,74 @@ function normalizeSearchText(value) {
     .trim();
 }
 
+function escapeAttr(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+function productMatchesQuery(p, rawQuery, allProducts) {
+  const query = normalizeSearchText(rawQuery);
+  if (!query) return true;
+  const compactQuery = query.replace(/\s+/g, "");
+  const codeQuery = normalizeProductCode(rawQuery);
+  const queryWords = query.split(/\s+/).filter(Boolean);
+  const exactCodeQuery = /^[a-z]+\d+$/.test(codeQuery);
+  const hasExactCodeMatch = exactCodeQuery && allProducts.some(item =>
+    getProductCodeVariants(item.code).includes(codeQuery)
+  );
+  if (hasExactCodeMatch) return getProductCodeVariants(p.code).includes(codeQuery);
+  const searchableText = normalizeSearchText([p.code, p.name, p.sub, p.notes].filter(Boolean).join(" "));
+  const searchableWords = searchableText.split(" ");
+  return searchableText.replace(/\s+/g, "").includes(compactQuery) ||
+    queryWords.every(word => searchableWords.some(searchableWord => searchableWord.startsWith(word)));
+}
+
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+// Sugiere el nombre de la base de datos más parecido a lo escrito
+function findSearchSuggestion(rawQuery, allProducts) {
+  const query = normalizeSearchText(rawQuery);
+  if (query.length < 3) return "";
+  const queryWords = query.split(/\s+/);
+  const vocabulary = new Set();
+  allProducts.forEach(p => normalizeSearchText([p.name, p.sub].filter(Boolean).join(" ")).split(" ")
+    .forEach(word => { if (word.length >= 3 || /^\d+$/.test(word)) vocabulary.add(word); }));
+
+  const corrected = queryWords.map(word => {
+    if (vocabulary.has(word) || /^\d+$/.test(word)) return word;
+    const maxDistance = word.length <= 4 ? 1 : 2;
+    let best = word, bestDistance = maxDistance + 1;
+    vocabulary.forEach(candidate => {
+      const distance = editDistance(word, candidate);
+      if (distance < bestDistance) { best = candidate; bestDistance = distance; }
+    });
+    return best;
+  });
+  const correctedQuery = corrected.join(" ");
+  if (correctedQuery !== query) {
+    const match = allProducts.find(p => productMatchesQuery(p, correctedQuery, allProducts));
+    if (match) return match.name;
+  }
+
+  // Comparación contra el nombre completo
+  const compact = query.replace(/\s+/g, "");
+  let bestName = "", bestDistance = Math.max(2, Math.floor(compact.length / 4)) + 1;
+  allProducts.forEach(p => {
+    const distance = editDistance(compact, normalizeSearchText(p.name).replace(/\s+/g, ""));
+    if (distance < bestDistance) { bestName = p.name; bestDistance = distance; }
+  });
+  return bestName;
+}
+
 function normalizeProductCode(value) {
   return normalizeSearchText(value)
     .replace(/\s+/g, "")
@@ -436,28 +504,16 @@ function renderProducts() {
   container.innerHTML = "";
 
   const query = normalizeSearchText(searchQuery);
-  const compactQuery = query.replace(/\s+/g, "");
-  const codeQuery = normalizeProductCode(searchQuery);
-  const queryWords = query.split(/\s+/).filter(Boolean);
-  const exactCodeQuery = /^[a-z]+\d+$/.test(codeQuery);
-  const hasExactCodeMatch = exactCodeQuery && products.some(p =>
-    getProductCodeVariants(p.code).includes(codeQuery)
+  const filtered = products.filter(p =>
+    (currentCategory === "all" || p.cat === currentCategory) && productMatchesQuery(p, searchQuery, products)
   );
 
-  const filtered = products.filter(p => {
-    const matchesCategory = currentCategory === "all" || p.cat === currentCategory;
-    const searchableText = normalizeSearchText([p.code, p.name, p.sub, p.notes].filter(Boolean).join(" "));
-    const searchableWords = searchableText.split(" ");
-    const codeVariants = getProductCodeVariants(p.code);
-    const matchesSearch = !query || (hasExactCodeMatch
-      ? codeVariants.includes(codeQuery)
-      : searchableText.replace(/\s+/g, "").includes(compactQuery) ||
-        queryWords.every(word => searchableWords.some(searchableWord => searchableWord.startsWith(word))));
-    return matchesCategory && matchesSearch;
-  });
-
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="empty-state">No se encontraron fragancias con esa búsqueda.</div>`;
+    const suggestion = findSearchSuggestion(searchQuery, products);
+    const suggestionHtml = suggestion
+      ? `<div class="search-suggestion">¿Quisiste decir <button type="button" class="search-suggestion-btn" data-action="apply-suggestion" data-suggestion="${escapeAttr(suggestion)}">${escapeAttr(suggestion)}</button>?</div>`
+      : "";
+    container.innerHTML = `<div class="empty-state">No se encontraron fragancias con esa búsqueda.${suggestionHtml}</div>`;
     return;
   }
 
@@ -819,6 +875,12 @@ document.addEventListener("click", event => {
     case "map-product":
       showMapProduct(control.dataset.productId);
       break;
+    case "apply-suggestion": {
+      const input = document.getElementById("searchInput");
+      input.value = control.dataset.suggestion;
+      input.dispatchEvent(new Event("input"));
+      break;
+    }
     case "clear-search":
       clearSearch();
       break;

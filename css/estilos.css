@@ -1087,3 +1087,8 @@
     .c-aldehidico { background: var(--c-aldehidico); }
     .c-aromatico { background: var(--c-aromatico); }
     .c-especiado { background: var(--c-especiado); }
+
+.search-suggestion { margin-top: 10px; font-size: 0.9rem; }
+.search-suggestion-btn { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--accent); text-decoration: underline; cursor: pointer; }
+
+.search-input::placeholder { font-size: 0.72rem; text-overflow: ellipsis; }
