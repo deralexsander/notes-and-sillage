@@ -448,7 +448,7 @@ function buildProductCard(p) {
         ? { src: "img/colonia%20splash/500_Colonia_Inglesa_Parfums.webp", alt: "Envase de colonia Splash de 500 ml" }
         : null;
   const productImage = redBlackImage || teenImage || maleImage || femaleImage || cologneImage;
-  const productInCart = cart.some(item => item.id === p.id);
+  const view = addButtonView(p.id);
   const aromaImageVisible = p.cat === "hombre"
     ? malePresentationVisible[p.id]
     : p.cat === "mujer"
@@ -477,8 +477,8 @@ function buildProductCard(p) {
         ${selectorHtml}
         <div class="card-purchase-row">
           <div class="price-tag">$${price.toLocaleString("es-CL")}</div>
-          <button class="add-btn${productInCart ? " is-added" : ""}" data-action="add-to-cart" data-product-id="${p.id}">
-            ${productInCart ? "Agregado" : "<span>+</span> Agregar"}
+          <button class="add-btn${view.added ? " is-added" : ""}" data-action="add-to-cart" data-product-id="${p.id}">
+            ${view.html}
           </button>
         </div>
       </div>
@@ -727,16 +727,8 @@ function updateCartBar() {
   const cartBar = document.getElementById("cartBar");
   const countEl = document.getElementById("cartCount");
   const totalEl = document.getElementById("cartTotal");
-  const productIdsInCart = new Set(cart.map(item => item.id));
 
-  document.querySelectorAll(".card[data-product-card]").forEach(card => {
-    const addButton = card.querySelector(".add-btn");
-    if (!addButton) return;
-
-    const productInCart = productIdsInCart.has(card.dataset.productCard);
-    addButton.classList.toggle("is-added", productInCart);
-    addButton.innerHTML = productInCart ? "Agregado" : "<span>+</span> Agregar";
-  });
+  refreshAddButtons();
 
   const totalItems = cart.reduce((sum, item) => sum + item.qty, 0);
   const totalPrice = cart.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
@@ -819,6 +811,38 @@ function sendToWhatsApp() {
   customerNameInput.removeAttribute("aria-invalid");
   customerNameError.hidden = true;
 
+  openConfirm("order");
+}
+
+let confirmMode = "order";
+
+function openConfirm(mode) {
+  confirmMode = mode;
+  const isChange = mode === "change";
+  document.getElementById("confirmTitle").textContent = isChange
+    ? "¿Ya terminaste tu cambio o cancelación?"
+    : "¿Ya terminaste tu pedido?";
+  document.getElementById("confirmText").textContent = isChange
+    ? "Se abrirá WhatsApp con tu solicitud lista para enviar y se limpiará lo que marcaste. Si aún quieres modificar algo, vuelve atrás."
+    : "Se abrirá WhatsApp con tu pedido listo para enviar. Si aún quieres agregar, editar o quitar algo, vuelve al pedido.";
+  document.querySelector(".confirm-back-btn").textContent = isChange ? "Volver" : "Volver al pedido";
+  document.getElementById("confirmOverlay").hidden = false;
+  document.querySelector(".confirm-send-btn").focus();
+}
+
+function closeConfirm() {
+  document.getElementById("confirmOverlay").hidden = true;
+}
+
+function confirmSendToWhatsApp() {
+  closeConfirm();
+  if (confirmMode === "change") {
+    performChangeSend();
+    return;
+  }
+  if (cart.length === 0) return;
+  const customerName = document.getElementById("customerName").value.trim().replace(/\s+/g, " ");
+
   let msg = `¡Hola! Soy ${customerName} y quiero solicitar el siguiente pedido:\n\n`;
   cart.forEach((item, index) => {
     const subtotal = item.unitPrice * item.qty;
@@ -830,6 +854,8 @@ function sendToWhatsApp() {
 
   const url = `https://wa.me/${VENDEDOR_WHATSAPP}?text=${encodeURIComponent(msg)}`;
   window.open(url, "_blank");
+  document.getElementById("customerName").value = "";
+  clearCart();
 }
 
 function showMapGender(gender) {
@@ -853,6 +879,339 @@ function showMapGender(gender) {
   renderMap(gender);
 }
 
+// Globo de ayuda (cambios y cancelaciones)
+function setHelpOpen(open) {
+  document.getElementById("helpBubble").hidden = !open;
+  document.getElementById("helpFab").setAttribute("aria-expanded", String(open));
+}
+
+const changeActionLabels = { keep: "Se mantiene", change: "Cambiar", cancel: "Cancelar" };
+let changeFlow = null;
+
+// Estado de los botones "Agregar" de las tarjetas según el modo activo
+function addButtonView(productId) {
+  if (changeFlow) {
+    if (changeFlow.pickFor) return { added: false, html: "Elegir este" };
+    const count = changeFlow.items.filter(item => item.id === productId).reduce((sum, item) => sum + item.qty, 0);
+    return { added: count > 0, html: count > 0 ? `Lo pedí (${count})` : "Lo pedí" };
+  }
+  const added = cart.some(item => item.id === productId);
+  return { added, html: added ? "Agregado" : "<span>+</span> Agregar" };
+}
+
+function refreshAddButtons() {
+  document.querySelectorAll(".card[data-product-card]").forEach(card => {
+    const addButton = card.querySelector(".add-btn");
+    if (!addButton) return;
+    const view = addButtonView(card.dataset.productCard);
+    addButton.classList.toggle("is-added", view.added);
+    addButton.innerHTML = view.html;
+  });
+}
+
+function renderChangeBar() {
+  const bar = document.getElementById("changeBar");
+  bar.hidden = !changeFlow;
+  document.body.classList.toggle("change-mode", Boolean(changeFlow));
+  if (!changeFlow) return;
+
+  const text = document.getElementById("changeBarText");
+  const next = document.getElementById("changeBarNext");
+  const picking = Boolean(changeFlow.pickFor);
+  const total = changeFlow.items.reduce((sum, item) => sum + item.qty, 0);
+
+  if (picking) {
+    const target = changeFlow.units.find(unit => unit.uid === changeFlow.pickFor);
+    text.textContent = `Elige en el catálogo el perfume nuevo para [${target.code}] ${target.name}`;
+    next.textContent = "Volver";
+    next.disabled = false;
+  } else {
+    text.textContent = total === 0
+      ? "Cambio o cancelación: toca «Lo pedí» en los perfumes que pediste"
+      : `Cambio o cancelación: ${total} ${total === 1 ? "perfume marcado" : "perfumes marcados"}`;
+    next.textContent = "Continuar";
+    next.disabled = total === 0;
+  }
+}
+
+function openChangeFlow() {
+  setHelpOpen(false);
+  closeCartModal();
+  changeFlow = { step: 2, items: [], units: [], name: "", pickFor: null, nextUid: 1 };
+  renderChangeBar();
+  refreshAddButtons();
+}
+
+// Cierra el asistente por completo y vuelve al catálogo normal
+function exitChangeFlow() {
+  document.getElementById("changeOverlay").hidden = true;
+  changeFlow = null;
+  renderChangeBar();
+  refreshAddButtons();
+  updateCartBar();
+}
+
+// Oculta el panel y deja al cliente mirando el catálogo sin perder lo marcado
+function showCatalogForChange() {
+  document.getElementById("changeOverlay").hidden = true;
+  renderChangeBar();
+  refreshAddButtons();
+}
+
+// Cada unidad pedida tiene su propia decisión (mantener, cambiar o cancelar)
+function syncChangeUnits() {
+  const previous = changeFlow.units;
+  changeFlow.units = changeFlow.items.flatMap(item => {
+    const existing = previous.filter(unit => unit.itemKey === item.itemKey).slice(0, item.qty);
+    const created = Array.from({ length: item.qty - existing.length }, () => ({
+      uid: changeFlow.nextUid++,
+      itemKey: item.itemKey,
+      id: item.id,
+      code: item.code,
+      name: item.name,
+      size: item.size,
+      action: "keep",
+      replacement: ""
+    }));
+    return [...existing, ...created];
+  });
+}
+
+function openChangeReview(step) {
+  changeFlow.pickFor = null;
+  changeFlow.step = step;
+  syncChangeUnits();
+  renderChangeBar();
+  refreshAddButtons();
+  renderChangeFlow();
+  document.getElementById("changeOverlay").hidden = false;
+  document.getElementById("changeBody").scrollTop = 0;
+}
+
+function handleChangeCatalogTap(productId) {
+  const p = products.find(item => item.id === productId);
+  if (!p) return;
+  const size = p.tiered ? (selectedSizes[productId] || "100ml") : p.fixedSize;
+  if (p.tiered && !selectedSizes[productId]) selectSize(productId, size);
+
+  if (changeFlow.pickFor) {
+    const target = changeFlow.units.find(unit => unit.uid === changeFlow.pickFor);
+    if (target) target.replacement = `[${p.code}] ${p.name} (${size})`;
+    openChangeReview(2);
+    return;
+  }
+
+  const itemKey = `${p.id}_${size}`;
+  const existing = changeFlow.items.find(item => item.itemKey === itemKey);
+  if (existing) {
+    existing.qty += 1;
+  } else {
+    changeFlow.items.push({ itemKey, id: p.id, code: p.code, name: p.name, size, qty: 1 });
+  }
+  renderChangeBar();
+  refreshAddButtons();
+}
+
+function startPickReplacement(uid) {
+  changeFlow.pickFor = uid;
+  document.getElementById("changeOverlay").hidden = true;
+  renderChangeBar();
+  refreshAddButtons();
+}
+
+function changeUnitLine(unit, position, total) {
+  return `<div class="cart-item-name">[${escapeHTML(unit.code)}] ${escapeHTML(unit.name)}</div>
+    <div class="cart-item-meta">Tamaño: ${escapeHTML(unit.size)}${total > 1 ? ` | Unidad ${position} de ${total}` : ""}</div>`;
+}
+
+// Posición de cada unidad dentro de las de su mismo producto y tamaño
+function unitPositions() {
+  const counters = {};
+  const totals = {};
+  changeFlow.units.forEach(unit => { totals[unit.itemKey] = (totals[unit.itemKey] || 0) + 1; });
+  return changeFlow.units.map(unit => {
+    counters[unit.itemKey] = (counters[unit.itemKey] || 0) + 1;
+    return { unit, position: counters[unit.itemKey], total: totals[unit.itemKey] };
+  });
+}
+
+function changeCanContinue() {
+  const { units } = changeFlow;
+  return units.some(unit => unit.action !== "keep") &&
+    units.every(unit => unit.action !== "change" || unit.replacement);
+}
+
+function renderChangeFlow() {
+  const body = document.getElementById("changeBody");
+  const label = document.getElementById("changeStepLabel");
+  const { step } = changeFlow;
+
+  if (step === 2) {
+    label.textContent = "Paso 1 de 2 · ¿Qué quieres hacer con cada perfume?";
+    body.innerHTML = `
+      <button type="button" class="change-cancel-all-btn" data-action="change-cancel-all">Cancelar todo el pedido</button>
+      ${unitPositions().map(({ unit, position, total }) => `
+        <div class="change-item-card">
+          <div class="change-item-head">
+            <div class="cart-item-info">${changeUnitLine(unit, position, total)}</div>
+            <button class="delete-item-btn" data-action="change-remove-unit" data-uid="${unit.uid}" aria-label="Quitar de la lista, no lo pedí" title="Quitar de la lista, no lo pedí"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+          </div>
+          <div class="change-choice-row">
+            ${["keep", "change", "cancel"].map(value => `
+              <button type="button" class="change-choice${unit.action === value ? " is-active" : ""}" data-action="change-set-action" data-uid="${unit.uid}" data-value="${value}" aria-pressed="${unit.action === value}">${changeActionLabels[value]}</button>`).join("")}
+          </div>
+          ${unit.action === "change" ? `
+            <div class="change-replacement${unit.replacement ? "" : " is-empty"}">${unit.replacement ? `Nuevo: ${escapeHTML(unit.replacement)}` : "Aún no elegiste el perfume nuevo"}</div>
+            <button type="button" class="change-pick-btn" data-action="change-pick" data-uid="${unit.uid}">${unit.replacement ? "Elegir otro en el catálogo" : "Elegir el nuevo en el catálogo"}</button>` : ""}
+        </div>`).join("")}`;
+  } else {
+    label.textContent = "Paso 2 de 2 · Revisa y envía tu solicitud";
+    const affected = unitPositions().filter(({ unit }) => unit.action !== "keep");
+    const kept = changeFlow.units.filter(unit => unit.action === "keep");
+    body.innerHTML = `
+      <div class="cart-items-list change-review">
+        ${affected.map(({ unit, position, total }) => `
+          <div class="cart-item-row">
+            <div class="cart-item-info">
+              ${changeUnitLine(unit, position, total)}
+              <span class="change-status ${unit.action === "change" ? "is-change" : "is-cancel"}">${changeActionLabels[unit.action]}</span>
+              ${unit.action === "change" ? `<div class="cart-item-meta">Por: ${escapeHTML(unit.replacement)}</div>` : ""}
+            </div>
+          </div>`).join("")}
+      </div>
+      ${kept.length ? `<p class="change-kept-note">Se mantienen sin cambios: ${[...new Set(kept.map(unit => `[${unit.code}] ${unit.name}`))].map(escapeHTML).join(", ")}.</p>` : ""}
+      <div class="customer-name-field">
+        <label for="changeName">Nombre y apellido</label>
+        <input id="changeName" type="text" maxlength="80" autocomplete="name" aria-describedby="changeNameError" placeholder="Ej. Ana Pérez" value="${escapeAttr(changeFlow.name)}" required>
+        <p id="changeNameError" class="customer-name-error" role="alert" hidden>Escribe tu nombre y apellido para continuar.</p>
+      </div>`;
+  }
+
+  renderChangeFooter();
+  renderLucideIcons();
+}
+
+function renderChangeFooter() {
+  const footer = document.getElementById("changeFooter");
+  const { step } = changeFlow;
+  const canContinue = changeCanContinue();
+
+  if (step === 2) {
+    footer.innerHTML = `<div class="cart-actions-row">
+      <button class="change-back-btn" data-action="change-to-catalog">Seguir en el catálogo</button>
+      <button class="whatsapp-send-btn is-next" data-action="change-next" ${canContinue ? "" : "disabled"}>Continuar</button></div>`;
+  } else {
+    footer.innerHTML = `<div class="cart-actions-row">
+      <button class="change-back-btn" data-action="change-back">Atrás</button>
+      <button class="whatsapp-send-btn" data-action="send-change"><i data-lucide="message-circle" aria-hidden="true"></i>Enviar por WhatsApp</button></div>`;
+  }
+}
+
+function removeChangeUnit(uid) {
+  const unit = changeFlow.units.find(entry => entry.uid === uid);
+  if (!unit) return;
+  const item = changeFlow.items.find(entry => entry.itemKey === unit.itemKey);
+  changeFlow.units = changeFlow.units.filter(entry => entry !== unit);
+  if (item) {
+    item.qty -= 1;
+    if (item.qty <= 0) changeFlow.items = changeFlow.items.filter(entry => entry !== item);
+  }
+  if (changeFlow.units.length === 0) {
+    showCatalogForChange();
+    return;
+  }
+  renderChangeFlow();
+}
+
+function setChangeAction(uid, value) {
+  const unit = changeFlow.units.find(entry => entry.uid === uid);
+  if (!unit) return;
+  unit.action = value;
+  if (value !== "change") unit.replacement = "";
+  renderChangeFlow();
+}
+
+function goToChangeStep(step) {
+  changeFlow.step = step;
+  renderChangeFlow();
+  document.getElementById("changeBody").scrollTop = 0;
+}
+
+function sendChangeToWhatsApp() {
+  const nameInput = document.getElementById("changeName");
+  const nameError = document.getElementById("changeNameError");
+  const name = nameInput.value.trim().replace(/\s+/g, " ");
+  changeFlow.name = name;
+  if (name.split(" ").filter(Boolean).length < 2) {
+    nameInput.setAttribute("aria-invalid", "true");
+    nameError.hidden = false;
+    nameInput.focus();
+    return;
+  }
+  nameInput.removeAttribute("aria-invalid");
+  nameError.hidden = true;
+
+  openConfirm("change");
+}
+
+function performChangeSend() {
+  if (!changeFlow) return;
+  const name = changeFlow.name;
+  const { units } = changeFlow;
+  const hasChange = units.some(unit => unit.action === "change");
+  const hasCancel = units.some(unit => unit.action === "cancel");
+  const allCancel = units.every(unit => unit.action === "cancel");
+  let request;
+  if (allCancel) request = "cancelar este pedido";
+  else if (hasChange && hasCancel) request = "cambiar y cancelar parte de este pedido";
+  else if (hasChange) request = "cambiar este pedido";
+  else request = "cancelar parte de este pedido";
+
+  // Une unidades idénticas para que el mensaje quede corto
+  const lines = [];
+  units.forEach(unit => {
+    const key = `${unit.itemKey}|${unit.action}|${unit.replacement}`;
+    const line = lines.find(entry => entry.key === key);
+    if (line) line.qty += 1;
+    else lines.push({ key, unit, qty: 1 });
+  });
+
+  let msg = `¡Hola! Soy ${name} y quiero ${request}:\n\n`;
+  lines.forEach(({ unit, qty }, index) => {
+    let status = "se mantiene";
+    if (unit.action === "cancel") status = "CANCELAR";
+    if (unit.action === "change") status = `CAMBIAR por: ${unit.replacement}`;
+    msg += `${index + 1}. [${unit.code}] ${unit.name} (${unit.size}) x${qty} → ${status}\n`;
+  });
+
+  window.open(`https://wa.me/${VENDEDOR_WHATSAPP}?text=${encodeURIComponent(msg)}`, "_blank");
+  exitChangeFlow();
+}
+
+const changeOverlay = document.getElementById("changeOverlay");
+
+changeOverlay.addEventListener("input", event => {
+  if (!changeFlow) return;
+  if (event.target.id === "changeName") {
+    event.target.removeAttribute("aria-invalid");
+    document.getElementById("changeNameError").hidden = true;
+  }
+});
+
+document.addEventListener("click", event => {
+  if (!event.target.closest("#helpWrap")) setHelpOpen(false);
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key !== "Escape") return;
+  if (!document.getElementById("confirmOverlay").hidden) {
+    closeConfirm();
+    return;
+  }
+  setHelpOpen(false);
+  if (changeFlow && !document.getElementById("changeOverlay").hidden) showCatalogForChange();
+});
+
 // Event Delegation táctil
 document.addEventListener("error", event => {
   const image = event.target;
@@ -867,10 +1226,62 @@ document.addEventListener("click", event => {
   const control = event.target.closest("[data-action]");
   if (!control) return;
   if (control.dataset.action === "close-cart" && event.target !== control) return;
+  if (control.dataset.action === "close-change" && event.target !== control) return;
+  if (control.dataset.action === "close-confirm" && event.target !== control) return;
 
   switch (control.dataset.action) {
+    case "close-confirm":
+      closeConfirm();
+      break;
+    case "confirm-send":
+      confirmSendToWhatsApp();
+      break;
+    case "open-change":
+      openChangeFlow();
+      break;
+    case "close-change":
+      showCatalogForChange();
+      break;
+    case "exit-change":
+      exitChangeFlow();
+      break;
+    case "change-review":
+      openChangeReview(2);
+      break;
+    case "change-to-catalog":
+      showCatalogForChange();
+      break;
+    case "change-pick":
+      startPickReplacement(Number(control.dataset.uid));
+      break;
+    case "change-remove-unit":
+      removeChangeUnit(Number(control.dataset.uid));
+      break;
+    case "change-set-action":
+      setChangeAction(Number(control.dataset.uid), control.dataset.value);
+      break;
+    case "change-cancel-all":
+      changeFlow.units.forEach(unit => { unit.action = "cancel"; unit.replacement = ""; });
+      goToChangeStep(3);
+      break;
+    case "change-next":
+      if (!control.disabled) goToChangeStep(changeFlow.step + 1);
+      break;
+    case "change-back":
+      goToChangeStep(changeFlow.step - 1);
+      break;
+    case "send-change":
+      sendChangeToWhatsApp();
+      break;
+    case "toggle-help":
+      setHelpOpen(document.getElementById("helpBubble").hidden);
+      break;
+    case "close-help":
+      setHelpOpen(false);
+      break;
     case "map-gender":
       showMapGender(control.dataset.gender);
+      window.scrollTo({ top: 0, behavior: "smooth" });
       break;
     case "map-product":
       showMapProduct(control.dataset.productId);
@@ -897,7 +1308,8 @@ document.addEventListener("click", event => {
       showAromaImage(control.dataset.productId);
       break;
     case "add-to-cart":
-      addToCart(control.dataset.productId);
+      if (changeFlow) handleChangeCatalogTap(control.dataset.productId);
+      else addToCart(control.dataset.productId);
       break;
     case "change-qty":
       changeQty(control.dataset.itemKey, Number(control.dataset.delta));
@@ -921,6 +1333,7 @@ document.querySelectorAll(".pill-btn").forEach(btn => {
     btn.classList.add("active");
     currentCategory = btn.dataset.category;
     renderProducts();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 });
 

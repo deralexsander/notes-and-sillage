@@ -795,6 +795,407 @@
       border: none;
     }
 
+    /* Globo de ayuda flotante */
+    .help-fab-wrap {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      z-index: 45;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      transition: bottom 0.2s ease;
+    }
+
+    body:has(#cartBar:not([hidden])) .help-fab-wrap {
+      bottom: 88px;
+    }
+
+    .help-fab {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
+    }
+
+    .help-fab svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .help-bubble {
+      position: relative;
+      width: min(280px, calc(100vw - 32px));
+      background: var(--card-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px 16px 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+
+    .help-bubble[hidden] {
+      display: none;
+    }
+
+    .help-bubble::after {
+      content: "";
+      position: absolute;
+      right: 17px;
+      bottom: -7px;
+      width: 12px;
+      height: 12px;
+      background: var(--card-bg);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      transform: rotate(45deg);
+    }
+
+    .help-bubble-close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .help-bubble-close svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .help-bubble-title {
+      font-weight: 800;
+      font-size: 0.95rem;
+      margin: 0 28px 6px 0;
+    }
+
+    .help-bubble-text {
+      font-size: 0.82rem;
+      line-height: 1.45;
+      color: var(--text-muted);
+      margin: 0 0 12px;
+    }
+
+    .help-bubble-link {
+      display: flex;
+      width: 100%;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 10px 12px;
+      border-radius: 12px;
+    }
+
+    .help-bubble-link svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 120;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px);
+    }
+
+    .confirm-overlay[hidden] {
+      display: none;
+    }
+
+    .confirm-dialog {
+      width: min(340px, 100%);
+      background: #fff;
+      border-radius: 18px;
+      padding: 20px;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.3);
+    }
+
+    .confirm-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--primary);
+      margin: 0 0 8px;
+    }
+
+    .confirm-text {
+      font-size: 0.85rem;
+      line-height: 1.45;
+      color: var(--text-muted);
+      margin: 0 0 16px;
+    }
+
+    .confirm-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .confirm-send-btn,
+    .confirm-back-btn {
+      padding: 12px;
+      border-radius: 12px;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .confirm-send-btn {
+      border: none;
+      background: var(--whatsapp);
+      color: #fff;
+    }
+
+    .confirm-back-btn {
+      border: 1px solid var(--border);
+      background: #f1f5f9;
+      color: var(--text);
+    }
+
+    .change-bar {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: 12px;
+      z-index: 60;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px 12px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+
+    .change-bar[hidden] {
+      display: none;
+    }
+
+    .change-bar-text {
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .change-bar-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .change-bar-exit,
+    .change-bar-next {
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: none;
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .change-bar-exit {
+      background: #334155;
+      color: #fff;
+    }
+
+    .change-bar-next {
+      flex: 1;
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .change-bar-next:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    body.change-mode {
+      padding-bottom: 150px;
+    }
+
+    body.change-mode .cart-float-bar,
+    body.change-mode .help-fab-wrap {
+      display: none;
+    }
+
+    body.change-mode .add-btn {
+      background: var(--accent);
+    }
+
+    body.change-mode .add-btn.is-added {
+      background: var(--primary);
+    }
+
+    .change-item-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .change-pick-btn {
+      border: 1px dashed var(--accent);
+      background: #fff;
+      color: var(--accent);
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 8px;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    /* Asistente de cambio o cancelación */
+    .change-step-label {
+      margin: 10px 0 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .change-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-bottom: 10px;
+    }
+
+    .change-footer .cart-actions-row {
+      margin-top: 0;
+    }
+
+    .change-item-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    .change-choice-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .change-choice {
+      padding: 8px 4px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .change-choice.is-active[data-value="keep"] { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .change-choice.is-active[data-value="change"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .change-choice.is-active[data-value="cancel"] { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+    .change-replacement {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      background: var(--accent-light);
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+
+    .change-replacement.is-empty {
+      border-style: dashed;
+      background: #fff;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .change-cancel-all-btn {
+      border: 1px solid var(--danger);
+      background: #fff;
+      color: var(--danger);
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 10px;
+      border-radius: 12px;
+      cursor: pointer;
+    }
+
+    .change-status {
+      display: inline-block;
+      margin-top: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .change-status.is-change { background: var(--accent); }
+    .change-status.is-cancel { background: var(--danger); }
+
+    .change-kept-note {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .change-back-btn {
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #f1f5f9;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+
+    .change-footer .whatsapp-send-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .change-footer .whatsapp-send-btn.is-next {
+      background: var(--primary);
+    }
+
     /* MODAL DE CARRITO TIPO BOTTOM SHEET */
     .cart-modal-overlay {
       position: fixed;

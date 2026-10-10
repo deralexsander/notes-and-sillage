@@ -83,6 +83,60 @@
     <button class="view-cart-btn">Ver Pedido</button>
   </div>
 
+  <!-- Globo de ayuda: cambios y cancelaciones -->
+  <div class="help-fab-wrap" id="helpWrap">
+    <div class="help-bubble" id="helpBubble" role="dialog" aria-labelledby="helpBubbleTitle" hidden>
+      <button class="help-bubble-close" type="button" data-action="close-help" aria-label="Cerrar información" title="Cerrar">
+        <i data-lucide="x" aria-hidden="true"></i>
+      </button>
+      <p class="help-bubble-title" id="helpBubbleTitle">¿Ya hiciste tu pedido?</p>
+      <p class="help-bubble-text">Si quieres cambiar algún perfume o cancelar tu pedido, te guiamos paso a paso y enviamos tu solicitud por WhatsApp.</p>
+      <button class="help-bubble-link" type="button" data-action="open-change">
+        <i data-lucide="refresh-cw" aria-hidden="true"></i>
+        Cambiar o cancelar pedido
+      </button>
+    </div>
+    <button class="help-fab" type="button" id="helpFab" data-action="toggle-help" aria-expanded="false" aria-controls="helpBubble" aria-label="Información sobre cambios y cancelaciones" title="¿Cambios o cancelaciones?">
+      <i data-lucide="info" aria-hidden="true"></i>
+    </button>
+  </div>
+
+  <!-- Confirmación antes de enviar el pedido por WhatsApp -->
+  <div class="confirm-overlay" id="confirmOverlay" data-action="close-confirm" hidden>
+    <div class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
+      <p class="confirm-title" id="confirmTitle">¿Ya terminaste tu pedido?</p>
+      <p class="confirm-text" id="confirmText">Se abrirá WhatsApp con tu pedido listo para enviar. Si aún quieres agregar, editar o quitar algo, vuelve al pedido.</p>
+      <div class="confirm-actions">
+        <button type="button" class="confirm-back-btn" data-action="close-confirm">Volver al pedido</button>
+        <button type="button" class="confirm-send-btn" data-action="confirm-send">Sí, enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aviso permanente del modo cambio o cancelación -->
+  <div class="change-bar" id="changeBar" role="status" hidden>
+    <p class="change-bar-text" id="changeBarText"></p>
+    <div class="change-bar-actions">
+      <button type="button" class="change-bar-exit" data-action="exit-change">Salir</button>
+      <button type="button" class="change-bar-next" id="changeBarNext" data-action="change-review">Continuar</button>
+    </div>
+  </div>
+
+  <!-- Asistente para cambiar o cancelar un pedido -->
+  <div class="cart-modal-overlay" id="changeOverlay" data-action="close-change" hidden>
+    <div class="cart-modal" role="dialog" aria-modal="true" aria-labelledby="changeTitle">
+      <div class="cart-header">
+        <span class="cart-title" id="changeTitle">Cambiar o cancelar pedido</span>
+        <button class="close-btn" data-action="close-change" aria-label="Cerrar" title="Cerrar">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p class="change-step-label" id="changeStepLabel"></p>
+      <div class="change-body" id="changeBody"></div>
+      <div class="cart-footer change-footer" id="changeFooter"></div>
+    </div>
+  </div>
+
   <!-- MODAL / BOTTOM SHEET DE EDICIÓN DEL CARRITO -->
   <div class="cart-modal-overlay" id="cartModalOverlay" data-action="close-cart" hidden>
     <div class="cart-modal">

@@ -44,6 +44,8 @@ Es un sitio **100 % estático** (HTML, CSS y JavaScript). No necesita servidor, 
 | 🖼️ **Imagen del aroma** | Alterna entre la foto del frasco y la imagen de inspiración visual de las notas. |
 | 🛒 **Carrito de pedido** | Barra flotante con total, edición de cantidades y opción para quitar o vaciar productos. |
 | 💬 **Pedido por WhatsApp** | Genera el mensaje con el detalle del pedido, el total y el nombre del cliente. |
+| ✅ **Confirmación de envío** | Pregunta si el pedido está terminado antes de abrir WhatsApp y vacía el carrito al enviar. |
+| 🔄 **Cambiar o cancelar pedido** | Asistente guiado, unidad por unidad, que elige el reemplazo desde el catálogo y envía la solicitud por WhatsApp. |
 
 ---
 
@@ -95,9 +97,50 @@ El cliente agrega productos y ve una barra flotante con la cantidad y el total. 
 | <img src="docs/img/06-barra-de-carrito.png" alt="Barra de carrito" width="220"> | <img src="docs/img/07-resumen-del-pedido.png" alt="Resumen del pedido" width="220"> |
 | *Muestra cuántos productos hay y el total acumulado.* | *Edición de cantidades, nombre del cliente y botón de envío por WhatsApp.* |
 
+### Confirmación antes de enviar
+Como el cliente puede arrepentirse después de abrir WhatsApp, al presionar **Pedir por WhatsApp** aparece primero la pregunta **«¿Ya terminaste tu pedido?»**:
+
+- **Volver al pedido:** cierra el aviso y deja seguir agregando, editando o quitando productos.
+- **Sí, enviar:** abre WhatsApp con el pedido redactado y **vacía el carrito** para empezar de cero.
+
+<img src="docs/img/12-confirmar-pedido.png" alt="Confirmación antes de enviar el pedido" width="220">
+
 ---
 
-## 🛠️ 6. Tecnologías
+## 🔄 6. Cambiar o Cancelar un Pedido
+
+Como el catálogo no guarda memoria del comprador, un globo **«i»** fijo abajo a la derecha guía a quien ya pidió y quiere cambiar o cancelar algo.
+
+<img src="docs/img/11-globo-ayuda.png" alt="Globo de ayuda para cambiar o cancelar" width="220">
+
+### Cómo funciona
+1. **Marcar lo que pidió:** el catálogo pasa a *modo cambio*. Una barra fija inferior (que no molesta al buscar ni escribir) muestra cuántos perfumes se marcaron. Las tarjetas muestran **Lo pedí**; se puede cambiar el tamaño y la cantidad de cada uno.
+2. **Decidir unidad por unidad:** cada unidad pedida tiene su propia decisión: **Se mantiene**, **Cambiar** o **Cancelar**. Así, si pidió 2 unidades del mismo perfume, puede mantener 1 y cambiar la otra por otro aroma.
+3. **Elegir el reemplazo en el catálogo:** el perfume nuevo **no se escribe**, solo se elige tocando **Elegir este** en el catálogo. **Continuar** queda bloqueado mientras falte algún reemplazo.
+4. **Revisar y enviar:** se escribe nombre y apellido y se confirma con **«¿Ya terminaste tu cambio o cancelación?»**. Al aceptar se abre WhatsApp y se limpia todo lo marcado.
+
+| Modo cambio en el catálogo | Decisión por unidad |
+| :---: | :---: |
+| <img src="docs/img/13-modo-cambio-catalogo.png" alt="Modo cambio con barra fija" width="220"> | <img src="docs/img/14-cambio-por-unidad.png" alt="Decisión por unidad" width="220"> |
+| *Barra fija con el contador y los botones Salir / Continuar.* | *Unidad 1 se mantiene, unidad 2 se cambia y otro perfume se cancela.* |
+
+| Resumen y envío | Confirmación |
+| :---: | :---: |
+| <img src="docs/img/15-resumen-cambio.png" alt="Resumen del cambio" width="220"> | <img src="docs/img/16-confirmar-cambio.png" alt="Confirmación del cambio" width="220"> |
+| *Detalle de lo que cambia, nombre del cliente y envío.* | *Pregunta final antes de abrir WhatsApp.* |
+
+El mensaje que llega al vendedor agrupa las unidades iguales, por ejemplo:
+
+```text
+¡Hola! Soy Ana Pérez y quiero cambiar este pedido:
+
+1. [H-22] Acqua di Gio (100ml) x1 → se mantiene
+2. [H-22] Acqua di Gio (100ml) x1 → CAMBIAR por: [Q 02] Black Orchid (100 ml)
+```
+
+---
+
+## 🛠️ 7. Tecnologías
 
 | Capa | Tecnología |
 | :--- | :--- |
@@ -111,7 +154,7 @@ El cliente agrega productos y ve una barra flotante con la cantidad y el total. 
 
 ---
 
-## 📂 7. Estructura del Proyecto
+## 📂 8. Estructura del Proyecto
 
 ```text
 notes-and-sillage/
@@ -127,7 +170,7 @@ notes-and-sillage/
 
 ---
 
-## 🚀 8. Ejecutar Localmente
+## 🚀 9. Ejecutar Localmente
 
 Al ser un sitio estático no requiere instalar dependencias. Solo necesitas un servidor local simple:
 
@@ -144,7 +187,7 @@ Los productos, precios y el número de contacto se definen en [`js/base-datos.js
 
 ---
 
-## 🌐 9. Despliegue
+## 🌐 10. Despliegue
 
 El sitio se publica con **GitHub Pages** desde la rama `main`. Cada `git push` actualiza el catálogo en uno o dos minutos:
 
