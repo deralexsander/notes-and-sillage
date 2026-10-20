@@ -49,24 +49,29 @@ const mapLayout = {
         { name: "Cítrico Maderoso", colors: ["c-citrico", "c-maderoso"], codes: ["F-28", "F-50"] },
         { name: "Cítrico Floral", colors: ["c-citrico", "c-floral"], codes: ["F-17"] },
         { name: "Floral Fresco", colors: ["c-floral"], codes: ["F-16"] },
-        { name: "Floral Verde", colors: ["c-floral", "c-verde"], codes: ["F-36", "F-48", "F-52", "F-60"] }
+        { name: "Floral Verde", colors: ["c-floral", "c-verde"], codes: ["F-36", "F-48", "F-52", "F-60"] },
+        { name: "Floral Maderoso", colors: ["c-floral", "c-maderoso"], codes: ["F-22", "F-24", "F-65"] }
       ] },
       { title: "Ligero / Cálido", groups: [
-        { name: "Floral Frutal", colors: ["c-floral", "c-frutal"], codes: ["F-07", "F-09", "F-13", "F-27", "F-25", "F-31", "F-32", "F-38", "F-39", "F-45", "F-55", "F-62", "F-66", "F-61"] },
+        { name: "Floral Frutal", colors: ["c-floral", "c-frutal"], codes: ["F-07", "F-09", "F-13", "F-27", "F-25", "F-31", "F-32", "F-38", "F-39", "F-45", "F-55", "F-62", "F-66", "F-61", "Q 07"] },
         { name: "Floral Aldehídico", colors: ["c-floral", "c-aldehidico"], codes: ["F-05"] },
-        { name: "Cítrico Gourmand", colors: ["c-citrico"], codes: ["F-30"] }
+        { name: "Cítrico Gourmand", colors: ["c-citrico"], codes: ["F-30"] },
+        { name: "Gourmand Vainilla", colors: ["c-oriental", "c-frutal"], codes: ["Q 06"] }
       ] },
       { title: "Intenso / Fresco", groups: [
         { name: "Floral Floral", colors: ["c-floral"], codes: ["F-18", "F-20", "F-26", "F-29"] },
         { name: "Chypre Floral", colors: ["c-chypre", "c-floral"], codes: ["F-01", "F-34", "F-47", "F-56", "F-59"] },
-        { name: "Chypre Frutal", colors: ["c-chypre", "c-frutal"], codes: ["F-06", "F-10", "F-11", "F-51"] },
-        { name: "Chypre Oriental", colors: ["c-chypre", "c-oriental"], codes: ["F-57"] }
+        { name: "Chypre Frutal", colors: ["c-chypre", "c-frutal"], codes: ["F-06", "F-10", "F-11", "F-51", "Q 01"] },
+        { name: "Chypre Oriental", colors: ["c-chypre", "c-oriental"], codes: ["F-57"] },
+        { name: "Oriental Cítrico", colors: ["c-oriental", "c-citrico"], codes: ["F-14"] }
       ] },
       { title: "Intenso / Cálido", groups: [
         { name: "Floral Oriental", colors: ["c-floral", "c-oriental"], codes: ["F-03", "F-12", "F-23", "F-35", "F-46", "F-54", "F-63", "F-64"] },
-        { name: "Oriental Floral", colors: ["c-oriental", "c-floral"], codes: ["F-19", "F-33", "F-42", "F-43", "F-44", "F-58"] },
+        { name: "Floral Especiado", colors: ["c-floral", "c-especiado"], codes: ["F-21"] },
+        { name: "Oriental Floral", colors: ["c-oriental", "c-floral"], codes: ["F-19", "F-33", "F-42", "F-43", "F-44", "F-58", "Q 02", "Q 04", "Q 05", "Q 08"] },
         { name: "Oriental Frutal", colors: ["c-oriental", "c-frutal"], codes: ["F-15", "F-37", "F-40", "F-41", "F-49"] },
-        { name: "Oriental Maderoso", colors: ["c-oriental", "c-maderoso"], codes: ["F-04", "F-53", "F-08"] }
+        { name: "Oriental Dulce", colors: ["c-oriental", "c-frutal"], codes: ["Q 03"] },
+        { name: "Oriental Maderoso", colors: ["c-oriental", "c-maderoso"], codes: ["F-04", "F-53", "F-08", "Q 09"] }
       ] }
     ]
   },
@@ -74,7 +79,8 @@ const mapLayout = {
     title: "Mapa de Fragancias Masculinas",
     quadrants: [
       { title: "Ligero / Fresco", groups: [
-        { name: "Cítrico Fresco", colors: ["c-citrico"], codes: ["H-26"] },
+        { name: "Cítrico Fresco", colors: ["c-citrico"], codes: ["H-26", "Q 55"] },
+        { name: "Cítrico Aromático", colors: ["c-citrico", "c-aromatico"], codes: ["Q 53"] },
         { name: "Fougère Fresco", colors: ["c-fougere"], codes: ["H-01"] },
         { name: "Fougère Frutal", colors: ["c-fougere", "c-frutal"], codes: ["H-07"] },
         { name: "Fougère Aromático", colors: ["c-fougere", "c-aromatico"], codes: ["H-02", "H-04", "H-11", "H-13", "H-44", "H-15"] }
@@ -83,19 +89,22 @@ const mapLayout = {
         { name: "Maderoso Frutal", colors: ["c-maderoso", "c-frutal"], codes: ["H-06", "H-27", "H-34"] },
         { name: "Maderoso Verde", colors: ["c-maderoso", "c-verde"], codes: ["H-14"] },
         { name: "Maderoso Floral", colors: ["c-maderoso", "c-floral"], codes: ["H-19", "H-35"] },
-        { name: "Maderoso Aromático", colors: ["c-maderoso", "c-aromatico"], codes: ["H-05", "H-08", "H-09", "H-10", "H-21", "H-30"] }
+        { name: "Maderoso Aromático", colors: ["c-maderoso", "c-aromatico"], codes: ["H-05", "H-08", "H-09", "H-10", "H-21", "H-30", "Q 51", "Q 56"] }
       ] },
       { title: "Intenso / Fresco", groups: [
         { name: "Maderoso Cítrico", colors: ["c-maderoso", "c-citrico"], codes: ["H-20", "H-22", "H-37", "H-41"] },
+        { name: "Chypre Frutal", colors: ["c-chypre", "c-frutal"], codes: ["Q 54"] },
         { name: "Chypre Aromático", colors: ["c-chypre", "c-aromatico"], codes: ["H-03"] },
         { name: "Chypre Maderoso", colors: ["c-chypre", "c-maderoso"], codes: ["H-12"] },
         { name: "Fougère Maderoso", colors: ["c-fougere", "c-maderoso"], codes: ["H-18", "H-31", "H-32"] }
       ] },
       { title: "Intenso / Cálido", groups: [
-        { name: "Oriental Frutal", colors: ["c-oriental", "c-frutal"], codes: ["H-16", "H-17", "H-29", "H-39"] },
+        { name: "Cuero", colors: ["c-cuero"], codes: ["Q 52"] },
+        { name: "Oriental Frutal", colors: ["c-oriental", "c-frutal"], codes: ["H-16", "H-17", "H-29", "H-39", "Q 57"] },
         { name: "Fougère Oriental", colors: ["c-fougere", "c-oriental"], codes: ["H-33", "H-36", "H-38", "H-40", "H-45"] },
-        { name: "Oriental Especiado", colors: ["c-oriental", "c-especiado"], codes: ["H-43"] },
-        { name: "Oriental Maderoso", colors: ["c-oriental", "c-maderoso"], codes: ["H-23", "H-24", "H-25", "H-28", "H-42"] }
+        { name: "Oriental Especiado", colors: ["c-oriental", "c-especiado"], codes: ["H-43", "Q 58"] },
+        { name: "Oriental Maderoso", colors: ["c-oriental", "c-maderoso"], codes: ["H-23", "H-24", "H-25", "H-28", "H-42"] },
+        { name: "Oriental Vainilla", colors: ["c-oriental", "c-frutal"], codes: ["Q 59"] }
       ] }
     ]
   }
@@ -228,10 +237,12 @@ function renderLucideIcons() {
 
 function findMapProduct(code, gender) {
   const normalizedCode = normalizeProductCode(code);
-  const genderProducts = products.filter(product => product.cat === gender);
-  return genderProducts.find(product =>
-    normalizeProductCode(product.code.split("/")[0]) === normalizedCode
-  ) || genderProducts.find(product => getProductCodeVariants(product.code).includes(normalizedCode));
+  const targetProducts = products.filter(product => product.cat === gender || product.cat === "red-black");
+  return targetProducts.find(product =>
+    normalizeProductCode(product.code.split("/")[0]) === normalizedCode || getProductCodeVariants(product.code).includes(normalizedCode)
+  ) || products.find(product =>
+    normalizeProductCode(product.code.split("/")[0]) === normalizedCode || getProductCodeVariants(product.code).includes(normalizedCode)
+  );
 }
 
 function renderMap(gender = activeMapGender) {

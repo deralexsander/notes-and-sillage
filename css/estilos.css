@@ -23,6 +23,7 @@
       --c-aldehidico: #0284c7;
       --c-aromatico: #06b6d4;
       --c-especiado: #dc2626;
+      --c-cuero: #854d0e;
     }
 
     * {
@@ -465,6 +466,7 @@
     .aroma-note-tone.aroma-c-aldehidico { color: #0369a1; }
     .aroma-note-tone.aroma-c-aromatico { color: #0e7490; }
     .aroma-note-tone.aroma-c-especiado { color: #b91c1c; }
+    .aroma-note-tone.aroma-c-cuero { color: #854d0e; }
 
     .card-subtitle {
       font-size: 0.78rem;
@@ -1490,6 +1492,7 @@
     .c-aldehidico { background: var(--c-aldehidico); }
     .c-aromatico { background: var(--c-aromatico); }
     .c-especiado { background: var(--c-especiado); }
+    .c-cuero { background: var(--c-cuero); }
 
 .search-suggestion { margin-top: 10px; font-size: 0.9rem; }
 .search-suggestion-btn { background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--accent); text-decoration: underline; cursor: pointer; }
@@ -1498,7 +1501,7 @@
 
 /* ==========================================================================
    MEJORAS RESPONSIVAS PARA PANTALLAS DE ESCRITORIO / COMPUTADORA
-   (Sin alterar las reglas originales móviles)
+   (Solo se aplican en computadoras >= 768px para aumentar el tamaño y legibilidad)
    ========================================================================== */
 @media (min-width: 768px) {
   /* Contenedores centrados con ancho máximo armonioso */
@@ -1508,20 +1511,20 @@
   .map-section,
   .search-status-bar,
   .disclaimer-banner {
-    max-width: 1200px;
+    max-width: 1320px;
     margin-left: auto;
     margin-right: auto;
   }
 
-  /* Header espacioso con buscador integrado */
+  /* Header espacioso con buscador integrado y tipografía prominente */
   header {
-    padding: 16px 28px;
-    border-radius: 0 0 16px 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    padding: 20px 32px;
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.04);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 24px;
+    gap: 32px;
   }
 
   .brand-row {
@@ -1529,100 +1532,312 @@
   }
 
   .brand-title {
-    font-size: 1.4rem;
+    font-size: 1.7rem;
+    letter-spacing: -0.01em;
+  }
+
+  .brand-subtitle {
+    font-size: 0.95rem;
+    margin-top: 4px;
   }
 
   .search-box {
-    max-width: 440px;
+    max-width: 480px;
     width: 100%;
     margin: 0;
   }
 
   .search-input {
-    padding: 10px 14px 10px 38px;
-    font-size: 0.88rem;
+    padding: 12px 18px 12px 44px;
+    font-size: 1rem;
+    border-radius: 12px;
   }
 
   .search-input::placeholder {
-    font-size: 0.82rem;
+    font-size: 0.92rem;
   }
 
-  /* Barra de categorías horizontal centrada */
+  /* Barra de categorías horizontal centrada con fuentes más grandes */
   .categories-bar {
     justify-content: center;
-    padding: 12px 20px;
-    gap: 8px;
+    padding: 14px 24px;
+    gap: 10px;
   }
 
   .pill-btn {
-    padding: 7px 16px;
-    font-size: 0.82rem;
+    padding: 9px 20px;
+    font-size: 0.95rem;
+    border-radius: 9999px;
   }
 
-  /* Grilla del catálogo en escritorio: tarjetas proporcionadas */
-  .catalog-container {
+  /* Títulos de sección y avisos en el catálogo */
+  .catalog-category-heading {
     padding: 20px 24px;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 20px;
+    border-radius: 14px;
+    margin: 26px 0 10px;
+  }
+
+  .category-heading-kicker {
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+  }
+
+  .catalog-category-heading h2 {
+    font-size: 1.45rem;
+  }
+
+  .category-heading-desc {
+    font-size: 0.98rem;
+    line-height: 1.5;
+  }
+
+  .catalog-subgroup-title {
+    font-size: 1rem;
+    padding: 10px 18px;
+    border-radius: 10px;
+    margin: 18px 0 10px;
+  }
+
+  .catalog-category-disclaimer,
+  .disclaimer-banner {
+    font-size: 0.88rem;
+    max-width: 75ch;
+    line-height: 1.55;
+    margin-top: 14px;
+    margin-bottom: 24px;
+  }
+
+  .search-status-bar {
+    font-size: 0.98rem;
+    padding: 12px 18px;
+  }
+
+  /* Grilla del catálogo en escritorio: tarjetas más grandes y texto altamente legible */
+  .catalog-container {
+    padding: 24px 32px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 26px;
   }
 
   .card {
-    border-radius: 16px;
+    padding: 18px;
+    border-radius: 18px;
     transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
   }
 
   .card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+    transform: translateY(-5px);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.09);
   }
 
   .card-img-wrapper {
-    height: 190px;
+    height: 215px;
+    margin-bottom: 14px;
   }
 
-  .card-name {
-    font-size: 0.95rem;
+  .card-badge {
+    font-size: 0.82rem;
+    padding: 4px 10px;
+    border-radius: 8px;
+  }
+
+  .aroma-image-btn {
+    font-size: 0.82rem;
+    padding: 5px 12px;
+  }
+
+  .card-title {
+    font-size: 1.18rem;
+    font-weight: 800;
+    line-height: 1.35;
+    margin-bottom: 6px;
+  }
+
+  .card-subtitle {
+    font-size: 0.92rem;
+    line-height: 1.45;
+    margin-bottom: 10px;
+  }
+
+  .card-notes {
+    font-size: 0.88rem;
+    padding: 6px 10px;
+    border-radius: 7px;
+    line-height: 1.45;
+    margin-bottom: 14px;
+  }
+
+  .size-selector {
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .size-option {
+    font-size: 0.85rem;
+    padding: 7px 0;
+    border-radius: 8px;
   }
 
   .card-price {
-    font-size: 1.05rem;
+    font-size: 1.28rem;
+    font-weight: 800;
   }
 
-  /* Mapa Olfativo en Escritorio */
+  .add-btn {
+    font-size: 0.92rem;
+    padding: 8px 16px;
+    border-radius: 10px;
+  }
+
+  .card-male,
+  .card-female {
+    min-height: 520px;
+  }
+
+  .card-male .card-top,
+  .card-female .card-top {
+    height: 60px;
+    min-height: 60px;
+  }
+
+  /* Mapa Olfativo en Pantallas de Computadora */
   .map-section {
-    padding: 24px 28px;
-    border-radius: 20px;
-    margin-top: 15px;
-    margin-bottom: 20px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    padding: 32px 36px;
+    border-radius: 24px;
+    margin-top: 18px;
+    margin-bottom: 28px;
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.04);
     border: 1px solid var(--border);
   }
 
-  .compass-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
+  .map-tabs {
+    margin-bottom: 22px;
+    gap: 12px;
+  }
+
+  .map-tab-btn {
+    font-size: 1rem;
+    padding: 10px 24px;
+    border-radius: 9999px;
+  }
+
+  .legend-container {
+    padding: 18px 22px;
+    border-radius: 16px;
+    margin-bottom: 24px;
+  }
+
+  .legend-title {
+    font-size: 1.1rem;
+    margin-bottom: 14px;
   }
 
   .legend-grid {
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    gap: 14px;
   }
 
-  /* Barra flotante de carrito en escritorio: elegante en esquina inferior derecha */
+  .legend-item {
+    font-size: 0.92rem;
+  }
+
+  .legend-item .dot {
+    width: 14px;
+    height: 14px;
+  }
+
+  .compass-card {
+    padding: 24px;
+    border-radius: 20px;
+  }
+
+  .compass-title {
+    font-size: 1.6rem;
+    margin-bottom: 6px;
+  }
+
+  .compass-desc {
+    font-size: 1.05rem;
+    margin-bottom: 22px;
+  }
+
+  .compass-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 28px;
+  }
+
+  .quadrant {
+    border-radius: 16px;
+  }
+
+  .quadrant-summary {
+    padding: 16px 20px;
+  }
+
+  .quadrant-tag {
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+
+  .quadrant-count {
+    font-size: 0.92rem;
+    padding: 3px 10px;
+    border-radius: 9999px;
+  }
+
+  .quadrant-groups {
+    padding: 16px 20px;
+    gap: 18px;
+  }
+
+  .quadrant-group-name {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 14px 0 10px;
+  }
+
+  .quadrant-items {
+    gap: 8px;
+  }
+
+  .map-product {
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 0.92rem;
+  }
+
+  .map-product-code {
+    font-size: 0.92rem;
+    font-weight: 800;
+  }
+
+  .map-product-name {
+    font-size: 0.92rem;
+  }
+
+  /* Barra flotante de carrito en escritorio */
   .cart-float-bar {
     left: auto;
-    right: 32px;
-    bottom: 28px;
-    width: 340px;
-    border-radius: 20px;
-    padding: 12px 20px;
-    box-shadow: 0 14px 35px rgba(0, 0, 0, 0.25);
+    right: 36px;
+    bottom: 32px;
+    width: 380px;
+    border-radius: 22px;
+    padding: 14px 24px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .cart-float-bar:hover {
     transform: translateY(-2px);
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.32);
+  }
+
+  .cart-float-total {
+    font-size: 1.25rem;
+  }
+
+  .cart-float-desc {
+    font-size: 0.92rem;
   }
 
   /* Modal de Carrito en escritorio: centrado con fondo atenuado */
@@ -1630,14 +1845,33 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 20px;
+    padding: 24px;
   }
 
   .cart-modal {
-    max-width: 500px;
-    border-radius: 24px;
-    box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
+    max-width: 560px;
+    border-radius: 26px;
+    padding: 28px;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.32);
     animation: zoomInModal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .cart-modal-title {
+    font-size: 1.45rem;
+  }
+
+  .cart-item-name {
+    font-size: 1.08rem;
+  }
+
+  .cart-item-size,
+  .cart-item-price {
+    font-size: 0.98rem;
+  }
+
+  .checkout-btn {
+    font-size: 1.1rem;
+    padding: 14px;
   }
 
   @keyframes zoomInModal {
@@ -1654,7 +1888,7 @@
 
 @media (min-width: 1200px) {
   .catalog-container {
-    grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(275px, 1fr));
+    gap: 28px;
   }
 }
