@@ -277,8 +277,8 @@
 
     .card-male,
     .card-female {
-      height: 450px;
-      min-height: 450px;
+      height: auto;
+      min-height: 460px;
     }
 
     .card-male .card-top,
@@ -499,6 +499,8 @@
       align-items: center;
       gap: 6px;
       min-width: 0;
+      margin-top: auto;
+      padding-top: 8px;
     }
 
     .size-option {
@@ -532,12 +534,12 @@
     .add-btn {
       width: auto;
       min-height: 34px;
-      margin: 0 0 8px;
-      padding: 8px 7px;
+      margin: 0;
+      padding: 8px 10px;
       border-radius: 8px;
       background: var(--primary);
       color: #fff;
-      font-size: 0.68rem;
+      font-size: 0.72rem;
       font-weight: 600;
       border: none;
       display: flex;
