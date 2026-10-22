@@ -1,6 +1,50 @@
 const products = window.CatalogData.products;
 const standardPrices = window.CatalogData.standardPrices;
 const VENDEDOR_WHATSAPP = window.CatalogData.vendedorWhatsApp;
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyb1XTkNF6BoaSEVxz09AKwG5GPetlA9sz8Jno37dg1umRR_bP4W15r3WlxbRw6V6q6/exec";
+
+function confirmSendToWhatsApp() {
+  closeConfirm();
+  if (confirmMode === "change") {
+    performChangeSend();
+    return;
+  }
+  if (cart.length === 0) return;
+  const customerName = document.getElementById("customerName").value.trim().replace(/\s+/g, " ");
+
+  // Enviar pedido automáticamente a la planilla Google Sheets
+  if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith("https")) {
+    fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        customerName: customerName,
+        items: cart.map(item => ({
+          code: item.code,
+          name: item.name,
+          size: item.size,
+          qty: item.qty,
+          unitPrice: item.unitPrice
+        }))
+      })
+    }).catch(err => console.error("Error enviando a Sheets:", err));
+  }
+
+  let msg = `¡Hola! Soy ${customerName} y quiero solicitar el siguiente pedido:\n\n`;
+  cart.forEach((item, index) => {
+    const subtotal = item.unitPrice * item.qty;
+    msg += `${index + 1}. [${item.code}] ${item.name} (${item.size})\n   Cantidad: ${item.qty} x $${item.unitPrice.toLocaleString("es-CL")} = $${subtotal.toLocaleString("es-CL")}\n`;
+  });
+
+  const total = cart.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
+  msg += `\n*TOTAL A PAGAR: $${total.toLocaleString("es-CL")}*`;
+
+  const url = `https://wa.me/${VENDEDOR_WHATSAPP}?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+  document.getElementById("customerName").value = "";
+  clearCart();
+}
 
 // Metadatos y encabezados visuales para separar cada categoría
 const categoryMeta = {
