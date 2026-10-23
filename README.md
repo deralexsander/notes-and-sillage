@@ -8,10 +8,11 @@
 [![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/es/docs/Web/HTML)
 [![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/es/docs/Web/CSS)
 [![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/es/docs/Web/JavaScript)
-[![WhatsApp](https://img.shields.io/badge/Pedidos-WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/)
+[![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?style=for-the-badge&logo=cloudflare&logoColor=white)](https://www.cloudflare.com/)
 [![GitHub Pages](https://img.shields.io/badge/Deploy-GitHub%20Pages-222222?style=for-the-badge&logo=github&logoColor=white)](https://pages.github.com/)
+[![Dominio](https://img.shields.io/badge/Dominio-notes.cl-111111?style=for-the-badge&logo=googlechrome&logoColor=white)](https://notes.cl/)
 
-[🌐 Ver el catálogo en vivo](https://deralexsander.github.io/notes-and-sillage/)
+[🌐 Ver catálogo en producción: notes.cl](https://notes.cl/)
 
 </div>
 
@@ -187,11 +188,15 @@ Los productos, precios y el número de contacto se definen en [`js/base-datos.js
 
 ---
 
-## 🌐 10. Despliegue
+## 🌐 10. Despliegue e Infraestructura Cloud
 
-El sitio se publica con **GitHub Pages** desde la rama `main`. Cada `git push` actualiza el catálogo en uno o dos minutos:
+El sitio cuenta con una arquitectura de despliegue optimizada, segura y de alta disponibilidad:
 
-👉 **https://deralexsander.github.io/notes-and-sillage/**
+* **Dominio Propio:** Configurado bajo [`notes.cl`](https://notes.cl/).
+* **Cloudflare (DNS & Seguridad):** Gestión de zona DNS, enrutamiento perimetral, proxy de caché global y certificados SSL/TLS con cifrado de extremo a extremo y redirección HTTPS estricta.
+* **Hosting en GitHub Pages:** Alojamiento estático continuo desde la rama `main` vinculado mediante `CNAME`, asegurando despliegues automáticos con cada `git push`.
+
+👉 **Acceso directo en producción:** [https://notes.cl](https://notes.cl) *(o alternativa: [deralexsander.github.io/notes-and-sillage](https://deralexsander.github.io/notes-and-sillage/))*
 
 ---
 
