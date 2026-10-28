@@ -166,7 +166,9 @@ notes-and-sillage/
 │   ├── base-datos.js    # Catálogo: productos, precios y datos del vendedor
 │   └── app.js           # Búsqueda, mapa olfativo, carrito y envío a WhatsApp
 ├── img/                 # Fotos de frascos e imágenes de inspiración por aroma
-└── docs/img/            # Capturas usadas en este README
+└── docs/                # Documentación y recursos del proyecto
+    ├── img/             # Capturas usadas en este README
+    └── certificados/    # Certificado oficial de registro de dominio (.cl)
 ```
 
 ---
@@ -192,7 +194,7 @@ Los productos, precios y el número de contacto se definen en [`js/base-datos.js
 
 El sitio cuenta con una arquitectura de despliegue optimizada, segura y de alta disponibilidad:
 
-* **Dominio Propio:** Configurado bajo [`notes.cl`](https://notes.cl/).
+* **Dominio Propio:** Configurado bajo [`notes.cl`](https://notes.cl/) (certificado de dominio NIC Chile disponible en [`docs/certificados/`](./docs/certificados/certificado-dominio-notes-cl.pdf)).
 * **Cloudflare (DNS & Seguridad):** Gestión de zona DNS, enrutamiento perimetral, proxy de caché global y certificados SSL/TLS con cifrado de extremo a extremo y redirección HTTPS estricta.
 * **Hosting en GitHub Pages:** Alojamiento estático continuo desde la rama `main` vinculado mediante `CNAME`, asegurando despliegues automáticos con cada `git push`.
 
