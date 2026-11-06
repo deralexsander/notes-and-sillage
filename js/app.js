@@ -823,49 +823,151 @@ function sendToWhatsApp() {
   customerNameInput.removeAttribute("aria-invalid");
   customerNameError.hidden = true;
 
-  openConfirm("order");
+  const customerPhoneInput = document.getElementById("customerPhone");
+  const customerPhoneError = document.getElementById("customerPhoneError");
+  const customerPhone = customerPhoneInput ? customerPhoneInput.value.trim() : "";
+  const phoneDigits = customerPhone.replace(/\D/g, "");
+  if (phoneDigits.length < 8) {
+    if (customerPhoneInput) {
+      customerPhoneInput.setAttribute("aria-invalid", "true");
+      customerPhoneInput.focus();
+    }
+    if (customerPhoneError) {
+      customerPhoneError.hidden = false;
+    }
+    return;
+  }
+  if (customerPhoneInput) customerPhoneInput.removeAttribute("aria-invalid");
+  if (customerPhoneError) customerPhoneError.hidden = true;
+
+  // Actualizar memoria si el checkbox está activo
+  const rememberCheckbox = document.getElementById("rememberCustomerData");
+  if (rememberCheckbox && rememberCheckbox.checked) {
+    localStorage.setItem("notes_remember_customer", "true");
+    localStorage.setItem("notes_customer_name", customerName);
+    localStorage.setItem("notes_customer_phone", customerPhone);
+  } else {
+    localStorage.setItem("notes_remember_customer", "false");
+    localStorage.removeItem("notes_customer_name");
+    localStorage.removeItem("notes_customer_phone");
+  }
+
+  openConfirm("order", 1);
 }
 
 let confirmMode = "order";
+let pendingOrderData = null;
+let lastWhatsAppUrl = "";
 
-function openConfirm(mode) {
+function openConfirm(mode, step = 1) {
   confirmMode = mode;
   const isChange = mode === "change";
-  document.getElementById("confirmTitle").textContent = isChange
-    ? "¿Ya terminaste tu cambio o cancelación?"
-    : "¿Ya terminaste tu pedido?";
-  document.getElementById("confirmText").textContent = isChange
-    ? "Se abrirá WhatsApp con tu solicitud lista para enviar y se limpiará lo que marcaste. Si aún quieres modificar algo, vuelve atrás."
-    : "Se abrirá WhatsApp con tu pedido listo para enviar. Si aún quieres agregar, editar o quitar algo, vuelve al pedido.";
-  document.querySelector(".confirm-back-btn").textContent = isChange ? "Volver" : "Volver al pedido";
-  document.getElementById("confirmOverlay").hidden = false;
-  document.querySelector(".confirm-send-btn").focus();
+  const overlay = document.getElementById("confirmOverlay");
+  const titleEl = document.getElementById("confirmTitle");
+  const textEl = document.getElementById("confirmText");
+  const actionsEl = document.getElementById("confirmActions");
+
+  if (isChange) {
+    titleEl.textContent = "¿Ya terminaste tu cambio o cancelación?";
+    textEl.textContent = "Se abrirá WhatsApp con tu solicitud lista para enviar y se limpiará lo que marcaste. Si aún quieres modificar algo, vuelve atrás.";
+    actionsEl.innerHTML = `
+      <button type="button" class="confirm-send-btn" data-action="confirm-send">Sí, enviar</button>
+      <button type="button" class="confirm-back-btn" data-action="close-confirm">Volver</button>
+    `;
+    overlay.hidden = false;
+    actionsEl.querySelector(".confirm-send-btn").focus();
+    return;
+  }
+
+  const customerName = document.getElementById("customerName").value.trim().replace(/\s+/g, " ");
+  const customerPhone = document.getElementById("customerPhone").value.trim();
+
+  pendingOrderData = {
+    customerName,
+    customerPhone,
+    items: cart.map(item => ({
+      code: item.code,
+      name: item.name,
+      size: item.size,
+      qty: item.qty,
+      unitPrice: item.unitPrice
+    }))
+  };
+
+  if (step === 1) {
+    titleEl.textContent = "¿Listo para pedir por WhatsApp?";
+    textEl.innerHTML = `Se abrirá WhatsApp con tu pedido ya redactado.<br><br><strong>⚠️ Paso obligatorio:</strong> Al abrirse WhatsApp, <strong>debes presionar el botón de ENVIAR</strong> para que recibamos tu solicitud.`;
+    actionsEl.innerHTML = `
+      <button type="button" class="confirm-send-btn" data-action="step-open-whatsapp">
+        <i data-lucide="message-circle" aria-hidden="true"></i> Abrir WhatsApp
+      </button>
+      <button type="button" class="confirm-back-btn" data-action="close-confirm">Volver al pedido</button>
+    `;
+  } else if (step === 2) {
+    titleEl.textContent = "¿Pudiste enviar tu pedido en WhatsApp?";
+    textEl.textContent = "Para registrar tu pedido en nuestra planilla y reservarte los perfumes, confirma una vez que hayas presionado 'Enviar' en WhatsApp:";
+    actionsEl.innerHTML = `
+      <button type="button" class="confirm-send-btn" data-action="confirm-order-sent">
+        <i data-lucide="check-circle" aria-hidden="true"></i> ✅ Sí, ya envié el WhatsApp
+      </button>
+      <button type="button" class="confirm-reopen-btn" data-action="step-open-whatsapp">
+        Reabrir WhatsApp
+      </button>
+      <button type="button" class="confirm-back-btn" data-action="close-confirm">
+        Aún no / Volver
+      </button>
+    `;
+  } else if (step === 3) {
+    titleEl.textContent = "¡Pedido Registrado con Éxito! 🎉";
+    textEl.textContent = "Recibimos tu solicitud. Te responderemos por WhatsApp a la brevedad para coordinar la entrega.";
+    actionsEl.innerHTML = `
+      <button type="button" class="confirm-send-btn" data-action="close-confirm">Aceptar</button>
+    `;
+  }
+
+  renderLucideIcons();
+  overlay.hidden = false;
+  const primaryBtn = actionsEl.querySelector(".confirm-send-btn");
+  if (primaryBtn) primaryBtn.focus();
 }
 
 function closeConfirm() {
   document.getElementById("confirmOverlay").hidden = true;
 }
 
-function confirmSendToWhatsApp() {
-  closeConfirm();
-  if (confirmMode === "change") {
-    performChangeSend();
+function handleStepOpenWhatsApp() {
+  if (!pendingOrderData) return;
+  const { customerName, customerPhone, items } = pendingOrderData;
+
+  let msg = `¡Hola! Soy ${customerName} (Tel: ${customerPhone}) y quiero solicitar el siguiente pedido:\n\n`;
+  items.forEach((item, index) => {
+    const subtotal = item.unitPrice * item.qty;
+    msg += `${index + 1}. [${item.code}] ${item.name} (${item.size})\n   Cantidad: ${item.qty} x $${item.unitPrice.toLocaleString("es-CL")} = $${subtotal.toLocaleString("es-CL")}\n`;
+  });
+
+  const total = items.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
+  msg += `\n*TOTAL A PAGAR: $${total.toLocaleString("es-CL")}*`;
+
+  lastWhatsAppUrl = `https://wa.me/${VENDEDOR_WHATSAPP}?text=${encodeURIComponent(msg)}`;
+
+  window.open(lastWhatsAppUrl, "_blank");
+  openConfirm("order", 2);
+}
+
+function handleConfirmOrderSent() {
+  if (!pendingOrderData) {
+    closeConfirm();
     return;
   }
-  if (cart.length === 0) return;
-  const customerName = document.getElementById("customerName").value.trim().replace(/\s+/g, " ");
 
-  // 1. Enviar pedido automáticamente a la planilla Google Sheets
+  const { customerName, customerPhone, items } = pendingOrderData;
+
+  // 1. Enviar pedido automáticamente a la planilla Google Sheets SOLO cuando confirma
   if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith("https")) {
     const payload = JSON.stringify({
       customerName: customerName,
-      items: cart.map(item => ({
-        code: item.code,
-        name: item.name,
-        size: item.size,
-        qty: item.qty,
-        unitPrice: item.unitPrice
-      }))
+      customerPhone: customerPhone,
+      items: items
     });
 
     fetch(GOOGLE_SCRIPT_URL, {
@@ -877,23 +979,26 @@ function confirmSendToWhatsApp() {
     }).catch(err => console.error("Error enviando a Sheets:", err));
   }
 
-  // 2. Preparar mensaje de WhatsApp
-  let msg = `¡Hola! Soy ${customerName} y quiero solicitar el siguiente pedido:\n\n`;
-  cart.forEach((item, index) => {
-    const subtotal = item.unitPrice * item.qty;
-    msg += `${index + 1}. [${item.code}] ${item.name} (${item.size})\n   Cantidad: ${item.qty} x $${item.unitPrice.toLocaleString("es-CL")} = $${subtotal.toLocaleString("es-CL")}\n`;
-  });
-
-  const total = cart.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
-  msg += `\n*TOTAL A PAGAR: $${total.toLocaleString("es-CL")}*`;
-
-  const url = `https://wa.me/${VENDEDOR_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-  
-  document.getElementById("customerName").value = "";
+  // 2. Limpieza de carrito y campos si no quería recordar
   clearCart();
 
-  // Abrir WhatsApp directamente sin dejar una pestaña en blanco colgada
-  window.location.href = url;
+  const rememberCheckbox = document.getElementById("rememberCustomerData");
+  if (!rememberCheckbox || !rememberCheckbox.checked) {
+    document.getElementById("customerName").value = "";
+    document.getElementById("customerPhone").value = "";
+  }
+
+  pendingOrderData = null;
+
+  // 3. Mostrar pantalla de éxito
+  openConfirm("order", 3);
+}
+
+function confirmSendToWhatsApp() {
+  closeConfirm();
+  if (confirmMode === "change") {
+    performChangeSend();
+  }
 }
 
 function showMapGender(gender) {
@@ -1274,6 +1379,12 @@ document.addEventListener("click", event => {
     case "confirm-send":
       confirmSendToWhatsApp();
       break;
+    case "step-open-whatsapp":
+      handleStepOpenWhatsApp();
+      break;
+    case "confirm-order-sent":
+      handleConfirmOrderSent();
+      break;
     case "open-change":
       openChangeFlow();
       break;
@@ -1409,6 +1520,55 @@ window.addEventListener("resize", () => {
   if (currentCategory === "mapa" && isDesktop !== mapViewportMode) renderMap();
 });
 
+// Memoria de datos de cliente
+function initCustomerMemory() {
+  const nameInput = document.getElementById("customerName");
+  const phoneInput = document.getElementById("customerPhone");
+  const rememberCheck = document.getElementById("rememberCustomerData");
+  if (!nameInput || !phoneInput || !rememberCheck) return;
+
+  const rememberSaved = localStorage.getItem("notes_remember_customer");
+  if (rememberSaved === "false") {
+    rememberCheck.checked = false;
+  } else {
+    rememberCheck.checked = true;
+    const savedName = localStorage.getItem("notes_customer_name");
+    const savedPhone = localStorage.getItem("notes_customer_phone");
+    if (savedName) nameInput.value = savedName;
+    if (savedPhone) phoneInput.value = savedPhone;
+  }
+
+  const saveIfChecked = () => {
+    if (rememberCheck.checked) {
+      localStorage.setItem("notes_remember_customer", "true");
+      localStorage.setItem("notes_customer_name", nameInput.value.trim());
+      localStorage.setItem("notes_customer_phone", phoneInput.value.trim());
+    }
+  };
+
+  nameInput.addEventListener("input", saveIfChecked);
+  phoneInput.addEventListener("input", saveIfChecked);
+
+  rememberCheck.addEventListener("change", () => {
+    if (rememberCheck.checked) {
+      localStorage.setItem("notes_remember_customer", "true");
+      localStorage.setItem("notes_customer_name", nameInput.value.trim());
+      localStorage.setItem("notes_customer_phone", phoneInput.value.trim());
+    } else {
+      localStorage.setItem("notes_remember_customer", "false");
+      localStorage.removeItem("notes_customer_name");
+      localStorage.removeItem("notes_customer_phone");
+    }
+  });
+
+  phoneInput.addEventListener("input", event => {
+    event.currentTarget.removeAttribute("aria-invalid");
+    const phoneErr = document.getElementById("customerPhoneError");
+    if (phoneErr) phoneErr.hidden = true;
+  });
+}
+
 // Render inicial
+initCustomerMemory();
 renderProducts();
 renderLucideIcons();

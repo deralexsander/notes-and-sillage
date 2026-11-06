@@ -963,19 +963,30 @@
     }
 
     .confirm-send-btn,
-    .confirm-back-btn {
+    .confirm-back-btn,
+    .confirm-reopen-btn {
       padding: 12px;
       border-radius: 12px;
       font: inherit;
       font-size: 0.9rem;
       font-weight: 800;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
     .confirm-send-btn {
       border: none;
       background: var(--whatsapp);
       color: #fff;
+    }
+
+    .confirm-reopen-btn {
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      color: var(--primary);
     }
 
     .confirm-back-btn {
@@ -1410,6 +1421,29 @@
 
     .customer-name-error[hidden] {
       display: none;
+    }
+
+    .customer-remember-field {
+      margin: -2px 0 12px;
+    }
+
+    .remember-checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .remember-checkbox-label input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--primary);
+      cursor: pointer;
+      margin: 0;
     }
 
     .cart-footer-row {

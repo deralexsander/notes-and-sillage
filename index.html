@@ -111,7 +111,7 @@
     <div class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
       <p class="confirm-title" id="confirmTitle">¿Ya terminaste tu pedido?</p>
       <p class="confirm-text" id="confirmText">Se abrirá WhatsApp con tu pedido listo para enviar. Si aún quieres agregar, editar o quitar algo, vuelve al pedido.</p>
-      <div class="confirm-actions">
+      <div class="confirm-actions" id="confirmActions">
         <button type="button" class="confirm-back-btn" data-action="close-confirm">Volver al pedido</button>
         <button type="button" class="confirm-send-btn" data-action="confirm-send">Sí, enviar</button>
       </div>
@@ -161,6 +161,17 @@
           <label for="customerName">Nombre y apellido</label>
           <input id="customerName" type="text" maxlength="80" autocomplete="name" aria-describedby="customerNameError" placeholder="Ej. Ana Pérez" required>
           <p id="customerNameError" class="customer-name-error" role="alert" hidden>Escribe tu nombre y apellido para continuar.</p>
+        </div>
+        <div class="customer-name-field">
+          <label for="customerPhone">WhatsApp / Teléfono</label>
+          <input id="customerPhone" type="tel" maxlength="25" autocomplete="tel" aria-describedby="customerPhoneError" placeholder="Ej. +56 9 1234 5678" required>
+          <p id="customerPhoneError" class="customer-name-error" role="alert" hidden>Escribe un número de WhatsApp o teléfono válido.</p>
+        </div>
+        <div class="customer-remember-field">
+          <label class="remember-checkbox-label">
+            <input type="checkbox" id="rememberCustomerData" checked>
+            <span>Recordar mis datos para futuros pedidos</span>
+          </label>
         </div>
         <div class="cart-footer-row">
           <span class="cart-footer-total-label">Total a pagar:</span>
