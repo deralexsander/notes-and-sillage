@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tabla de Ventas | Notes & Sillage</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="css/ventas.css">
+</head>
+<body class="sales-table-view">
+  <div class="container-fluid">
+    <!-- Encabezado -->
+    <header class="dashboard-header">
+      <div class="brand-section">
+        <img src="img/logo-notes-and-sillage-hd.png" alt="Notes & Sillage" class="brand-logo" onerror="this.src='favicon.ico'">
+        <div class="brand-title">
+          <h1>Planilla y Registro de Ventas</h1>
+          <p>Control de cada venta, estados y confirmación sincronizados en tiempo real con Firestore</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="index.html" class="btn-secondary">
+          <i data-lucide="arrow-left" aria-hidden="true"></i> Volver al Catálogo
+        </a>
+        <button id="btnExportCSV" class="btn-secondary" title="Exportar vista actual a archivo CSV compatible con Excel">
+          <i data-lucide="download" aria-hidden="true"></i> Exportar CSV
+        </button>
+        <button id="btnNewManualSale" class="btn-primary">
+          <i data-lucide="plus-circle" aria-hidden="true"></i> Nueva Venta
+        </button>
+      </div>
+    </header>
+
+    <!-- Barra de Métricas Totales Compacta -->
+    <section class="summary-metrics-bar">
+      <div class="metric-item">
+        <span class="metric-label">Ventas Totales</span>
+        <span class="metric-value" id="kpiTotalVenta">$0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Ganancia Neta</span>
+        <span class="metric-value highlight-green" id="kpiTotalGanancia">$0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Costo Mercadería</span>
+        <span class="metric-value" id="kpiTotalCosto">$0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Perfumes Vendidos</span>
+        <span class="metric-value" id="kpiTotalUnidades">0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Margen Medio</span>
+        <span class="metric-value" id="kpiMargenMedio">50.0%</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Filas Mostradas</span>
+        <span class="metric-value" id="kpiFilasMostradas">0</span>
+      </div>
+    </section>
+
+    <!-- Controles de Búsqueda y Filtros -->
+    <section class="table-controls">
+      <div class="search-field">
+        <i data-lucide="search" aria-hidden="true"></i>
+        <input type="text" id="searchInput" placeholder="Buscar por cliente, fragancia, código, institución...">
+        <button type="button" id="btnClearSearch" class="btn-clear-search" hidden title="Limpiar búsqueda">&times;</button>
+      </div>
+
+      <div class="filters-row">
+        <div class="filter-item">
+          <label for="filterEstado">Estado:</label>
+          <select id="filterEstado" class="select-filter">
+            <option value="all">Todos los estados</option>
+            <option value="Pedido">Pedido</option>
+            <option value="Recepcionado">Recepcionado</option>
+            <option value="Pendiente">Pendiente</option>
+            <option value="Entregado">Entregado</option>
+            <option value="Cancelado">Cancelado</option>
+            <option value="Faltante">Faltante</option>
+            <option value="en carrito">en carrito</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label for="filterPagado">Pagado:</label>
+          <select id="filterPagado" class="select-filter">
+            <option value="all">Todos</option>
+            <option value="true">Pagado (Check)</option>
+            <option value="false">Pendiente</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label for="filterConfirmado">Confirmado:</label>
+          <select id="filterConfirmado" class="select-filter">
+            <option value="all">Todos</option>
+            <option value="true">Confirmado (Check)</option>
+            <option value="false">Sin confirmar</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label for="filterFormato">Formato:</label>
+          <select id="filterFormato" class="select-filter">
+            <option value="all">Todos</option>
+            <option value="100">100 ml</option>
+            <option value="50">50 ml</option>
+            <option value="20">20 ml</option>
+            <option value="400">400 ml</option>
+            <option value="500">500 ml</option>
+          </select>
+        </div>
+
+        <button id="btnRefresh" class="btn-secondary" title="Recargar ventas en vivo desde Firestore">
+          <i data-lucide="refresh-cw" aria-hidden="true"></i> Sincronizar
+        </button>
+      </div>
+    </section>
+
+    <!-- Contenedor de la Tabla de Ventas -->
+    <div class="spreadsheet-container">
+      <table class="spreadsheet-table" id="salesSpreadsheet">
+        <thead>
+          <tr>
+            <th class="th-num">#</th>
+            <th class="th-date">Fecha</th>
+            <th class="th-code">Código</th>
+            <th class="th-name">Fragancia</th>
+            <th class="th-size">Formato</th>
+            <th class="th-qty">Cant</th>
+            <th class="th-client">Cliente</th>
+            <th class="th-phone">Teléfono / WhatsApp</th>
+            <th class="th-inst">Institución</th>
+            <th class="th-price">Precio Venta</th>
+            <th class="th-cost">Costo</th>
+            <th class="th-profit">Ganancia</th>
+            <th class="th-status" style="min-width: 155px;">Estado Pedido</th>
+            <th class="th-paid" style="text-align: center; width: 85px;">Pagado</th>
+            <th class="th-confirmed" style="text-align: center; width: 105px;">Confirmado</th>
+            <th class="th-action" style="text-align: center; width: 55px;" title="Editar venta o eliminar">Editar</th>
+          </tr>
+        </thead>
+        <tbody id="salesTableBody">
+          <!-- Filas generadas dinámicamente -->
+        </tbody>
+      </table>
+
+      <div id="tableEmptyState" class="empty-state" hidden>
+        <i data-lucide="search-x" aria-hidden="true"></i>
+        <h3>No se encontraron ventas</h3>
+        <p>Intenta ajustar el buscador o los filtros para visualizar los registros.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification flotante -->
+  <div id="toastNotification" class="toast-notification" hidden>
+    <i data-lucide="check-circle" aria-hidden="true"></i>
+    <span id="toastMessage">Guardado en Firestore</span>
+  </div>
+
+  <!-- Modal Nueva Venta / Editar Venta -->
+  <div id="modalNewSale" class="modal-overlay" hidden>
+    <div class="modal-content">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h3 id="modalSaleTitle">Registrar Nueva Venta en Firestore</h3>
+          <span id="modalSaleCodeBadge" class="code-chip" hidden></span>
+        </div>
+        <button class="modal-close" data-action="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="newSaleForm">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="manualDate">Fecha</label>
+              <input type="date" id="manualDate" required>
+            </div>
+            <div class="form-group">
+              <label for="manualCustomerName">Cliente</label>
+              <input type="text" id="manualCustomerName" required placeholder="Nombre del cliente">
+            </div>
+            <div class="form-group">
+              <label for="manualCustomerPhone">Teléfono / WhatsApp</label>
+              <input type="text" id="manualCustomerPhone" placeholder="+56 9 ...">
+            </div>
+            <div class="form-group">
+              <label for="manualInstitution">Institución / Referencia</label>
+              <input type="text" id="manualInstitution" placeholder="Ej. Enjoy, Altazor, SSCC, Familia">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 14px;">
+            <label for="manualProductSelect">Fragancia / Producto</label>
+            <select id="manualProductSelect" required>
+              <option value="">Cargando catálogo...</option>
+            </select>
+          </div>
+
+          <div class="form-grid" style="margin-top: 14px;">
+            <div class="form-group">
+              <label for="manualSizeSelect">Formato (ML)</label>
+              <select id="manualSizeSelect">
+                <option value="100 ml">100 ml</option>
+                <option value="50 ml">50 ml</option>
+                <option value="20 ml">20 ml</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="manualQty">Cantidad</label>
+              <input type="number" id="manualQty" value="1" min="1" max="100" required>
+            </div>
+            <div class="form-group">
+              <label for="manualStatus">Estado Pedido</label>
+              <select id="manualStatus">
+                <option value="Pedido">Pedido</option>
+                <option value="Recepcionado">Recepcionado</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="Entregado" selected>Entregado</option>
+                <option value="Cancelado">Cancelado</option>
+                <option value="Faltante">Faltante</option>
+                <option value="en carrito">en carrito</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Panel de Cálculos Financieros en Tiempo Real -->
+          <div class="modal-calc-preview" id="modalCalcPreview">
+            <div class="calc-card-item">
+              <span class="calc-label">Precio Unitario</span>
+              <span class="calc-val" id="calcUnitPrice">$17.000</span>
+            </div>
+            <div class="calc-card-item">
+              <span class="calc-label">Total Venta</span>
+              <span class="calc-val" id="calcTotalPrice">$17.000</span>
+            </div>
+            <div class="calc-card-item">
+              <span class="calc-label">Costo Estimado</span>
+              <span class="calc-val" id="calcTotalCost">$8.500</span>
+            </div>
+            <div class="calc-card-item highlight">
+              <span class="calc-label">Ganancia Neta</span>
+              <span class="calc-val profit" id="calcTotalProfit">+$8.500</span>
+            </div>
+          </div>
+
+          <!-- Checks de Pagado y Confirmado -->
+          <div class="modal-checks-bar">
+            <label class="checkbox-label">
+              <input type="checkbox" id="manualPaid" checked>
+              <span>¿Pagado? (True)</span>
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="manualConfirmed" checked>
+              <span>¿Pedido Confirmado? (True)</span>
+            </label>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" id="btnDeleteInModal" class="btn-modal-delete" title="Eliminar permanentemente de Firestore" hidden>
+              <i data-lucide="trash-2" aria-hidden="true"></i>
+              <span>Eliminar Venta</span>
+            </button>
+            <div style="display: flex; gap: 10px; margin-left: auto;">
+              <button type="button" class="btn-secondary" data-action="close-modal">Cancelar</button>
+              <button type="submit" id="btnSubmitModal" class="btn-primary">Guardar en Firestore</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/ventas.js"></script>
+</body>
+</html>

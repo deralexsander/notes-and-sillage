@@ -1,7 +1,21 @@
-const products = window.CatalogData.products;
-const standardPrices = window.CatalogData.standardPrices;
-const VENDEDOR_WHATSAPP = window.CatalogData.vendedorWhatsApp;
+let products = window.CatalogData?.products || [];
+let standardPrices = window.CatalogData?.standardPrices || { "100ml": 17000, "50ml": 11000, "20ml": 6500 };
+let VENDEDOR_WHATSAPP = window.CatalogData?.vendedorWhatsApp || "56968787862";
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyb1XTkNF6BoaSEVxz09AKwG5GPetlA9sz8Jno37dg1umRR_bP4W15r3WlxbRw6V6q6/exec";
+
+function syncCatalogData() {
+  if (window.CatalogData) {
+    if (Array.isArray(window.CatalogData.products)) {
+      products = window.CatalogData.products;
+    }
+    if (window.CatalogData.standardPrices) {
+      standardPrices = window.CatalogData.standardPrices;
+    }
+    if (window.CatalogData.vendedorWhatsApp) {
+      VENDEDOR_WHATSAPP = window.CatalogData.vendedorWhatsApp;
+    }
+  }
+}
 
 // Metadatos y encabezados visuales para separar cada categoría
 const categoryMeta = {
@@ -39,6 +53,11 @@ const categoryMeta = {
     title: "Colonia Splash Refrescante",
     desc: "Loción corporal fresca cítrica-frutal",
     badge: "Splash"
+  },
+  "crema": {
+    title: "Cremas y Tratamientos",
+    desc: "Tratamiento y cuidado de la piel",
+    badge: "Crema"
   }
 };
 
@@ -962,7 +981,16 @@ function handleConfirmOrderSent() {
 
   const { customerName, customerPhone, items } = pendingOrderData;
 
-  // 1. Enviar pedido automáticamente a la planilla Google Sheets SOLO cuando confirma
+  // 1. Guardar pedido en Firestore
+  if (typeof window.saveOrderToFirestore === "function") {
+    window.saveOrderToFirestore({
+      customerName,
+      customerPhone,
+      items
+    }).catch(err => console.warn("Aviso guardando pedido en Firestore:", err));
+  }
+
+  // 2. Enviar pedido automáticamente a la planilla Google Sheets SOLO cuando confirma
   if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith("https")) {
     const payload = JSON.stringify({
       customerName: customerName,
@@ -1366,11 +1394,18 @@ document.addEventListener("error", event => {
 }, true);
 
 document.addEventListener("click", event => {
+  // Cerrar al hacer clic en el fondo oscuro
+  if (event.target && event.target.id === "cartModalOverlay") {
+    closeCartModal();
+    return;
+  }
+  if (event.target && event.target.id === "confirmOverlay") {
+    closeConfirm();
+    return;
+  }
+
   const control = event.target.closest("[data-action]");
   if (!control) return;
-  if (control.dataset.action === "close-cart" && event.target !== control) return;
-  if (control.dataset.action === "close-change" && event.target !== control) return;
-  if (control.dataset.action === "close-confirm" && event.target !== control) return;
 
   switch (control.dataset.action) {
     case "close-confirm":
@@ -1475,6 +1510,14 @@ document.addEventListener("click", event => {
   }
 });
 
+// Cerrar modales con tecla Escape
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    closeCartModal();
+    closeConfirm();
+  }
+});
+
 // Píldoras de categoría
 document.querySelectorAll(".pill-btn").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -1568,7 +1611,28 @@ function initCustomerMemory() {
   });
 }
 
-// Render inicial
-initCustomerMemory();
-renderProducts();
-renderLucideIcons();
+// Render y arranque reactivo con Firebase
+let appInitialized = false;
+
+function initApp() {
+  syncCatalogData();
+  if (!appInitialized) {
+    initCustomerMemory();
+    appInitialized = true;
+  }
+  renderProducts();
+  renderLucideIcons();
+}
+
+window.addEventListener("catalog:ready", () => {
+  initApp();
+});
+
+window.addEventListener("catalog:updated", () => {
+  initApp();
+});
+
+// Si CatalogData ya tiene productos al momento de ejecutar app.js
+if (window.CatalogData && Array.isArray(window.CatalogData.products) && window.CatalogData.products.length > 0) {
+  initApp();
+}
