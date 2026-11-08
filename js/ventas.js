@@ -5,6 +5,7 @@ import {
   updateSaleRow,
   updateFullSaleRow,
   deleteSaleRow,
+  syncCustomerInfoToPastSales,
   getUnitFinancials,
   loadCatalogFromFirestore,
   loginWithEmail,
@@ -91,6 +92,109 @@ function renderPhoneCell(phone) {
   return `<span class="phone-text">${phone}</span>`;
 }
 
+// ==========================================================================
+// RECONOCIMIENTO AUTOMÁTICO DE CLIENTES Y SUGERENCIAS
+// ==========================================================================
+let knownCustomers = new Map();
+let lastAutoFilledPhone = "";
+let lastAutoFilledInst = "";
+
+function normalizeCustomerName(name) {
+  if (!name) return "";
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function updateKnownCustomersDirectory(rows) {
+  knownCustomers.clear();
+
+  // rows viene ordenado de más reciente a más antiguo
+  rows.forEach(row => {
+    const rawName = (row.clientName || "").trim();
+    if (!rawName || rawName.toLowerCase() === "cliente") return;
+
+    const norm = normalizeCustomerName(rawName);
+    if (!norm) return;
+
+    const phone = (row.clientPhone || "").trim();
+    const inst = (row.institution || "").trim();
+
+    if (!knownCustomers.has(norm)) {
+      knownCustomers.set(norm, {
+        displayName: rawName,
+        phone: phone,
+        institution: inst,
+        count: 1
+      });
+    } else {
+      const existing = knownCustomers.get(norm);
+      existing.count += 1;
+      if (!existing.phone && phone) existing.phone = phone;
+      if (!existing.institution && inst) existing.institution = inst;
+    }
+  });
+
+  // Poblar datalist en el modal de ventas para autocompletado nativo
+  const datalist = document.getElementById("customerSuggestions");
+  if (datalist) {
+    datalist.innerHTML = "";
+    const sorted = Array.from(knownCustomers.values()).sort((a, b) =>
+      a.displayName.localeCompare(b.displayName)
+    );
+
+    sorted.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.displayName;
+      const details = [];
+      if (c.phone) details.push(`Tel: ${c.phone}`);
+      if (c.institution) details.push(`Inst: ${c.institution}`);
+      if (details.length > 0) {
+        opt.label = `${details.join(" | ")} (${c.count} ${c.count === 1 ? "pedido" : "pedidos"})`;
+      }
+      datalist.appendChild(opt);
+    });
+  }
+}
+
+function handleCustomerNameAutoRecognition() {
+  const inputVal = manualCustomerName.value;
+  const norm = normalizeCustomerName(inputVal);
+  const badge = document.getElementById("customerMatchBadge");
+
+  if (!norm || !knownCustomers.has(norm)) {
+    if (badge) badge.hidden = true;
+    return;
+  }
+
+  const match = knownCustomers.get(norm);
+
+  // Autocompletar teléfono si está vacío o si mantenía el valor previo autocompletado
+  if (match.phone && (!manualCustomerPhone.value.trim() || manualCustomerPhone.value.trim() === lastAutoFilledPhone)) {
+    manualCustomerPhone.value = match.phone;
+    lastAutoFilledPhone = match.phone;
+  }
+
+  // Autocompletar institución si está vacía o si mantenía el valor previo autocompletado
+  if (match.institution && (!manualInstitution.value.trim() || manualInstitution.value.trim() === lastAutoFilledInst)) {
+    manualInstitution.value = match.institution;
+    lastAutoFilledInst = match.institution;
+  }
+
+  if (badge) {
+    const textSpan = badge.querySelector("span");
+    if (textSpan) {
+      const orderWord = match.count === 1 ? "pedido previo" : "pedidos previos";
+      textSpan.textContent = `Cliente reconocido (${match.count} ${orderWord})`;
+    }
+    badge.hidden = false;
+    if (window.lucide) lucide.createIcons();
+  }
+}
+
 // 1. Cargar catálogo de Firestore para el formulario manual
 async function initCatalog() {
   const data = await loadCatalogFromFirestore();
@@ -118,7 +222,19 @@ async function loadSales() {
     sales.forEach(sale => {
       const clientName = sale.cliente?.nombre || "Cliente";
       const clientPhone = sale.cliente?.telefono || "";
-      const institution = sale.cliente?.institucion || sale.origen || "";
+      let institution = (sale.cliente?.institucion || "").trim();
+      if (!institution && sale.origen) {
+        const orig = sale.origen.trim();
+        if (orig.toLowerCase().startsWith("venta directa (") && orig.endsWith(")")) {
+          institution = orig.slice(15, -1).trim();
+        } else if (!orig.toLowerCase().includes("catálogo web") && orig.toLowerCase() !== "venta directa") {
+          institution = orig;
+        }
+      }
+      if (!institution && sale.notas && sale.notas.includes("Institución:")) {
+        const match = sale.notas.match(/Institución:\s*([^|;\n]+)/i);
+        if (match && match[1]) institution = match[1].trim();
+      }
       const estadoGeneral = sale.estado || "Entregado";
       const pagadoGeneral = sale.pagado !== false;
       const confirmadoGeneral = sale.confirmado !== false;
@@ -171,6 +287,7 @@ async function loadSales() {
     // Ordenar de más reciente a más antigua
     rows.sort((a, b) => b.createdAtDate - a.createdAtDate);
     allSaleRows = rows;
+    updateKnownCustomersDirectory(rows);
     applyFilters();
   } catch (err) {
     console.error("Error al cargar ventas:", err);
@@ -587,6 +704,11 @@ function openNewSaleModal() {
   manualCustomerName.value = "";
   manualCustomerPhone.value = "";
   manualInstitution.value = "";
+  lastAutoFilledPhone = "";
+  lastAutoFilledInst = "";
+
+  const matchBadge = document.getElementById("customerMatchBadge");
+  if (matchBadge) matchBadge.hidden = true;
 
   if (manualProductSelect.options.length > 1) {
     manualProductSelect.selectedIndex = 1;
@@ -626,6 +748,10 @@ function openEditSaleModal(saleId, code) {
   manualCustomerName.value = row.clientName || "";
   manualCustomerPhone.value = row.clientPhone || "";
   manualInstitution.value = row.institution || "";
+  lastAutoFilledPhone = "";
+  lastAutoFilledInst = "";
+
+  handleCustomerNameAutoRecognition();
 
   let matchedProduct = catalogProducts.find(x => x.code === row.code || x.id === row.code);
   if (!matchedProduct) {
@@ -726,8 +852,23 @@ newSaleForm.addEventListener("submit", async e => {
         confirmado
       });
 
+      // Sincronizar y actualizar retroactivamente pedidos anteriores si faltaba teléfono o institución
+      let backfillCount = 0;
+      if (customerPhone || institution) {
+        try {
+          const syncRes = await syncCustomerInfoToPastSales(customerName, customerPhone, institution);
+          backfillCount = syncRes?.updatedCount || 0;
+        } catch (errSync) {
+          console.warn("Aviso actualizando pedidos anteriores del cliente:", errSync);
+        }
+      }
+
       modalNewSale.hidden = true;
-      showToast("Venta actualizada con éxito ✓");
+      if (backfillCount > 0) {
+        showToast(`Venta actualizada (y sincronizados ${backfillCount} pedidos anteriores de ${customerName}) ✓`);
+      } else {
+        showToast("Venta actualizada con éxito ✓");
+      }
       await loadSales();
     } catch (err) {
       alert("Error al actualizar la venta: " + err.message);
@@ -740,6 +881,7 @@ newSaleForm.addEventListener("submit", async e => {
     const salePayload = {
       customerName,
       customerPhone,
+      institution,
       origin: institution ? `Venta Directa (${institution})` : "Venta Directa",
       notes: institution ? `Institución: ${institution}` : "",
       estado,
@@ -766,9 +908,25 @@ newSaleForm.addEventListener("submit", async e => {
       btnSubmitModal.textContent = "Guardando...";
 
       await recordSale(salePayload);
+
+      // Sincronizar y actualizar retroactivamente pedidos anteriores si faltaba teléfono o institución
+      let backfillCount = 0;
+      if (customerPhone || institution) {
+        try {
+          const syncRes = await syncCustomerInfoToPastSales(customerName, customerPhone, institution);
+          backfillCount = syncRes?.updatedCount || 0;
+        } catch (errSync) {
+          console.warn("Aviso actualizando pedidos anteriores del cliente:", errSync);
+        }
+      }
+
       modalNewSale.hidden = true;
       newSaleForm.reset();
-      showToast("Venta agregada con éxito ✓");
+      if (backfillCount > 0) {
+        showToast(`Venta agregada (y sincronizados ${backfillCount} pedidos anteriores de ${customerName}) ✓`);
+      } else {
+        showToast("Venta agregada con éxito ✓");
+      }
       await loadSales();
     } catch (err) {
       alert("Error al registrar la venta en Firestore: " + err.message);
@@ -778,6 +936,10 @@ newSaleForm.addEventListener("submit", async e => {
     }
   }
 });
+
+// Event listeners para reconocimiento en tiempo real del cliente
+manualCustomerName.addEventListener("input", handleCustomerNameAutoRecognition);
+manualCustomerName.addEventListener("change", handleCustomerNameAutoRecognition);
 
 // Eliminar venta desde el basurero dentro del Modal
 btnDeleteInModal.addEventListener("click", async () => {

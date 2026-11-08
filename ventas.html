@@ -158,9 +158,16 @@
               <label for="manualDate">Fecha</label>
               <input type="date" id="manualDate" required>
             </div>
-            <div class="form-group">
-              <label for="manualCustomerName">Cliente</label>
-              <input type="text" id="manualCustomerName" required placeholder="Nombre del cliente">
+            <div class="form-group" style="position: relative;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                <label for="manualCustomerName">Cliente</label>
+                <span id="customerMatchBadge" class="customer-match-badge" hidden>
+                  <i data-lucide="sparkles" aria-hidden="true"></i>
+                  <span>Cliente reconocido</span>
+                </span>
+              </div>
+              <input type="text" id="manualCustomerName" required placeholder="Nombre del cliente" list="customerSuggestions" autocomplete="off">
+              <datalist id="customerSuggestions"></datalist>
             </div>
             <div class="form-group">
               <label for="manualCustomerPhone">Teléfono / WhatsApp</label>

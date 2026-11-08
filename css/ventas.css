@@ -935,6 +935,32 @@ body.auth-checking .container-fluid {
   background-color: var(--bg-secondary);
 }
 
+.customer-match-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.70rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background-color: var(--green-bg);
+  color: var(--green-main);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+  animation: fadeIn 0.2s ease;
+}
+
+[data-theme="dark"] .customer-match-badge {
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.customer-match-badge svg,
+.customer-match-badge i {
+  width: 11px;
+  height: 11px;
+}
+
 .modal-calc-preview {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

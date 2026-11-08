@@ -203,7 +203,17 @@ export function getUnitFinancials(code, size, unitPrice) {
 // 3. Registrar venta en Firestore (Colección 'ventas' y 'pedidos')
 export async function recordSale(saleData) {
   try {
-    const { customerName, customerPhone, items, origin = "WhatsApp / Catálogo Web", notes = "" } = saleData;
+    const {
+      customerName,
+      customerPhone,
+      institution = "",
+      items,
+      origin = "WhatsApp / Catálogo Web",
+      notes = "",
+      estado = "Enviado por WhatsApp",
+      pagado,
+      confirmado
+    } = saleData;
 
     let totalVenta = 0;
     let totalCosto = 0;
@@ -245,7 +255,8 @@ export async function recordSale(saleData) {
       codigoVenta: codigoVenta,
       cliente: {
         nombre: (customerName || "Cliente").trim(),
-        telefono: (customerPhone || "").trim()
+        telefono: (customerPhone || "").trim(),
+        institucion: (institution || saleData.institution || "").trim()
       },
       items: enrichedItems,
       totales: {
@@ -255,7 +266,7 @@ export async function recordSale(saleData) {
         totalUnidades: totalUnidades,
         margenPorcentaje: totalVenta > 0 ? Number(((totalGanancia / totalVenta) * 100).toFixed(1)) : 50.0
       },
-      estado: "Enviado por WhatsApp",
+      estado: estado || "Enviado por WhatsApp",
       origen: origin,
       notas: notes,
       createdAt: serverTimestamp(),
@@ -268,6 +279,8 @@ export async function recordSale(saleData) {
         minute: "2-digit"
       })
     };
+    if (typeof pagado === "boolean") ventaDoc.pagado = pagado;
+    if (typeof confirmado === "boolean") ventaDoc.confirmado = confirmado;
 
     // Guardar en la colección 'ventas' (Historial de ventas principal)
     const ventasRef = collection(db, "ventas");
@@ -559,6 +572,81 @@ export async function updateFullSaleRow(saleId, oldCode, updatedData) {
   }
 }
 
+// 9. Sincronizar y actualizar retroactivamente pedidos anteriores de un cliente si faltaba teléfono o institución
+export async function syncCustomerInfoToPastSales(customerName, phone, institution) {
+  const cleanName = (customerName || "").trim();
+  const cleanPhone = (phone || "").trim();
+  const cleanInst = (institution || "").trim();
+
+  if (!cleanName || (!cleanPhone && !cleanInst)) {
+    return { updatedCount: 0 };
+  }
+
+  const normalizedTarget = cleanName
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  let updatedCount = 0;
+  const updatePromises = [];
+
+  try {
+    const ventasRef = collection(db, "ventas");
+    const snap = await getDocs(ventasRef);
+
+    snap.forEach(docSnap => {
+      const data = docSnap.data();
+      const existingName = data.cliente?.nombre || "";
+      const normalizedExisting = existingName
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (normalizedExisting && normalizedExisting === normalizedTarget) {
+        const existingPhone = (data.cliente?.telefono || "").trim();
+        const existingInst = (data.cliente?.institucion || "").trim();
+
+        const needsPhone = cleanPhone && (!existingPhone || existingPhone === "0" || existingPhone.length < 5);
+        const needsInst = cleanInst && (!existingInst || existingInst.toLowerCase() === "venta directa");
+
+        if (needsPhone || needsInst) {
+          const docRef = doc(db, "ventas", docSnap.id);
+          const updates = {};
+
+          if (needsPhone) {
+            updates["cliente.telefono"] = cleanPhone;
+          }
+          if (needsInst) {
+            updates["cliente.institucion"] = cleanInst;
+            if (!data.origen || data.origen === "Venta Directa") {
+              updates.origen = `Venta Directa (${cleanInst})`;
+            }
+            if (!data.notas || !data.notas.includes("Institución")) {
+              updates.notas = data.notas ? `${data.notas} | Institución: ${cleanInst}` : `Institución: ${cleanInst}`;
+            }
+          }
+
+          updatedCount++;
+          updatePromises.push(updateDoc(docRef, updates));
+        }
+      }
+    });
+
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
+    }
+  } catch (err) {
+    console.error("Error sincronizando pedidos anteriores:", err);
+    throw err;
+  }
+
+  return { updatedCount };
+}
+
 // Compatibilidad y APIs Globales
 export const saveOrderToFirestore = recordSale;
 window.saveOrderToFirestore = recordSale;
@@ -568,6 +656,7 @@ window.getSalesSummary = getSalesSummary;
 window.updateSaleRow = updateSaleRow;
 window.updateFullSaleRow = updateFullSaleRow;
 window.deleteSaleRow = deleteSaleRow;
+window.syncCustomerInfoToPastSales = syncCustomerInfoToPastSales;
 window.getUnitFinancials = getUnitFinancials;
 window.loadCatalogFromFirestore = loadCatalogFromFirestore;
 window.loginWithEmail = loginWithEmail;
