@@ -1,24 +1,80 @@
 /* Estilos de la Planilla y Tabla de Ventas - Notes & Sillage */
+
+/* ==========================================================================
+   VARIABLES DE TEMA (POR DEFECTO: MODO CLARO / BLANCO)
+   ========================================================================== */
 :root {
-  --bg-primary: #0a0b0d;
-  --bg-secondary: #121418;
-  --bg-card: #181a20;
-  --bg-hover: rgba(255, 255, 255, 0.035);
-  --border-color: #23262f;
-  --border-subtle: rgba(255, 255, 255, 0.06);
-  --gold-primary: #d4af37;
-  --gold-hover: #e5c158;
-  --gold-muted: rgba(212, 175, 55, 0.12);
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
-  --text-dim: #6b7280;
-  --green-main: #10b981;
-  --green-bg: rgba(16, 185, 129, 0.12);
+  /* Fondo y superficies */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f1f5f9;
+  --table-thead-bg: #f8fafc;
+  --border-color: #e2e8f0;
+  --border-subtle: #edf2f7;
+
+  /* Tonos dorados e identidad Notes & Sillage */
+  --gold-primary: #b45309;
+  --gold-hover: #92400e;
+  --gold-muted: rgba(180, 83, 9, 0.12);
+
+  /* Tipografía y textos de alto contraste */
+  --text-title: #0f172a;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+
+  /* Métricas y estados */
+  --green-main: #15803d;
+  --green-bg: rgba(22, 163, 74, 0.12);
+
+  /* Sombras y elevaciones */
+  --shadow-card: 0 2px 10px rgba(0, 0, 0, 0.05);
+  --shadow-modal: 0 20px 45px rgba(0, 0, 0, 0.15);
+
+  /* Tipografías y bordes redondeados */
   --radius-lg: 12px;
   --radius-md: 8px;
   --radius-sm: 5px;
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   MODO OSCURO / NEGRO (data-theme="dark")
+   ========================================================================== */
+[data-theme="dark"] {
+  /* Fondo y superficies oscuras */
+  --bg-primary: #0a0b0d;
+  --bg-secondary: #121418;
+  --bg-card: #181a20;
+  --bg-hover: rgba(255, 255, 255, 0.04);
+  --table-thead-bg: #121418;
+  --border-color: #23262f;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+
+  /* Tonos dorados e identidad */
+  --gold-primary: #d4af37;
+  --gold-hover: #e5c158;
+  --gold-muted: rgba(212, 175, 55, 0.14);
+
+  /* Textos */
+  --text-title: #ffffff;
+  --text-main: #f3f4f6;
+  --text-muted: #9ca3af;
+  --text-dim: #6b7280;
+
+  /* Métricas y estados */
+  --green-main: #10b981;
+  --green-bg: rgba(16, 185, 129, 0.12);
+
+  /* Sombras */
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.35);
+  --shadow-modal: 0 25px 50px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
 }
 
 * {
@@ -41,6 +97,7 @@ body.sales-table-view {
   min-height: 100vh;
   padding: 16px 20px 40px;
   line-height: 1.45;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .container-fluid {
@@ -48,7 +105,9 @@ body.sales-table-view {
   margin: 0 auto;
 }
 
-/* Header */
+/* ==========================================================================
+   HEADER Y ACCIONES
+   ========================================================================== */
 .dashboard-header {
   display: flex;
   justify-content: space-between;
@@ -72,13 +131,15 @@ body.sales-table-view {
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid var(--gold-primary);
+  background: var(--bg-secondary);
 }
 
 .brand-title h1 {
   font-size: 1.35rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #fff;
+  color: var(--text-title);
+  line-height: 1.25;
 }
 
 .brand-title p {
@@ -90,6 +151,53 @@ body.sales-table-view {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Botón de alternancia de tema (Sol / Luna) */
+.theme-toggle-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.theme-toggle-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-title);
+  border-color: var(--gold-primary);
+}
+
+.theme-toggle-btn svg,
+.theme-toggle-btn i {
+  width: 18px;
+  height: 18px;
+}
+
+.theme-icon-sun {
+  display: none !important;
+}
+
+.theme-icon-moon {
+  display: block !important;
+}
+
+[data-theme="dark"] .theme-icon-moon {
+  display: none !important;
+}
+
+[data-theme="dark"] .theme-icon-sun {
+  display: block !important;
+  color: #fbbf24;
 }
 
 .auth-ventas-user-bar {
@@ -144,8 +252,9 @@ body.sales-table-view {
 }
 
 .btn-secondary:hover {
-  background-color: var(--border-color);
-  color: #fff;
+  background-color: var(--bg-hover);
+  color: var(--text-title);
+  border-color: var(--gold-primary);
 }
 
 .btn-primary {
@@ -168,11 +277,14 @@ body.sales-table-view {
   box-shadow: 0 4px 12px rgba(212, 175, 55, 0.35);
 }
 
-/* Barra de Métricas Totales Compacta */
+/* ==========================================================================
+   BARRA DE MÉTRICAS COMPACTA
+   ========================================================================== */
 .summary-metrics-bar {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
   padding: 12px 18px;
   display: flex;
   align-items: center;
@@ -190,7 +302,7 @@ body.sales-table-view {
 .metric-label {
   font-size: 0.72rem;
   text-transform: uppercase;
-  color: var(--text-dim);
+  color: var(--text-muted);
   letter-spacing: 0.05em;
   font-weight: 600;
 }
@@ -198,7 +310,7 @@ body.sales-table-view {
 .metric-value {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-title);
   font-family: var(--font-mono);
 }
 
@@ -212,11 +324,14 @@ body.sales-table-view {
   background-color: var(--border-color);
 }
 
-/* Controles de Búsqueda y Filtros */
+/* ==========================================================================
+   CONTROLES DE BÚSQUEDA Y FILTROS
+   ========================================================================== */
 .table-controls {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
   padding: 10px 14px;
   display: flex;
   flex-wrap: wrap;
@@ -234,18 +349,19 @@ body.sales-table-view {
 
 .search-field input {
   width: 100%;
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  color: #fff;
+  color: var(--text-main);
   padding: 8px 32px 8px 34px;
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
   outline: none;
-  transition: border-color 0.2s ease;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .search-field input:focus {
   border-color: var(--gold-primary);
+  background-color: var(--bg-secondary);
 }
 
 .search-field i {
@@ -290,7 +406,7 @@ body.sales-table-view {
 }
 
 .select-filter {
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
   color: var(--text-main);
   padding: 7px 10px;
@@ -304,15 +420,23 @@ body.sales-table-view {
   border-color: var(--gold-primary);
 }
 
-/* Contenedor de la Hoja de Cálculo / Tabla */
+.select-filter option,
+.status-dropdown option {
+  background-color: var(--bg-card);
+  color: var(--text-main);
+}
+
+/* ==========================================================================
+   TABLA / HOJA DE CÁLCULO
+   ========================================================================== */
 .spreadsheet-container {
   background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
   overflow-x: auto;
   max-height: calc(100vh - 240px);
   position: relative;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .spreadsheet-table {
@@ -327,7 +451,7 @@ body.sales-table-view {
   position: sticky;
   top: 0;
   z-index: 5;
-  background-color: #121418;
+  background-color: var(--table-thead-bg);
 }
 
 .spreadsheet-table th {
@@ -351,6 +475,7 @@ body.sales-table-view {
   border-bottom: 1px solid var(--border-subtle);
   border-right: 1px solid var(--border-subtle);
   vertical-align: middle;
+  color: var(--text-main);
 }
 
 .spreadsheet-table td:last-child {
@@ -389,7 +514,7 @@ body.sales-table-view {
 
 .fragrance-name {
   font-weight: 600;
-  color: #fff;
+  color: var(--text-title);
 }
 
 .size-tag {
@@ -401,11 +526,12 @@ body.sales-table-view {
   text-align: center;
   font-family: var(--font-mono);
   font-weight: 600;
+  color: var(--text-title);
 }
 
 .client-name {
   font-weight: 500;
-  color: #fff;
+  color: var(--text-title);
 }
 
 .inst-name {
@@ -423,22 +549,22 @@ body.sales-table-view {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  color: #86efac;
-  background-color: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.25);
+  color: #15803d;
+  background-color: rgba(22, 163, 74, 0.1);
+  border: 1px solid rgba(22, 163, 74, 0.25);
   padding: 3px 8px;
   border-radius: 5px;
   font-family: var(--font-mono);
   font-size: 0.76rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
   transition: all 0.15s ease;
 }
 
 .phone-link:hover {
-  background-color: rgba(34, 197, 94, 0.25);
-  border-color: #22c55e;
-  color: #fff;
+  background-color: rgba(22, 163, 74, 0.2);
+  border-color: #16a34a;
+  color: var(--text-title);
 }
 
 .phone-link i {
@@ -455,7 +581,7 @@ body.sales-table-view {
 .price-cell {
   font-family: var(--font-mono);
   font-weight: 600;
-  color: #fff;
+  color: var(--text-title);
 }
 
 .cost-cell {
@@ -469,7 +595,21 @@ body.sales-table-view {
   color: var(--green-main);
 }
 
-/* SELECT INTERACTIVO DE ESTADO (Variantes del screenshot) */
+[data-theme="dark"] .phone-link {
+  color: #86efac;
+  background-color: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+[data-theme="dark"] .phone-link:hover {
+  background-color: rgba(34, 197, 94, 0.25);
+  border-color: #22c55e;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   SELECT INTERACTIVO DE ESTADO
+   ========================================================================== */
 .status-select-wrap {
   position: relative;
   display: inline-flex;
@@ -493,10 +633,9 @@ body.sales-table-view {
 }
 
 .status-dropdown:focus {
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.35);
 }
 
-/* Indicador de punto de color dentro del select */
 .status-dot {
   position: absolute;
   left: 8px;
@@ -506,64 +645,109 @@ body.sales-table-view {
   pointer-events: none;
 }
 
-/* Variantes de Estado exactas de la captura */
-/* 1. Pedido (Verde claro) */
+/* Variantes de Estado en Modo Claro */
 .opt-pedido {
+  background-color: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  border-color: rgba(22, 163, 74, 0.35);
+}
+.dot-pedido { background-color: #16a34a; }
+
+.opt-recepcionado {
+  background-color: rgba(147, 51, 234, 0.12);
+  color: #7e22ce;
+  border-color: rgba(147, 51, 234, 0.35);
+}
+.dot-recepcionado { background-color: #9333ea; }
+
+.opt-pendiente {
+  background-color: rgba(202, 138, 4, 0.15);
+  color: #a16207;
+  border-color: rgba(202, 138, 4, 0.35);
+}
+.dot-pendiente { background-color: #ca8a04; }
+
+.opt-entregado {
+  background-color: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.35);
+}
+.dot-entregado { background-color: #2563eb; }
+
+.opt-cancelado {
+  background-color: rgba(220, 38, 38, 0.12);
+  color: #b91c1c;
+  border-color: rgba(220, 38, 38, 0.35);
+}
+.dot-cancelado { background-color: #dc2626; }
+
+.opt-faltante {
+  background-color: rgba(100, 116, 139, 0.14);
+  color: #475569;
+  border-color: rgba(100, 116, 139, 0.35);
+}
+.dot-faltante { background-color: #64748b; }
+
+.opt-encarrito {
+  background-color: rgba(234, 88, 12, 0.14);
+  color: #c2410c;
+  border-color: rgba(234, 88, 12, 0.35);
+}
+.dot-encarrito { background-color: #ea580c; }
+
+/* Variantes de Estado en Modo Oscuro */
+[data-theme="dark"] .opt-pedido {
   background-color: rgba(74, 222, 128, 0.15);
   color: #86efac;
   border-color: rgba(74, 222, 128, 0.35);
 }
-.dot-pedido { background-color: #4ade80; }
+[data-theme="dark"] .dot-pedido { background-color: #4ade80; }
 
-/* 2. Recepcionado (Morado claro) */
-.opt-recepcionado {
+[data-theme="dark"] .opt-recepcionado {
   background-color: rgba(192, 132, 252, 0.15);
   color: #d8b4fe;
   border-color: rgba(192, 132, 252, 0.35);
 }
-.dot-recepcionado { background-color: #c084fc; }
+[data-theme="dark"] .dot-recepcionado { background-color: #c084fc; }
 
-/* 3. Pendiente (Amarillo claro) */
-.opt-pendiente {
+[data-theme="dark"] .opt-pendiente {
   background-color: rgba(253, 224, 71, 0.15);
   color: #fef08a;
   border-color: rgba(253, 224, 71, 0.35);
 }
-.dot-pendiente { background-color: #fde047; }
+[data-theme="dark"] .dot-pendiente { background-color: #fde047; }
 
-/* 4. Entregado (Azul claro) */
-.opt-entregado {
+[data-theme="dark"] .opt-entregado {
   background-color: rgba(96, 165, 250, 0.15);
   color: #93c5fd;
   border-color: rgba(96, 165, 250, 0.35);
 }
-.dot-entregado { background-color: #60a5fa; }
+[data-theme="dark"] .dot-entregado { background-color: #60a5fa; }
 
-/* 5. Cancelado (Rojo claro) */
-.opt-cancelado {
+[data-theme="dark"] .opt-cancelado {
   background-color: rgba(248, 113, 113, 0.15);
   color: #fca5a5;
   border-color: rgba(248, 113, 113, 0.35);
 }
-.dot-cancelado { background-color: #f87171; }
+[data-theme="dark"] .dot-cancelado { background-color: #f87171; }
 
-/* 6. Faltante (Gris) */
-.opt-faltante {
+[data-theme="dark"] .opt-faltante {
   background-color: rgba(156, 163, 175, 0.15);
   color: #d1d5db;
   border-color: rgba(156, 163, 175, 0.35);
 }
-.dot-faltante { background-color: #9ca3af; }
+[data-theme="dark"] .dot-faltante { background-color: #9ca3af; }
 
-/* 7. en carrito (Naranja claro) */
-.opt-encarrito {
+[data-theme="dark"] .opt-encarrito {
   background-color: rgba(251, 146, 60, 0.15);
   color: #fdba74;
   border-color: rgba(251, 146, 60, 0.35);
 }
-.dot-encarrito { background-color: #fb923c; }
+[data-theme="dark"] .dot-encarrito { background-color: #fb923c; }
 
-/* CHECKBOX INTERACTIVOS (Pagado y Confirmado) */
+/* ==========================================================================
+   CHECKBOX INTERACTIVOS (Pagado y Confirmado)
+   ========================================================================== */
 .cell-check {
   text-align: center;
 }
@@ -575,7 +759,7 @@ body.sales-table-view {
   height: 18px;
   border-radius: 4px;
   border: 1.5px solid var(--border-color);
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -596,7 +780,7 @@ body.sales-table-view {
 
 .table-checkbox:checked::after {
   content: "✔";
-  color: #0b0c0e;
+  color: #ffffff;
   font-size: 11px;
   font-weight: 900;
   line-height: 1;
@@ -622,7 +806,7 @@ body.sales-table-view {
 }
 
 .btn-edit-row:hover {
-  background-color: rgba(212, 175, 55, 0.15);
+  background-color: var(--gold-muted);
   color: var(--gold-primary);
   border-color: rgba(212, 175, 55, 0.35);
 }
@@ -638,15 +822,17 @@ body.sales-table-view {
   height: 14px;
 }
 
-/* Toast flotante de sincronización */
+/* ==========================================================================
+   TOAST FLOTANTE DE NOTIFICACIONES
+   ========================================================================== */
 .toast-notification {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  background-color: #1a1d24;
-  color: #fff;
+  background-color: var(--bg-card);
+  color: var(--text-title);
   border: 1px solid var(--green-main);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-modal);
   padding: 10px 18px;
   border-radius: var(--radius-md);
   font-size: 0.82rem;
@@ -669,11 +855,13 @@ body.sales-table-view {
   to { transform: translateY(0); opacity: 1; }
 }
 
-/* Modal Formulario */
+/* ==========================================================================
+   MODAL DE FORMULARIO
+   ========================================================================== */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.75);
+  background-color: rgba(0, 0, 0, 0.65);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -690,7 +878,7 @@ body.sales-table-view {
   max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-modal);
   padding: 20px;
 }
 
@@ -705,7 +893,7 @@ body.sales-table-view {
 
 .modal-header h3 {
   font-size: 1.15rem;
-  color: #fff;
+  color: var(--text-title);
 }
 
 .modal-close {
@@ -718,7 +906,7 @@ body.sales-table-view {
 }
 
 .modal-close:hover {
-  color: #fff;
+  color: var(--text-title);
 }
 
 .form-grid {
@@ -740,18 +928,20 @@ body.sales-table-view {
 
 .form-group input,
 .form-group select {
-  background-color: var(--bg-secondary);
+  background-color: var(--bg-primary);
   border: 1px solid var(--border-color);
-  color: #fff;
+  color: var(--text-main);
   padding: 8px 12px;
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
   outline: none;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .form-group input:focus,
 .form-group select:focus {
   border-color: var(--gold-primary);
+  background-color: var(--bg-secondary);
 }
 
 .modal-calc-preview {
@@ -760,8 +950,8 @@ body.sales-table-view {
   gap: 10px;
   margin-top: 14px;
   padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed rgba(212, 175, 55, 0.35);
+  background: var(--bg-primary);
+  border: 1px dashed var(--border-color);
   border-radius: var(--radius-md);
 }
 
@@ -781,12 +971,12 @@ body.sales-table-view {
 .calc-card-item .calc-val {
   font-size: 0.95rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-title);
   font-variant-numeric: tabular-nums;
 }
 
 .calc-card-item.highlight .calc-val.profit {
-  color: #4ade80;
+  color: var(--green-main);
 }
 
 .modal-checks-bar {
@@ -794,7 +984,7 @@ body.sales-table-view {
   gap: 24px;
   margin-top: 14px;
   padding: 12px 14px;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
 }
@@ -821,7 +1011,7 @@ body.sales-table-view {
   align-items: center;
   gap: 6px;
   background-color: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  color: #ef4444;
   border: 1px solid rgba(239, 68, 68, 0.35);
   padding: 8px 14px;
   border-radius: var(--radius-sm);
@@ -853,13 +1043,9 @@ body.sales-table-view {
   border-top: 1px solid var(--border-color);
 }
 
-@media (max-width: 640px) {
-  .modal-calc-preview {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* Empty State */
+/* ==========================================================================
+   ESTADO VACÍO (EMPTY STATE)
+   ========================================================================== */
 .empty-state {
   text-align: center;
   padding: 50px 20px;
@@ -875,11 +1061,13 @@ body.sales-table-view {
 
 .empty-state h3 {
   font-size: 1.05rem;
-  color: #fff;
+  color: var(--text-title);
   margin-bottom: 4px;
 }
 
-/* Animaciones */
+/* ==========================================================================
+   ANIMACIONES Y RESPONSIVE
+   ========================================================================== */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -887,4 +1075,41 @@ body.sales-table-view {
 
 .spin {
   animation: spin 1s linear infinite;
+}
+
+@keyframes authSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  body.sales-table-view {
+    padding: 12px 12px 30px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .summary-metrics-bar {
+    gap: 12px;
+    padding: 10px 14px;
+  }
+
+  .metric-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .modal-calc-preview {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
