@@ -63,6 +63,36 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
+      gap: 10px;
+    }
+
+    .brand-identity {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .brand-logo-header {
+      width: 44px;
+      height: 44px;
+      border-radius: 11px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      transition: transform 0.2s ease;
+    }
+
+    .brand-logo-header:hover {
+      transform: scale(1.04);
+    }
+
+    .brand-text {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
     }
 
     .brand-title {
@@ -70,6 +100,7 @@
       font-weight: 800;
       color: var(--primary);
       letter-spacing: -0.5px;
+      line-height: 1.2;
     }
 
     .brand-tagline {
@@ -77,6 +108,8 @@
       color: var(--accent);
       font-weight: 600;
       text-transform: uppercase;
+      line-height: 1.25;
+      margin-top: 2px;
     }
 
     /* Acciones del Encabezado (Tema + Ventas) */
@@ -2126,6 +2159,12 @@
   border-color: rgba(239, 68, 68, 0.4);
 }
 
+[data-theme="dark"] .brand-logo-header {
+  border-color: #2e323e;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  background: #181a20;
+}
+
 /* ==========================================================================
    AJUSTES RESPONSIVOS PARA PANTALLAS PEQUEÑAS (<= 375px)
    ========================================================================== */
@@ -2135,12 +2174,18 @@
     padding: 10px 12px;
   }
 
+  .brand-logo-header {
+    width: 36px;
+    height: 36px;
+    border-radius: 9px;
+  }
+
   .brand-title {
-    font-size: 1.05rem;
+    font-size: 1rem;
   }
 
   .brand-tagline {
-    font-size: 0.64rem;
+    font-size: 0.62rem;
   }
 
   .header-actions {
