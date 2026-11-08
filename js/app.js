@@ -1114,7 +1114,7 @@ function addButtonView(productId) {
     return { added: count > 0, html: count > 0 ? `Lo pedí (${count})` : "Lo pedí" };
   }
   const added = cart.some(item => item.id === productId);
-  return { added, html: added ? "Agregado" : "<span>+</span> Agregar" };
+  return { added, html: added ? "Agregado" : '<span class="add-btn-plus">+</span> Agregar' };
 }
 
 function refreshAddButtons() {
@@ -1565,6 +1565,13 @@ document.addEventListener("keydown", event => {
   }
 });
 
+function resetCategoryBarScroll() {
+  const categoryBar = document.getElementById("categoryBar");
+  if (categoryBar) {
+    categoryBar.scrollLeft = 0;
+  }
+}
+
 // Píldoras de categoría
 document.querySelectorAll(".pill-btn").forEach(btn => {
   btn.addEventListener("click", () => {
@@ -1572,6 +1579,11 @@ document.querySelectorAll(".pill-btn").forEach(btn => {
     btn.classList.add("active");
     currentCategory = btn.dataset.category;
     renderProducts();
+    if (btn.dataset.category === "all") {
+      resetCategoryBarScroll();
+    } else {
+      btn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 });
@@ -1602,6 +1614,7 @@ function clearSearch() {
   } else {
     renderProducts();
   }
+  if (currentCategory === "all") resetCategoryBarScroll();
   input.focus();
 }
 
@@ -1658,6 +1671,38 @@ function initCustomerMemory() {
   });
 }
 
+// Gestión de Tema Claro / Oscuro (Sol y Luna)
+let themeInitialized = false;
+
+function initTheme() {
+  const toggleBtn = document.getElementById("themeToggleBtn");
+  if (!toggleBtn) return;
+
+  const updateToggleLabels = () => {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    toggleBtn.setAttribute("aria-label", isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro");
+    toggleBtn.setAttribute("title", isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro");
+  };
+
+  updateToggleLabels();
+
+  if (!themeInitialized) {
+    toggleBtn.addEventListener("click", () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      if (isDark) {
+        document.documentElement.removeAttribute("data-theme");
+        localStorage.setItem("notes_theme", "light");
+      } else {
+        document.documentElement.setAttribute("data-theme", "dark");
+        localStorage.setItem("notes_theme", "dark");
+      }
+      updateToggleLabels();
+      renderLucideIcons();
+    });
+    themeInitialized = true;
+  }
+}
+
 // Render y arranque reactivo con Firebase
 let appInitialized = false;
 
@@ -1667,9 +1712,22 @@ function initApp() {
     initCustomerMemory();
     appInitialized = true;
   }
+  initTheme();
   renderProducts();
   renderLucideIcons();
+  if (currentCategory === "all") {
+    resetCategoryBarScroll();
+  }
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
+  if (currentCategory === "all") resetCategoryBarScroll();
+});
+
+window.addEventListener("pageshow", () => {
+  if (currentCategory === "all") resetCategoryBarScroll();
+});
 
 window.addEventListener("catalog:ready", () => {
   initApp();

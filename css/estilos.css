@@ -34,10 +34,18 @@
       font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
+    html {
+      overflow-x: clip;
+      max-width: 100%;
+    }
+
     body {
       background-color: var(--bg);
       color: var(--text);
       padding-bottom: 100px;
+      overflow-x: clip;
+      max-width: 100%;
+      position: relative;
     }
 
     /* Encabezado fijo móvil */
@@ -69,6 +77,83 @@
       color: var(--accent);
       font-weight: 600;
       text-transform: uppercase;
+    }
+
+    /* Acciones del Encabezado (Tema + Ventas) */
+    .header-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle-btn {
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #f1f5f9;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      padding: 0;
+    }
+
+    .theme-toggle-btn:hover {
+      background: #e2e8f0;
+      color: var(--primary);
+    }
+
+    .theme-toggle-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .theme-icon-sun {
+      display: none !important;
+    }
+
+    .theme-icon-moon {
+      display: block !important;
+    }
+
+    [data-theme="dark"] .theme-icon-moon {
+      display: none !important;
+    }
+
+    [data-theme="dark"] .theme-icon-sun {
+      display: block !important;
+      color: #fbbf24;
+    }
+
+    /* Botón de acceso a Ventas */
+    .sales-link-btn {
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #f1f5f9;
+      color: var(--text-muted);
+      text-decoration: none;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+
+    .sales-link-btn:hover {
+      background: #e2e8f0;
+      color: var(--primary);
+    }
+
+    .sales-link-btn svg {
+      width: 18px;
+      height: 18px;
     }
 
     /* Buscador */
@@ -148,6 +233,9 @@
       padding: 10px 16px;
       scrollbar-width: none;
       background: var(--bg);
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      scroll-padding-left: 16px;
     }
 
     .categories-bar::-webkit-scrollbar {
@@ -165,6 +253,11 @@
       color: var(--text-muted);
       cursor: pointer;
       transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .pill-btn:first-child {
+      scroll-margin-left: 16px;
     }
 
     .pill-btn.active {
@@ -398,10 +491,17 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
+      border-radius: 12px;
       margin: 0;
       background: transparent;
       transition: transform 0.2s ease;
       transform-origin: center;
+    }
+
+    .card-product-image:not([data-size]),
+    .card-product-image[data-size=""] {
+      object-fit: cover;
+      border-radius: 12px;
     }
 
     .card-img-wrapper {
@@ -412,9 +512,10 @@
       width: 100%;
       height: 136px;
       margin: 2px 0 10px;
-      padding: 8px;
+      padding: 0;
       overflow: hidden;
       border-radius: 12px;
+      border: 1px solid var(--border);
       background: #f4f4f5;
     }
 
@@ -447,45 +548,51 @@
     .badge-std { background: #f1f5f9; color: var(--text-muted); }
 
     .card-title {
-      font-size: 1rem;
-      font-weight: 700;
+      font-size: 1.02rem;
+      font-weight: 800;
       color: var(--primary);
       line-height: 1.35;
       margin-bottom: 6px;
     }
 
-    .aroma-note-tone.aroma-c-citrico { color: #4d7c0f; }
-    .aroma-note-tone.aroma-c-frutal { color: #be185d; }
-    .aroma-note-tone.aroma-c-chypre { color: #854d0e; }
-    .aroma-note-tone.aroma-c-floral { color: #c2410c; }
-    .aroma-note-tone.aroma-c-verde { color: #15803d; }
-    .aroma-note-tone.aroma-c-almizclado { color: #78350f; }
-    .aroma-note-tone.aroma-c-maderoso { color: #9a3412; }
-    .aroma-note-tone.aroma-c-oriental { color: #92400e; }
-    .aroma-note-tone.aroma-c-fougere { color: #0f766e; }
-    .aroma-note-tone.aroma-c-aldehidico { color: #0369a1; }
-    .aroma-note-tone.aroma-c-aromatico { color: #0e7490; }
-    .aroma-note-tone.aroma-c-especiado { color: #b91c1c; }
-    .aroma-note-tone.aroma-c-cuero { color: #854d0e; }
+    .aroma-note-tone {
+      font-weight: 700;
+    }
+
+    .aroma-note-tone.aroma-c-citrico { color: #365314; }
+    .aroma-note-tone.aroma-c-frutal { color: #9d174d; }
+    .aroma-note-tone.aroma-c-chypre { color: #78350f; }
+    .aroma-note-tone.aroma-c-floral { color: #9a3412; }
+    .aroma-note-tone.aroma-c-verde { color: #14532d; }
+    .aroma-note-tone.aroma-c-almizclado { color: #451a03; }
+    .aroma-note-tone.aroma-c-maderoso { color: #7c2d12; }
+    .aroma-note-tone.aroma-c-oriental { color: #713f12; }
+    .aroma-note-tone.aroma-c-fougere { color: #134e4a; }
+    .aroma-note-tone.aroma-c-aldehidico { color: #075985; }
+    .aroma-note-tone.aroma-c-aromatico { color: #155e75; }
+    .aroma-note-tone.aroma-c-especiado { color: #991b1b; }
+    .aroma-note-tone.aroma-c-cuero { color: #713f12; }
 
     .card-subtitle {
-      font-size: 0.78rem;
-      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #475569;
       line-height: 1.4;
       margin-bottom: 8px;
     }
 
     .card-notes {
-      font-size: 0.68rem;
-      font-weight: 600;
-      color: var(--accent);
-      background: var(--accent-light);
-      padding: 4px 7px;
-      border-radius: 5px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #0f172a;
+      background: #ffffff;
+      padding: 6px 9px;
+      border-radius: 8px;
       margin-bottom: 12px;
       display: block;
-      border: 1px solid #f2e6c8;
-      line-height: 1.4;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      line-height: 1.45;
     }
 
     /* Selector de Tamaños táctil */
@@ -1534,6 +1641,714 @@
 .search-input::placeholder { font-size: 0.72rem; text-overflow: ellipsis; }
 
 /* ==========================================================================
+   AJUSTES RESPONSIVOS PARA PANTALLAS PEQUEÑAS (<= 375px)
+   ========================================================================== */
+@media (max-width: 375px) {
+  /* Encabezado compacto */
+  header {
+    padding: 10px 12px;
+  }
+
+  .brand-title {
+    font-size: 1.05rem;
+  }
+
+  .brand-tagline {
+    font-size: 0.64rem;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .theme-toggle-btn,
+  .sales-link-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+
+  .theme-toggle-btn svg,
+  .sales-link-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  /* Barra de separación de categorías (Píldoras) alineada */
+  .categories-bar {
+    padding: 8px 12px;
+    gap: 6px;
+    scroll-padding-left: 12px;
+  }
+
+  .pill-btn {
+    padding: 6px 11px;
+    font-size: 0.75rem;
+  }
+
+  .pill-btn:first-child {
+    scroll-margin-left: 12px;
+  }
+
+  /* Catálogo y tarjetas proporcionales que evitan desborde horizontal */
+  .catalog-container {
+    padding: 8px 10px;
+    gap: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-category-heading {
+    padding: 12px 14px;
+    margin: 12px 0 4px;
+  }
+
+  .catalog-category-heading h2 {
+    font-size: 0.98rem;
+  }
+
+  .category-heading-desc {
+    font-size: 0.72rem;
+  }
+
+  .card {
+    padding: 10px 8px;
+    border-radius: 12px;
+  }
+
+  .card-male,
+  .card-female {
+    min-height: 410px;
+  }
+
+  .card-male .card-top,
+  .card-female .card-top {
+    height: 46px;
+    min-height: 46px;
+  }
+
+  .card-top {
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+
+  .card-code {
+    font-size: 0.8rem;
+  }
+
+  .card-badge {
+    font-size: 0.58rem;
+    padding: 2px 5px;
+    max-width: 76px;
+  }
+
+  .card-img-wrapper {
+    height: 122px;
+    padding: 0;
+    margin: 2px 0 8px;
+    border-radius: 10px;
+  }
+
+  .card-product-image {
+    border-radius: 10px;
+  }
+
+  .aroma-image-btn {
+    font-size: 0.58rem;
+    padding: 3px 6px;
+    min-height: 22px;
+    right: 5px;
+    bottom: 5px;
+  }
+
+  .card-title {
+    font-size: 0.92rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+  }
+
+  .card-subtitle {
+    font-size: 0.76rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .card-notes {
+    font-size: 0.68rem;
+    padding: 5px 6px;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+
+  .size-selector {
+    gap: 3px;
+    margin-bottom: 8px;
+  }
+
+  .size-option {
+    padding: 4px 0;
+    font-size: 0.64rem;
+  }
+
+  .card-purchase-row {
+    gap: 4px;
+    padding-top: 6px;
+  }
+
+  .price-tag {
+    font-size: 0.86rem;
+    font-weight: 800;
+  }
+
+  /* Botón Agregar: elimina el '+' y optimiza espaciado */
+  .add-btn {
+    padding: 6px 8px;
+    font-size: 0.68rem;
+    min-height: 30px;
+    gap: 0;
+  }
+
+  .add-btn span,
+  .add-btn .add-btn-plus {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   MODO OSCURO / DARK THEME
+   (Invierte colores claros/blancos conservando la paleta de identidad)
+   ========================================================================== */
+[data-theme="dark"] {
+  --primary: #ffffff;
+  --accent: #fbbf24;
+  --accent-light: rgba(251, 191, 36, 0.18);
+  --bg: #0f1115;
+  --card-bg: #181a20;
+  --text: #ffffff;
+  --text-muted: #cbd5e1;
+  --border: #282b35;
+
+  color-scheme: dark;
+}
+
+[data-theme="dark"] body {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
+[data-theme="dark"] header {
+  background: rgba(15, 17, 21, 0.94);
+  border-bottom-color: var(--border);
+}
+
+[data-theme="dark"] .brand-title {
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="dark"] .brand-tagline {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .categories-bar {
+  background: var(--bg);
+}
+
+[data-theme="dark"] .search-input {
+  background: #181a20;
+  border-color: var(--border);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .search-input::placeholder {
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .search-input:focus {
+  background: #1f222a;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.22);
+}
+
+[data-theme="dark"] .search-clear-btn:hover {
+  background: #282b35;
+  color: #fff;
+}
+
+[data-theme="dark"] .theme-toggle-btn,
+[data-theme="dark"] .sales-link-btn {
+  background: #181a20;
+  border-color: var(--border);
+  color: #e2e8f0;
+}
+
+[data-theme="dark"] .theme-toggle-btn:hover,
+[data-theme="dark"] .sales-link-btn:hover {
+  background: #252832;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .pill-btn {
+  background: var(--card-bg);
+  border-color: #2e323e;
+  color: #e2e8f0;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .pill-btn.active {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #ffffff;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .pill-btn.map-pill {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+[data-theme="dark"] .pill-btn.map-pill.active {
+  background: #d97706;
+  color: #ffffff;
+  border-color: #d97706;
+}
+
+[data-theme="dark"] .card {
+  background: var(--card-bg);
+  border-color: var(--border);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .card-img-wrapper {
+  border-color: #2e323e;
+}
+
+[data-theme="dark"] .card-code {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .card-title {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .card-subtitle {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+[data-theme="dark"] .badge-std {
+  background: #242731;
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .badge-black {
+  background: #272a34;
+  color: #ffffff;
+  border: 1px solid #3f4454;
+}
+
+[data-theme="dark"] .badge-red {
+  background: rgba(220, 38, 38, 0.2);
+  color: #f87171;
+}
+
+/* Bloque de notas aromáticas claro con alto contraste para lectura fácil */
+[data-theme="dark"] .card-notes {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .price-tag {
+  color: #fbbf24;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .size-option {
+  background: #20242d;
+  border-color: #353a47;
+  color: #f1f5f9;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .size-option.active {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #ffffff;
+}
+
+[data-theme="dark"] .aroma-image-btn {
+  background: rgba(24, 26, 32, 0.92);
+  border-color: var(--border);
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .add-btn {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .add-btn.is-added {
+  background: #15803d;
+  color: #ffffff;
+}
+
+/* Categorías con fondos oscuros preservando la paleta de color */
+[data-theme="dark"] .catalog-category-heading {
+  border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .category-red-black {
+  --category-bg: linear-gradient(110deg, #181215 0%, #2f1015 54%, #5b121e 100%);
+  --category-ink: #fff7ed;
+  --category-accent: #fca5a5;
+}
+
+[data-theme="dark"] .category-mujer {
+  --category-bg: #261118;
+  --category-ink: #fce7f3;
+  --category-accent: #f472b6;
+}
+
+[data-theme="dark"] .category-hombre {
+  --category-bg: #0d2220;
+  --category-ink: #ccfbf1;
+  --category-accent: #2dd4bf;
+}
+
+[data-theme="dark"] .category-teen {
+  --category-bg: #270f1a;
+  --category-ink: #fce7f3;
+  --category-accent: #f472b6;
+}
+
+[data-theme="dark"] .category-colonia-m {
+  --category-bg: #0e2216;
+  --category-ink: #dcfce7;
+  --category-accent: #4ade80;
+}
+
+[data-theme="dark"] .category-colonia-h {
+  --category-bg: #0b2027;
+  --category-ink: #cffafe;
+  --category-accent: #38bdf8;
+}
+
+[data-theme="dark"] .category-splash {
+  --category-bg: #092226;
+  --category-ink: #cffafe;
+  --category-accent: #22d3ee;
+}
+
+[data-theme="dark"] .catalog-subgroup-title {
+  background: #1f222a;
+  color: #d1d5db;
+}
+
+[data-theme="dark"] .subgroup-femenino {
+  --subgroup-bg: #28111a;
+  --subgroup-ink: #f472b6;
+}
+
+[data-theme="dark"] .subgroup-masculino {
+  --subgroup-bg: #0c201e;
+  --subgroup-ink: #2dd4bf;
+}
+
+/* Mapa Olfativo en Modo Oscuro */
+[data-theme="dark"] .map-tab-btn {
+  background: #1a1c23;
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+
+[data-theme="dark"] .map-tab-btn.active {
+  background: #f4f4f5;
+  color: #111216;
+  border-color: #f4f4f5;
+}
+
+[data-theme="dark"] .legend-container {
+  background: #181a20;
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .compass-card {
+  background: #181a20;
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .compass-title {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .map-product {
+  background: #1f222a;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+[data-theme="dark"] .map-product-code {
+  color: #ffffff;
+}
+
+/* Modales y Carrito en Modo Oscuro */
+[data-theme="dark"] .cart-float-bar {
+  background: #1f222a;
+  border: 1px solid #2e323e;
+}
+
+[data-theme="dark"] .cart-modal {
+  background: #181a20;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .close-btn {
+  background: #1f222a;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+[data-theme="dark"] .cart-item-row {
+  background: #1f222a;
+  border-color: var(--border);
+}
+
+[data-theme="dark"] .cart-item-name {
+  color: var(--text);
+}
+
+[data-theme="dark"] .qty-btn {
+  color: var(--text);
+}
+
+[data-theme="dark"] .qty-btn:hover {
+  background: #2a2d37;
+}
+
+[data-theme="dark"] .customer-name-field input {
+  background: #14161b;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+[data-theme="dark"] .confirm-dialog {
+  background: #181a20;
+  border: 1px solid var(--border);
+}
+
+[data-theme="dark"] .confirm-title {
+  color: var(--text);
+}
+
+[data-theme="dark"] .confirm-reopen-btn {
+  background: #1f222a;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+[data-theme="dark"] .confirm-back-btn {
+  background: #262933;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+[data-theme="dark"] .help-bubble {
+  background: #181a20;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+[data-theme="dark"] .help-bubble::after {
+  background: #181a20;
+  border-color: var(--border);
+}
+
+/* Asistente y botones de Cambiar o Cancelar Pedido en Modo Oscuro */
+[data-theme="dark"] .help-bubble-link {
+  background: var(--accent);
+  color: #111216;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .help-bubble-link:hover {
+  background: #f59e0b;
+}
+
+[data-theme="dark"] .change-bar {
+  background: #181a20;
+  color: #ffffff;
+  border: 1px solid #2e323e;
+}
+
+[data-theme="dark"] .change-bar-text {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .change-bar-exit {
+  background: #262933;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .change-bar-next {
+  background: var(--accent);
+  color: #111216;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .change-bar-next:disabled {
+  background: #262933;
+  color: #6b7280;
+  opacity: 0.5;
+}
+
+/* Tarjetas en el catálogo durante el modo cambio */
+[data-theme="dark"] body.change-mode .add-btn {
+  background: var(--accent);
+  color: #111216;
+  font-weight: 800;
+}
+
+[data-theme="dark"] body.change-mode .add-btn.is-added {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+/* Dentro del asistente de cambios y cancelaciones */
+[data-theme="dark"] .change-step-label {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] .change-cancel-all-btn {
+  background: rgba(239, 68, 68, 0.16);
+  border: 1px solid var(--danger);
+  color: #fca5a5;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .change-cancel-all-btn:hover {
+  background: rgba(239, 68, 68, 0.28);
+}
+
+[data-theme="dark"] .change-item-card {
+  background: #1f222a;
+  border-color: #2e323e;
+}
+
+[data-theme="dark"] .change-choice {
+  background: #262933;
+  border-color: #383c4a;
+  color: #f1f5f9;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .change-choice:hover {
+  background: #313542;
+}
+
+[data-theme="dark"] .change-choice.is-active[data-value="keep"] {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: #ffffff;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .change-choice.is-active[data-value="change"] {
+  background: #fbbf24;
+  color: #0f172a;
+  border-color: #fbbf24;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .change-choice.is-active[data-value="cancel"] {
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .change-replacement {
+  background: rgba(251, 191, 36, 0.14);
+  border: 1px solid #fbbf24;
+  color: #f1f5f9;
+}
+
+[data-theme="dark"] .change-replacement.is-empty {
+  background: #181a20;
+  border: 1px dashed #fbbf24;
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .change-pick-btn {
+  background: #262933;
+  border: 1px dashed #fbbf24;
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .change-pick-btn:hover {
+  background: #313542;
+}
+
+[data-theme="dark"] .change-review .cart-item-row {
+  background: #1f222a;
+  border-color: #2e323e;
+}
+
+[data-theme="dark"] .change-status.is-change {
+  background: #fbbf24;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .change-status.is-cancel {
+  background: #ef4444;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .change-kept-note {
+  color: #cbd5e1;
+}
+
+[data-theme="dark"] #changeName {
+  background: #14161b;
+  border-color: #2e323e;
+  color: #ffffff;
+}
+
+[data-theme="dark"] .change-back-btn {
+  background: #262933;
+  border-color: #383c4a;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+[data-theme="dark"] .change-back-btn:hover {
+  background: #313542;
+}
+
+[data-theme="dark"] .change-footer .whatsapp-send-btn.is-next {
+  background: #ffffff;
+  color: #0f172a;
+  font-weight: 800;
+}
+
+[data-theme="dark"] .change-footer .whatsapp-send-btn.is-next:disabled {
+  background: #262933;
+  color: #6b7280;
+  opacity: 0.5;
+}
+
+/* ==========================================================================
    MEJORAS RESPONSIVAS PARA PANTALLAS DE ESCRITORIO / COMPUTADORA
    (Solo se aplican en computadoras >= 768px para aumentar el tamaño y legibilidad)
    ========================================================================== */
@@ -1667,6 +2482,12 @@
   .card-img-wrapper {
     height: 215px;
     margin-bottom: 14px;
+    padding: 0;
+    border-radius: 16px;
+  }
+
+  .card-product-image {
+    border-radius: 16px;
   }
 
   .card-badge {
