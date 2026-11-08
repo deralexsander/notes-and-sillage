@@ -31,7 +31,7 @@ export const db = getFirestore(app);
 window.firebaseApp = app;
 window.firebaseDb = db;
 
-const CACHE_KEY = "notes_catalog_cache_v1";
+const CACHE_KEY = "notes_catalog_cache_v3";
 
 // 1. Cargar caché previo de inmediato para render ultra rápido
 try {
@@ -116,10 +116,10 @@ export function getUnitFinancials(code, size, unitPrice) {
   if (normCode === "T-04") return { unitCost: 4500, unitProfit: 3150 };
 
   // Body Splash
-  if (normCode.startsWith("SPLASH")) return { unitCost: 3300, unitProfit: 3300 };
+  if (normCode.startsWith("SPLASH") || normCode === "B101" || normCode === "B-101") return { unitCost: 3300, unitProfit: 3300 };
 
-  // Colonias Familiares S-400
-  if (/^S-?0[1-6]/.test(normCode)) return { unitCost: 3000, unitProfit: 3000 };
+  // Colonias Corporales S-400
+  if (/^S-?\d+/.test(normCode)) return { unitCost: 3000, unitProfit: 3000 };
 
   // Alta Gama / Nicho Q
   if (normCode.startsWith("Q")) return { unitCost: 13000, unitProfit: 13000 };

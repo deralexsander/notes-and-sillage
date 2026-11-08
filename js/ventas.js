@@ -491,9 +491,9 @@ function calculateItemPricing(code, size, product) {
       unitPrice = 13600;
     } else if (normCode === "T-04") {
       unitPrice = 7650;
-    } else if (normCode.startsWith("SPLASH")) {
-      unitPrice = 6500;
-    } else if (/^S-?0[1-6]/.test(normCode)) {
+    } else if (normCode.startsWith("SPLASH") || normCode === "B101" || normCode === "B-101") {
+      unitPrice = 6600;
+    } else if (/^S-?\d+/.test(normCode)) {
       if (cleanSize === "500ml") unitPrice = 7000;
       else unitPrice = 6000;
     } else {
@@ -560,7 +560,7 @@ function populateSizeSelectForProduct(p, currentSelectedSize) {
       { size: "50 ml", label: "50 ml ($8.000)" },
       { size: "20 ml", label: "20 ml ($5.000)" }
     ];
-  } else if (/^S-?0[1-6]/.test(normCode)) {
+  } else if (/^S-?\d+/.test(normCode)) {
     sizes = [
       { size: "400 ml", label: "400 ml ($6.000)" },
       { size: "500 ml", label: "500 ml ($7.000)" }
