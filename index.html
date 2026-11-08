@@ -338,6 +338,105 @@
     </div>
   </div>
 
+  <!-- Modal de Estado del Pedido (Carga / Éxito / Error) -->
+  <div class="cart-modal-overlay order-status-modal-overlay" id="orderStatusModalOverlay" hidden>
+    <div class="cart-modal order-status-modal" role="dialog" aria-modal="true" aria-labelledby="orderStatusSuccessTitle">
+      <button class="close-btn order-status-close-btn" data-action="close-order-status" aria-label="Cerrar ventana" title="Cerrar" id="orderStatusCloseBtn">
+        <i data-lucide="x" aria-hidden="true"></i>
+      </button>
+
+      <!-- Vista 1: Cargando y procesando pedido -->
+      <div id="orderStatusLoading" class="order-status-view" hidden>
+        <div class="status-icon-wrapper status-loading-icon">
+          <div class="order-status-spinner" aria-hidden="true"></div>
+        </div>
+        <h2 id="orderStatusLoadingTitle" class="order-status-title">Registrando tu pedido...</h2>
+        <p class="order-status-desc">
+          Estamos asegurando tus fragancias y conectando con el sistema. Por favor espera un instante.
+        </p>
+        <div class="order-loading-badge">
+          <i data-lucide="shield-check" aria-hidden="true"></i>
+          <span>Conexión segura en curso</span>
+        </div>
+      </div>
+
+      <!-- Vista 2: Pedido registrado con éxito -->
+      <div id="orderStatusSuccess" class="order-status-view" hidden>
+        <div class="status-icon-wrapper status-success-icon">
+          <i data-lucide="check-circle-2" aria-hidden="true"></i>
+        </div>
+        <div class="order-status-badge success-badge">
+          <i data-lucide="sparkles" aria-hidden="true"></i>
+          <span>¡Confirmado!</span>
+        </div>
+        <h2 id="orderStatusSuccessTitle" class="order-status-title">¡Pedido registrado con éxito!</h2>
+        <p class="order-status-desc">
+          Muchas gracias, <strong id="orderSuccessCustomerName"></strong>. Hemos guardado tu pedido correctamente.
+        </p>
+
+        <div class="order-summary-card">
+          <div class="order-summary-header">
+            <span class="order-summary-label">Resumen de tu pedido:</span>
+            <span class="order-summary-total" id="orderSuccessTotal">$0</span>
+          </div>
+          <div class="order-summary-items" id="orderSuccessItems"></div>
+          <div class="order-summary-contact">
+            <i data-lucide="phone-call" aria-hidden="true"></i>
+            <span>Coordinaremos al: <strong id="orderSuccessCustomerPhone"></strong></span>
+          </div>
+        </div>
+
+        <div class="order-status-next-steps">
+          <i data-lucide="clock" aria-hidden="true"></i>
+          <span>Nos pondremos en contacto contigo a la brevedad por WhatsApp para afinar los detalles de tu entrega.</span>
+        </div>
+
+        <div class="order-status-actions">
+          <button type="button" class="order-status-btn-primary" data-action="finish-order-success">
+            <i data-lucide="check" aria-hidden="true"></i>
+            <span>Listo, volver a la tienda</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Vista 3: Error de conexión o servidor -->
+      <div id="orderStatusError" class="order-status-view" hidden>
+        <div class="status-icon-wrapper status-error-icon">
+          <i data-lucide="alert-triangle" aria-hidden="true"></i>
+        </div>
+        <div class="order-status-badge error-badge">
+          <i data-lucide="wifi-off" aria-hidden="true"></i>
+          <span>Problema de conexión</span>
+        </div>
+        <h2 id="orderStatusErrorTitle" class="order-status-title">No pudimos registrar tu pedido</h2>
+        <p class="order-status-desc" id="orderStatusErrorMessage">
+          Parece que hubo una intermitencia con la conexión a internet o el sistema tardó en responder.
+        </p>
+
+        <div class="order-error-card">
+          <div class="order-error-header">
+            <i data-lucide="shield-alert" aria-hidden="true"></i>
+            <span>¡Tus productos y datos están seguros!</span>
+          </div>
+          <p class="order-error-text">
+            No has perdido tu selección ni los datos que ingresaste. Puedes volver a intentarlo en cuanto tu señal esté estable.
+          </p>
+        </div>
+
+        <div class="order-status-actions">
+          <button type="button" class="order-status-btn-primary" data-action="retry-send-order">
+            <i data-lucide="refresh-cw" aria-hidden="true"></i>
+            <span>Reintentar registrar</span>
+          </button>
+          <button type="button" class="order-status-btn-secondary" data-action="close-order-status">
+            <span>Revisar mi carrito</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Modal de Ingreso (Firebase Auth) -->
   <div id="authModalOverlay" class="auth-modal-overlay" hidden>
     <div class="auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
@@ -427,6 +526,6 @@
 
   <script type="module" src="js/firebase-config.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="js/app.js?v=20261108_15"></script>
+  <script src="js/app.js?v=20261108_16"></script>
 </body>
 </html>

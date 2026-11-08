@@ -136,6 +136,8 @@ const mapLayout = {
 
 // Estado general de la aplicación
 let cart = [];
+let currentOrderPayload = null;
+let orderSubmissionInProgress = false;
 let currentCategory = "all";
 let activeMapGender = "mujer";
 let mapViewportMode = null;
@@ -1034,6 +1036,129 @@ function closePrivacyModal() {
   overlay.hidden = true;
 }
 
+// Modal de Estado del Pedido (Carga / Éxito / Error)
+function showOrderStatus(state, data = null) {
+  const overlay = document.getElementById("orderStatusModalOverlay");
+  const loadingView = document.getElementById("orderStatusLoading");
+  const successView = document.getElementById("orderStatusSuccess");
+  const errorView = document.getElementById("orderStatusError");
+  const closeBtn = document.getElementById("orderStatusCloseBtn");
+
+  if (!overlay || !loadingView || !successView || !errorView) return;
+
+  loadingView.hidden = true;
+  successView.hidden = true;
+  errorView.hidden = true;
+
+  if (state === "loading") {
+    orderSubmissionInProgress = true;
+    loadingView.hidden = false;
+    if (closeBtn) closeBtn.hidden = true;
+  } else if (state === "success") {
+    orderSubmissionInProgress = false;
+    successView.hidden = false;
+    if (closeBtn) closeBtn.hidden = false;
+
+    if (data) {
+      const nameEl = document.getElementById("orderSuccessCustomerName");
+      const phoneEl = document.getElementById("orderSuccessCustomerPhone");
+      const totalEl = document.getElementById("orderSuccessTotal");
+      const itemsContainer = document.getElementById("orderSuccessItems");
+
+      if (nameEl) nameEl.textContent = data.customer?.name || "Cliente";
+      if (phoneEl) phoneEl.textContent = data.customer?.phone || "";
+      if (totalEl) totalEl.textContent = `$${(data.totalPrice || 0).toLocaleString("es-CL")}`;
+
+      if (itemsContainer && Array.isArray(data.items)) {
+        itemsContainer.innerHTML = data.items.map(item => `
+          <div class="order-summary-item-row">
+            <span><strong>${item.qty}x</strong> ${item.name} (${item.size})</span>
+            <span>$${(item.subtotal || 0).toLocaleString("es-CL")}</span>
+          </div>
+        `).join("");
+      }
+    }
+  } else if (state === "error") {
+    orderSubmissionInProgress = false;
+    errorView.hidden = false;
+    if (closeBtn) closeBtn.hidden = false;
+
+    const errorMsgEl = document.getElementById("orderStatusErrorMessage");
+    if (errorMsgEl) {
+      if (data && data.error && data.error.message) {
+        errorMsgEl.textContent = data.error.message;
+      } else {
+        errorMsgEl.textContent = "Parece que hubo una intermitencia con la conexión a internet o el sistema tardó en responder.";
+      }
+    }
+  }
+
+  overlay.hidden = false;
+  renderLucideIcons();
+}
+
+function closeOrderStatusModal() {
+  if (orderSubmissionInProgress) return;
+  const overlay = document.getElementById("orderStatusModalOverlay");
+  if (overlay) overlay.hidden = true;
+}
+
+function finishOrderSuccess() {
+  closeOrderStatusModal();
+  clearCart();
+}
+
+// Registro asíncrono con control de carga, chequeo de internet y timeout
+async function registerOrderAsync(payload) {
+  if (!navigator.onLine) {
+    throw new Error("No se detecta conexión a internet en tu dispositivo. Por favor revisa tu wifi o datos móviles.");
+  }
+
+  return new Promise((resolve, reject) => {
+    // Si se activa test de error manual por consola (window.__forceOrderError = true)
+    if (window.__forceOrderError) {
+      setTimeout(() => reject(new Error("Simulación: Se interrumpió la conexión durante el registro.")), 900);
+      return;
+    }
+
+    // Tiempo de espera para simular latencia de red y procesamiento
+    const timer = setTimeout(() => {
+      resolve({
+        success: true,
+        orderId: payload.orderId,
+        registeredAt: new Date().toISOString()
+      });
+    }, 1300);
+
+    // Detección en vivo si el usuario se desconecta durante el envío
+    const handleOffline = () => {
+      clearTimeout(timer);
+      window.removeEventListener("offline", handleOffline);
+      reject(new Error("Se interrumpió la conexión a internet durante el envío. Por favor reintenta."));
+    };
+    window.addEventListener("offline", handleOffline, { once: true });
+  });
+}
+
+async function processOrderSubmission(payload) {
+  currentOrderPayload = payload;
+
+  const sendBtn = document.querySelector('[data-action="send-whatsapp"]');
+  if (sendBtn) sendBtn.disabled = true;
+
+  showOrderStatus("loading");
+
+  try {
+    await registerOrderAsync(payload);
+    showOrderStatus("success", payload);
+  } catch (err) {
+    console.warn("Error en registro de pedido:", err);
+    showOrderStatus("error", { error: err, payload });
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
+
 // Renderizar contenido del modal de carrito
 function renderCartModalItems() {
   const listEl = document.getElementById("cartItemsList");
@@ -1161,19 +1286,28 @@ function sendToWhatsApp() {
     localStorage.removeItem("notes_customer_phone");
   }
 
-  // Feedback visual en el botón de enviar
-  const sendBtn = document.querySelector('[data-action="send-whatsapp"]');
-  if (sendBtn) {
-    const originalContent = sendBtn.innerHTML;
-    sendBtn.innerHTML = `<i data-lucide="check" aria-hidden="true"></i> ¡Pedido validado!`;
-    sendBtn.disabled = true;
-    renderLucideIcons();
-    setTimeout(() => {
-      sendBtn.innerHTML = originalContent;
-      sendBtn.disabled = false;
-      renderLucideIcons();
-    }, 2500);
-  }
+  // Construir payload del pedido y procesar registro
+  const orderPayload = {
+    orderId: "NS-" + Date.now().toString(36).toUpperCase(),
+    customer: {
+      name: customerName,
+      phone: fullPhoneNumber,
+      phoneDigits: phoneDigits
+    },
+    items: cart.map(item => ({
+      code: item.code,
+      name: item.name,
+      size: item.size,
+      unitPrice: item.unitPrice,
+      qty: item.qty,
+      subtotal: item.unitPrice * item.qty
+    })),
+    totalPrice: cart.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0),
+    totalItems: cart.reduce((sum, item) => sum + item.qty, 0),
+    createdAt: new Date().toISOString()
+  };
+
+  processOrderSubmission(orderPayload);
 }
 
 function showMapGender(gender) {
@@ -1532,6 +1666,10 @@ document.addEventListener("error", event => {
 
 document.addEventListener("click", event => {
   // Cerrar al hacer clic en el fondo oscuro
+  if (event.target && event.target.id === "orderStatusModalOverlay") {
+    if (!orderSubmissionInProgress) closeOrderStatusModal();
+    return;
+  }
   if (event.target && event.target.id === "privacyModalOverlay") {
     closePrivacyModal();
     return;
@@ -1549,6 +1687,19 @@ document.addEventListener("click", event => {
   if (!control) return;
 
   switch (control.dataset.action) {
+    case "close-order-status":
+      closeOrderStatusModal();
+      break;
+    case "finish-order-success":
+      finishOrderSuccess();
+      break;
+    case "retry-send-order":
+      if (currentOrderPayload) {
+        processOrderSubmission(currentOrderPayload);
+      } else {
+        closeOrderStatusModal();
+      }
+      break;
     case "open-privacy-modal":
       openPrivacyModal();
       break;
@@ -1648,6 +1799,13 @@ document.addEventListener("click", event => {
 // Cerrar modales con tecla Escape
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
+    const orderStatusOverlay = document.getElementById("orderStatusModalOverlay");
+    if (orderStatusOverlay && !orderStatusOverlay.hidden) {
+      if (!orderSubmissionInProgress) {
+        closeOrderStatusModal();
+      }
+      return;
+    }
     const privacyOverlay = document.getElementById("privacyModalOverlay");
     if (privacyOverlay && !privacyOverlay.hidden) {
       closePrivacyModal();
