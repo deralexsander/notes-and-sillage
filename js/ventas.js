@@ -290,6 +290,9 @@ async function loadSales() {
     updateKnownCustomersDirectory(rows);
     applyFilters();
     renderAnalyticsDashboard(allSaleRows);
+    try {
+      localStorage.setItem("notes_sales_updated", Date.now().toString());
+    } catch (e) {}
   } catch (err) {
     console.error("Error al cargar ventas:", err);
     tableBody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding:30px; color:#ef4444;">Error al consultar Firestore: ${err.message}</td></tr>`;
@@ -955,6 +958,9 @@ tableBody.addEventListener("change", async event => {
       }
     });
     renderAnalyticsDashboard(allSaleRows);
+    try {
+      localStorage.setItem("notes_sales_updated", Date.now().toString());
+    } catch (e) {}
 
     try {
       await updateSaleRow(saleId, code, { estado: newStatus });

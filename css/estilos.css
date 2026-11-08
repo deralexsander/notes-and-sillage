@@ -372,6 +372,13 @@
       opacity: 0.78;
     }
 
+    .category-mas-comprados {
+      --category-bg: linear-gradient(110deg, #fffbeb 0%, #fef3c7 45%, #fde68a 100%);
+      --category-ink: #78350f;
+      --category-accent: #b45309;
+      border: 1px solid rgba(217, 119, 6, 0.28);
+      box-shadow: 0 4px 14px rgba(217, 119, 6, 0.08);
+    }
     .category-red-black { --category-bg: linear-gradient(110deg, #151515 0%, #351318 54%, #962137 100%); --category-ink: #fff7ed; --category-accent: #fda4af; }
     .category-mujer { --category-bg: #fce7ed; --category-ink: #70283f; --category-accent: #be4666; }
     .category-hombre { --category-bg: #d9efeb; --category-ink: #164e4a; --category-accent: #168578; }
@@ -518,6 +525,74 @@
       text-align: center;
       max-width: 92px;
       flex-shrink: 0;
+    }
+
+    .card-badges-group {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+      flex-shrink: 0;
+    }
+
+    .badge-rank-top {
+      font-size: 0.62rem;
+      font-weight: 800;
+      line-height: 1.2;
+      padding: 2px 6px;
+      border-radius: 5px;
+      text-transform: none;
+      white-space: nowrap;
+      letter-spacing: 0.01em;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .badge-rank-top.rank-1 {
+      background: rgba(245, 158, 11, 0.18);
+      color: #b45309;
+      border: 1px solid rgba(245, 158, 11, 0.45);
+    }
+
+    .badge-rank-top.rank-2 {
+      background: rgba(100, 116, 139, 0.16);
+      color: #334155;
+      border: 1px solid rgba(100, 116, 139, 0.4);
+    }
+
+    .badge-rank-top.rank-3 {
+      background: rgba(217, 119, 6, 0.18);
+      color: #92400e;
+      border: 1px solid rgba(217, 119, 6, 0.45);
+    }
+
+    .badge-rank-top.rank-4 {
+      background: rgba(180, 83, 9, 0.14);
+      color: #b45309;
+      border: 1px solid rgba(180, 83, 9, 0.35);
+    }
+
+    [data-theme="dark"] .badge-rank-top.rank-1 {
+      background: rgba(245, 158, 11, 0.22);
+      color: #fbbf24;
+      border-color: rgba(245, 158, 11, 0.5);
+    }
+
+    [data-theme="dark"] .badge-rank-top.rank-2 {
+      background: rgba(148, 163, 184, 0.22);
+      color: #cbd5e1;
+      border-color: rgba(148, 163, 184, 0.5);
+    }
+
+    [data-theme="dark"] .badge-rank-top.rank-3 {
+      background: rgba(217, 119, 6, 0.22);
+      color: #f59e0b;
+      border-color: rgba(217, 119, 6, 0.5);
+    }
+
+    [data-theme="dark"] .badge-rank-top.rank-4 {
+      background: rgba(212, 175, 55, 0.18);
+      color: #e5c158;
+      border-color: rgba(212, 175, 55, 0.45);
     }
 
     .card-product-image {
@@ -1059,82 +1134,7 @@
       height: 18px;
     }
 
-    .confirm-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 120;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(0,0,0,0.55);
-      backdrop-filter: blur(4px);
-    }
 
-    .confirm-overlay[hidden] {
-      display: none;
-    }
-
-    .confirm-dialog {
-      width: min(340px, 100%);
-      background: #fff;
-      border-radius: 18px;
-      padding: 20px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.3);
-    }
-
-    .confirm-title {
-      font-size: 1.05rem;
-      font-weight: 800;
-      color: var(--primary);
-      margin: 0 0 8px;
-    }
-
-    .confirm-text {
-      font-size: 0.85rem;
-      line-height: 1.45;
-      color: var(--text-muted);
-      margin: 0 0 16px;
-    }
-
-    .confirm-actions {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .confirm-send-btn,
-    .confirm-back-btn,
-    .confirm-reopen-btn {
-      padding: 12px;
-      border-radius: 12px;
-      font: inherit;
-      font-size: 0.9rem;
-      font-weight: 800;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    .confirm-send-btn {
-      border: none;
-      background: var(--whatsapp);
-      color: #fff;
-    }
-
-    .confirm-reopen-btn {
-      border: 1px solid var(--border);
-      background: #f8fafc;
-      color: var(--primary);
-    }
-
-    .confirm-back-btn {
-      border: 1px solid var(--border);
-      background: #f1f5f9;
-      color: var(--text);
-    }
 
     .change-bar {
       position: fixed;
@@ -1549,6 +1549,59 @@
     .customer-name-field input[aria-invalid="true"] {
       border-color: #be4666;
       background: #fff8fa;
+    }
+
+    .phone-input-group {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #ffffff;
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .phone-input-group:focus-within {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+    }
+
+    .phone-input-group[aria-invalid="true"] {
+      border-color: #be4666;
+      background: #fff8fa;
+    }
+
+    .phone-prefix {
+      padding: 0 10px 0 12px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: #f1f5f9;
+      border-right: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      align-self: stretch;
+      user-select: none;
+    }
+
+    .phone-input-group input {
+      flex: 1;
+      width: 100%;
+      min-height: 40px;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      padding: 8px 10px;
+      color: var(--text);
+      font: inherit;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .phone-input-group input:focus {
+      outline: none;
     }
 
     .customer-name-error {
@@ -2548,6 +2601,13 @@
   border: 1px solid var(--border);
 }
 
+[data-theme="dark"] .category-mas-comprados {
+  --category-bg: linear-gradient(110deg, #18140e 0%, #241c10 50%, #342611 100%);
+  --category-ink: #fef3c7;
+  --category-accent: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
 [data-theme="dark"] .category-red-black {
   --category-bg: linear-gradient(110deg, #181215 0%, #2f1015 54%, #5b121e 100%);
   --category-ink: #fff7ed;
@@ -2683,26 +2743,23 @@
   color: var(--text);
 }
 
-[data-theme="dark"] .confirm-dialog {
-  background: #181a20;
-  border: 1px solid var(--border);
+[data-theme="dark"] .phone-input-group {
+  background: #14161b;
+  border-color: var(--border);
 }
 
-[data-theme="dark"] .confirm-title {
-  color: var(--text);
-}
-
-[data-theme="dark"] .confirm-reopen-btn {
+[data-theme="dark"] .phone-prefix {
   background: #1f222a;
   border-color: var(--border);
+  color: #94a3b8;
+}
+
+[data-theme="dark"] .phone-input-group input {
+  background: transparent;
   color: var(--text);
 }
 
-[data-theme="dark"] .confirm-back-btn {
-  background: #262933;
-  border-color: var(--border);
-  color: var(--text);
-}
+
 
 [data-theme="dark"] .help-bubble {
   background: #181a20;

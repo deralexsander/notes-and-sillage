@@ -1,7 +1,6 @@
 let products = window.CatalogData?.products || [];
 let standardPrices = window.CatalogData?.standardPrices || { "100ml": 17000, "50ml": 11000, "20ml": 6500 };
 let VENDEDOR_WHATSAPP = window.CatalogData?.vendedorWhatsApp || "56968787862";
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyb1XTkNF6BoaSEVxz09AKwG5GPetlA9sz8Jno37dg1umRR_bP4W15r3WlxbRw6V6q6/exec";
 
 function syncCatalogData() {
   if (window.CatalogData) {
@@ -19,6 +18,11 @@ function syncCatalogData() {
 
 // Metadatos y encabezados visuales para separar cada categoría
 const categoryMeta = {
+  "mas-comprados": {
+    title: "Los Más Comprados",
+    desc: "Nuestras fragancias más elegidas y pedidas por los clientes",
+    badge: "Tendencias & Favoritos"
+  },
   "red-black": {
     title: "Línea Exclusiva Red & Black",
     desc: "Inspiraciones de nicho y alta gama en frasco",
@@ -499,7 +503,7 @@ function appendCategoryDisclaimer(container) {
 }
 
 // Función constructora para cada tarjeta de producto
-function buildProductCard(p) {
+function buildProductCard(p, rankNumber) {
   let badgeClass = "badge-std";
   if (p.badge === "RED") badgeClass = "badge-red";
   if (p.badge === "BLACK") badgeClass = "badge-black";
@@ -534,6 +538,13 @@ function buildProductCard(p) {
 
   const categoryBadge = categoryMeta[p.cat]?.badge || "";
   const productBadge = p.cat === "teen" ? categoryBadge : p.badge;
+
+  let rankBadgeHtml = "";
+  if (typeof rankNumber === "number" && rankNumber >= 1 && rankNumber <= 4) {
+    const rankIcons = ["🥇", "🥈", "🥉", "⭐"];
+    rankBadgeHtml = `<span class="card-badge badge-rank-top rank-${rankNumber}">${rankIcons[rankNumber - 1]} #${rankNumber} Más Vendido</span>`;
+  }
+
   const presentationVisible = isPresentationVisible(p);
   const presentationImage = getPresentationImage(p);
   const aromaImagePath = getAromaImagePath(p);
@@ -556,7 +567,10 @@ function buildProductCard(p) {
             <span class="card-code">${p.code}</span>
             ${dotsHtml}
           </div>
-          ${productBadge ? `<span class="card-badge ${badgeClass}">${productBadge}</span>` : `<span class="card-badge badge-std">${categoryBadge}</span>`}
+          <div class="card-badges-group">
+            ${rankBadgeHtml}
+            ${productBadge ? `<span class="card-badge ${badgeClass}">${productBadge}</span>` : `<span class="card-badge badge-std">${categoryBadge}</span>`}
+          </div>
         </div>
         ${productImage ? `<div class="card-img-wrapper card-img-wrapper-${p.cat}"><img class="card-product-image" src="${productImage.src}" alt="${productImage.alt}" data-size="${presentationSize}" data-fallback-src="${missingImageSrc}" loading="lazy">${aromaImageButton}</div>` : ""}
         <div class="card-title">${productName}</div>
@@ -574,6 +588,167 @@ function buildProductCard(p) {
       </div>
     </div>
   `;
+}
+
+// ==========================================================================
+// SECCIÓN DINÁMICA: LOS MÁS COMPRADOS (Top 4 fragancias basadas en ventas)
+// ==========================================================================
+let topSellingProducts = [];
+let isRefreshingTopSellers = false;
+
+function findProductForSale(saleItem, allProducts) {
+  if (!allProducts || allProducts.length === 0) return null;
+
+  const rawCode = (saleItem.code || "").trim();
+  const rawName = (saleItem.name || saleItem.fragrance || "").trim();
+
+  // 1. Coincidencia por código
+  if (rawCode && rawCode !== "-") {
+    const normCode = normalizeProductCode(rawCode);
+    if (normCode) {
+      const matchByCode = allProducts.find(p => {
+        const pNorm = normalizeProductCode(p.code.split("/")[0]);
+        return pNorm === normCode || getProductCodeVariants(p.code).includes(normCode);
+      });
+      if (matchByCode) return matchByCode;
+    }
+  }
+
+  // 2. Coincidencia por nombre normalizado
+  if (rawName) {
+    const normName = normalizeSearchText(rawName);
+    if (normName) {
+      const matchExact = allProducts.find(p => normalizeSearchText(p.name) === normName);
+      if (matchExact) return matchExact;
+
+      const matchIncludes = allProducts.find(p => {
+        const pNorm = normalizeSearchText(p.name);
+        return pNorm && (pNorm.includes(normName) || normName.includes(pNorm));
+      });
+      if (matchIncludes) return matchIncludes;
+    }
+  }
+
+  return null;
+}
+
+function computeTopSellingProducts(sales, catalogProducts, limit = 4) {
+  if (!Array.isArray(catalogProducts) || catalogProducts.length === 0) return [];
+
+  const scores = new Map();
+
+  (sales || []).forEach(sale => {
+    const estadoGeneral = (sale.estado || "").toLowerCase().trim();
+    if (estadoGeneral === "cancelado") return;
+
+    const items = Array.isArray(sale.items) && sale.items.length > 0
+      ? sale.items
+      : [{
+          code: sale.codigo || sale.code || "",
+          name: sale.fragancia || sale.name || "",
+          qty: sale.cantidad || sale.qty || 1,
+          estado: sale.estado || ""
+        }];
+
+    items.forEach(item => {
+      const itemEstado = (item.estado || estadoGeneral).toLowerCase().trim();
+      if (itemEstado === "cancelado") return;
+
+      const qty = Number(item.qty) || 1;
+      const matched = findProductForSale(item, catalogProducts);
+      if (matched) {
+        scores.set(matched.id, (scores.get(matched.id) || 0) + qty);
+      }
+    });
+  });
+
+  // Ordenar productos que tienen ventas registradas de mayor a menor
+  const sorted = Array.from(scores.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([id]) => catalogProducts.find(p => p.id === id))
+    .filter(Boolean);
+
+  const result = [...sorted];
+
+  // Si hay menos de `limit` productos con ventas, completar con los más icónicos y pedidos
+  if (result.length < limit) {
+    const popularFallbacks = ["Santal 33", "Sauvage", "Baccarat Rouge", "Club de Nuit", "Aventus", "Eros", "Light Blue", "La Vida es Bella"];
+    for (const pop of popularFallbacks) {
+      if (result.length >= limit) break;
+      const found = catalogProducts.find(p =>
+        !result.some(r => r.id === p.id) &&
+        normalizeSearchText(p.name).includes(normalizeSearchText(pop))
+      );
+      if (found) result.push(found);
+    }
+
+    for (const p of catalogProducts) {
+      if (result.length >= limit) break;
+      if (!result.some(r => r.id === p.id)) {
+        result.push(p);
+      }
+    }
+  }
+
+  return result.slice(0, limit);
+}
+
+function initTopSellingProducts() {
+  if (!products || products.length === 0) return;
+
+  // 1. Cargar desde localStorage si ya existe para render inmediato
+  try {
+    const cached = localStorage.getItem("notes_top_sellers_cache");
+    if (cached) {
+      const cachedIds = JSON.parse(cached);
+      if (Array.isArray(cachedIds) && cachedIds.length >= 4) {
+        const matched = cachedIds
+          .map(id => products.find(p => p.id === id || p.code === id))
+          .filter(Boolean);
+        if (matched.length >= 4) {
+          topSellingProducts = matched.slice(0, 4);
+        }
+      }
+    }
+  } catch (e) {}
+
+  // 2. Si no hay suficientes en caché, calcular los 4 predeterminados
+  if (topSellingProducts.length < 4) {
+    topSellingProducts = computeTopSellingProducts([], products, 4);
+  }
+
+  // 3. Sincronizar con Firestore en segundo plano
+  refreshTopSellingProducts();
+}
+
+async function refreshTopSellingProducts() {
+  if (isRefreshingTopSellers) return;
+  isRefreshingTopSellers = true;
+
+  try {
+    let sales = [];
+    if (typeof window.getSalesHistory === "function") {
+      sales = await window.getSalesHistory();
+    }
+    if (Array.isArray(sales) && sales.length > 0 && products.length > 0) {
+      const newTop = computeTopSellingProducts(sales, products, 4);
+      if (newTop.length > 0) {
+        const currentIds = topSellingProducts.map(p => p.id).join(",");
+        const newIds = newTop.map(p => p.id).join(",");
+        topSellingProducts = newTop;
+        try {
+          localStorage.setItem("notes_top_sellers_cache", JSON.stringify(newTop.map(p => p.id)));
+        } catch (e) {}
+        if (currentIds !== newIds && currentCategory === "all") {
+          renderProducts();
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("Aviso al refrescar top 4 más vendidos:", err);
+  } finally {
+    isRefreshingTopSellers = false;
+  }
 }
 
 // Renderizado principal con separación por categorías
@@ -609,6 +784,15 @@ function renderProducts() {
 
   // Si está en 'Todos' y sin búsqueda activa: separar por secciones visualmente distinguidas
   if (currentCategory === "all" && !query) {
+    // 1. SECCIÓN DESTACADA: LOS MÁS COMPRADOS (Top 4 fragancias basadas en gráficos y ventas reales)
+    if (topSellingProducts && topSellingProducts.length > 0) {
+      appendCategoryHeading(container, "mas-comprados");
+      topSellingProducts.forEach((p, idx) => {
+        container.insertAdjacentHTML("beforeend", buildProductCard(p, idx + 1));
+      });
+      appendCategoryDisclaimer(container);
+    }
+
     const order = ["red-black", "mujer", "hombre", "teen", "colonia-m", "colonia-h", "splash", "crema"];
     
     order.forEach(catKey => {
@@ -650,51 +834,50 @@ function selectSize(productId, size) {
   const product = products.find(item => item.id === productId);
   if (product?.cat === "hombre") malePresentationVisible[productId] = true;
   if (product?.cat === "mujer") femalePresentationVisible[productId] = true;
-  const card = document.querySelector(`[data-product-card="${productId}"]`);
-  if (!product || !card) {
+  const cards = document.querySelectorAll(`[data-product-card="${productId}"]`);
+  if (!product || cards.length === 0) {
     renderProducts();
     return;
   }
 
-  card.querySelectorAll(".size-option").forEach(option => {
-    option.classList.toggle("active", option.dataset.size === size);
-  });
-
-  const priceTag = card.querySelector(".price-tag");
-  if (priceTag) priceTag.textContent = `$${standardPrices[size].toLocaleString("es-CL")}`;
-
-  if (product.cat === "mujer") {
-    updateImageToggleButton(card, true);
-
-    const imageName = femalePresentationImages[size];
-    if (!imageName) return;
-
-    updateCardImage(card.querySelector(".card-product-image"), {
-      src: `${femalePresentationImageBase}/${imageName}`,
-      alt: `Presentación general de ${size} para la línea femenina`,
-      size
+  cards.forEach(card => {
+    card.querySelectorAll(".size-option").forEach(option => {
+      option.classList.toggle("active", option.dataset.size === size);
     });
-    return;
-  }
 
-  if (product.cat !== "hombre") return;
+    const priceTag = card.querySelector(".price-tag");
+    if (priceTag) priceTag.textContent = `$${standardPrices[size].toLocaleString("es-CL")}`;
 
-  updateImageToggleButton(card, true);
+    if (product.cat === "mujer") {
+      updateImageToggleButton(card, true);
 
-  const imageName = malePresentationImages[size];
-  if (!imageName) return;
+      const imageName = femalePresentationImages[size];
+      if (imageName) {
+        updateCardImage(card.querySelector(".card-product-image"), {
+          src: `${femalePresentationImageBase}/${imageName}`,
+          alt: `Presentación general de ${size} para la línea femenina`,
+          size
+        });
+      }
+    } else if (product.cat === "hombre") {
+      updateImageToggleButton(card, true);
 
-  updateCardImage(card.querySelector(".card-product-image"), {
-    src: `${malePresentationImageBase}/${imageName}`,
-    alt: `Presentación general de ${size} para la línea masculina`,
-    size
+      const imageName = malePresentationImages[size];
+      if (imageName) {
+        updateCardImage(card.querySelector(".card-product-image"), {
+          src: `${malePresentationImageBase}/${imageName}`,
+          alt: `Presentación general de ${size} para la línea masculina`,
+          size
+        });
+      }
+    }
   });
 }
 
 function toggleProductImage(productId) {
   const product = products.find(item => item.id === productId);
-  const card = document.querySelector(`[data-product-card="${productId}"]`);
-  if (!product || !card) return;
+  const cards = document.querySelectorAll(`[data-product-card="${productId}"]`);
+  if (!product || cards.length === 0) return;
 
   const showPresentation = !isPresentationVisible(product);
   const nextImage = showPresentation
@@ -703,14 +886,17 @@ function toggleProductImage(productId) {
   if (!nextImage?.src) return;
 
   setPresentationVisible(product, showPresentation);
-  updateImageToggleButton(card, showPresentation);
 
-  updateCardImage(card.querySelector(".card-product-image"), {
-    src: nextImage.src,
-    alt: nextImage.alt,
-    size: showPresentation && (product.cat === "hombre" || product.cat === "mujer")
-      ? selectedSizes[product.id] || "100ml"
-      : undefined
+  cards.forEach(card => {
+    updateImageToggleButton(card, showPresentation);
+
+    updateCardImage(card.querySelector(".card-product-image"), {
+      src: nextImage.src,
+      alt: nextImage.alt,
+      size: showPresentation && (product.cat === "hombre" || product.cat === "mujer")
+        ? selectedSizes[product.id] || "100ml"
+        : undefined
+    });
   });
 }
 
@@ -823,6 +1009,7 @@ function updateCartBar() {
 // Abrir y cerrar modal de carrito
 function openCartModal() {
   if (cart.length === 0) return;
+  initCustomerMemory();
   renderCartModalItems();
   document.getElementById("cartModalOverlay").hidden = false;
 }
@@ -872,6 +1059,24 @@ function renderCartModalItems() {
   renderLucideIcons();
 }
 
+// Validación de los 8 dígitos del número de teléfono (+56 9 ya prefijado)
+function isValidRealPhoneNumber(phoneStr) {
+  if (!phoneStr) return false;
+  const digits = phoneStr.replace(/\D/g, "");
+
+  // Deben ser exactamente los 8 dígitos móviles tras el +56 9
+  if (digits.length !== 8) return false;
+
+  // Rechazar números con todos los dígitos idénticos (ej. 00000000, 11111111, 99999999)
+  if (/^(\d)\1+$/.test(digits)) return false;
+
+  // Rechazar secuencias ficticias que sean el número completo
+  const fakeExact = ["12345678", "87654321", "01234567", "01234568", "23456789", "98765432"];
+  if (fakeExact.includes(digits)) return false;
+
+  return true;
+}
+
 // Envío a WhatsApp
 function sendToWhatsApp() {
   if (cart.length === 0) return;
@@ -880,199 +1085,78 @@ function sendToWhatsApp() {
   const customerNameError = document.getElementById("customerNameError");
   const customerName = customerNameInput.value.trim().replace(/\s+/g, " ");
   const nameParts = customerName.split(" ").filter(Boolean);
-  if (nameParts.length < 2) {
+
+  // Validación de nombre y apellido: al menos 2 palabras, mínimo 2 letras por palabra, sin números
+  const isValidName = nameParts.length >= 2 &&
+    nameParts.every(part => part.length >= 2) &&
+    !/\d/.test(customerName) &&
+    /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s'\-]+$/.test(customerName);
+
+  if (!isValidName) {
     customerNameInput.setAttribute("aria-invalid", "true");
-    customerNameError.hidden = false;
+    if (customerNameError) {
+      customerNameError.textContent = "Ingresa tu nombre y apellido (ej. Ana Pérez).";
+      customerNameError.hidden = false;
+    }
     customerNameInput.focus();
     return;
   }
   customerNameInput.removeAttribute("aria-invalid");
-  customerNameError.hidden = true;
+  if (customerNameError) customerNameError.hidden = true;
 
   const customerPhoneInput = document.getElementById("customerPhone");
   const customerPhoneError = document.getElementById("customerPhoneError");
   const customerPhone = customerPhoneInput ? customerPhoneInput.value.trim() : "";
+  const phoneGroup = customerPhoneInput ? customerPhoneInput.closest(".phone-input-group") : null;
   const phoneDigits = customerPhone.replace(/\D/g, "");
-  if (phoneDigits.length < 8) {
+
+  // Validación de número de teléfono real (los 8 dígitos)
+  if (!isValidRealPhoneNumber(customerPhone)) {
     if (customerPhoneInput) {
       customerPhoneInput.setAttribute("aria-invalid", "true");
       customerPhoneInput.focus();
     }
+    if (phoneGroup) phoneGroup.setAttribute("aria-invalid", "true");
     if (customerPhoneError) {
+      if (phoneDigits.length !== 8) {
+        customerPhoneError.textContent = "Ingresa los 8 dígitos de tu número de teléfono (ej. 1234 5678).";
+      } else {
+        customerPhoneError.textContent = "Ingresa un número de teléfono real y válido.";
+      }
       customerPhoneError.hidden = false;
     }
     return;
   }
   if (customerPhoneInput) customerPhoneInput.removeAttribute("aria-invalid");
+  if (phoneGroup) phoneGroup.removeAttribute("aria-invalid");
   if (customerPhoneError) customerPhoneError.hidden = true;
 
-  // Actualizar memoria si el checkbox está activo
+  const fullPhoneNumber = `+56 9 ${phoneDigits.slice(0, 4)} ${phoneDigits.slice(4)}`;
+
+  // Actualizar memoria si el checkbox está activo (guardar datos en el navegador si quiere)
   const rememberCheckbox = document.getElementById("rememberCustomerData");
   if (rememberCheckbox && rememberCheckbox.checked) {
     localStorage.setItem("notes_remember_customer", "true");
     localStorage.setItem("notes_customer_name", customerName);
-    localStorage.setItem("notes_customer_phone", customerPhone);
+    localStorage.setItem("notes_customer_phone", phoneDigits.length > 4 ? phoneDigits.slice(0, 4) + " " + phoneDigits.slice(4) : phoneDigits);
   } else {
     localStorage.setItem("notes_remember_customer", "false");
     localStorage.removeItem("notes_customer_name");
     localStorage.removeItem("notes_customer_phone");
   }
 
-  openConfirm("order", 1);
-}
-
-let confirmMode = "order";
-let pendingOrderData = null;
-let lastWhatsAppUrl = "";
-
-function openConfirm(mode, step = 1) {
-  confirmMode = mode;
-  const isChange = mode === "change";
-  const overlay = document.getElementById("confirmOverlay");
-  const titleEl = document.getElementById("confirmTitle");
-  const textEl = document.getElementById("confirmText");
-  const actionsEl = document.getElementById("confirmActions");
-
-  if (isChange) {
-    titleEl.textContent = "¿Ya terminaste tu cambio o cancelación?";
-    textEl.textContent = "Se abrirá WhatsApp con tu solicitud lista para enviar y se limpiará lo que marcaste. Si aún quieres modificar algo, vuelve atrás.";
-    actionsEl.innerHTML = `
-      <button type="button" class="confirm-send-btn" data-action="confirm-send">Sí, enviar</button>
-      <button type="button" class="confirm-back-btn" data-action="close-confirm">Volver</button>
-    `;
-    overlay.hidden = false;
-    actionsEl.querySelector(".confirm-send-btn").focus();
-    return;
-  }
-
-  const customerName = document.getElementById("customerName").value.trim().replace(/\s+/g, " ");
-  const customerPhone = document.getElementById("customerPhone").value.trim();
-
-  pendingOrderData = {
-    customerName,
-    customerPhone,
-    items: cart.map(item => ({
-      code: item.code,
-      name: item.name,
-      size: item.size,
-      qty: item.qty,
-      unitPrice: item.unitPrice
-    }))
-  };
-
-  if (step === 1) {
-    titleEl.textContent = "¿Listo para pedir por WhatsApp?";
-    textEl.innerHTML = `Se abrirá WhatsApp con tu pedido ya redactado.<br><br><strong>⚠️ Paso obligatorio:</strong> Al abrirse WhatsApp, <strong>debes presionar el botón de ENVIAR</strong> para que recibamos tu solicitud.`;
-    actionsEl.innerHTML = `
-      <button type="button" class="confirm-send-btn" data-action="step-open-whatsapp">
-        <i data-lucide="message-circle" aria-hidden="true"></i> Abrir WhatsApp
-      </button>
-      <button type="button" class="confirm-back-btn" data-action="close-confirm">Volver al pedido</button>
-    `;
-  } else if (step === 2) {
-    titleEl.textContent = "¿Pudiste enviar tu pedido en WhatsApp?";
-    textEl.textContent = "Para registrar tu pedido en nuestra planilla y reservarte los perfumes, confirma una vez que hayas presionado 'Enviar' en WhatsApp:";
-    actionsEl.innerHTML = `
-      <button type="button" class="confirm-send-btn" data-action="confirm-order-sent">
-        <i data-lucide="check-circle" aria-hidden="true"></i> ✅ Sí, ya envié el WhatsApp
-      </button>
-      <button type="button" class="confirm-reopen-btn" data-action="step-open-whatsapp">
-        Reabrir WhatsApp
-      </button>
-      <button type="button" class="confirm-back-btn" data-action="close-confirm">
-        Aún no / Volver
-      </button>
-    `;
-  } else if (step === 3) {
-    titleEl.textContent = "¡Pedido Registrado con Éxito! 🎉";
-    textEl.textContent = "Recibimos tu solicitud. Te responderemos por WhatsApp a la brevedad para coordinar la entrega.";
-    actionsEl.innerHTML = `
-      <button type="button" class="confirm-send-btn" data-action="close-confirm">Aceptar</button>
-    `;
-  }
-
-  renderLucideIcons();
-  overlay.hidden = false;
-  const primaryBtn = actionsEl.querySelector(".confirm-send-btn");
-  if (primaryBtn) primaryBtn.focus();
-}
-
-function closeConfirm() {
-  document.getElementById("confirmOverlay").hidden = true;
-}
-
-function handleStepOpenWhatsApp() {
-  if (!pendingOrderData) return;
-  const { customerName, customerPhone, items } = pendingOrderData;
-
-  let msg = `¡Hola! Soy ${customerName} (Tel: ${customerPhone}) y quiero solicitar el siguiente pedido:\n\n`;
-  items.forEach((item, index) => {
-    const subtotal = item.unitPrice * item.qty;
-    msg += `${index + 1}. [${item.code}] ${item.name} (${item.size})\n   Cantidad: ${item.qty} x $${item.unitPrice.toLocaleString("es-CL")} = $${subtotal.toLocaleString("es-CL")}\n`;
-  });
-
-  const total = items.reduce((sum, item) => sum + (item.unitPrice * item.qty), 0);
-  msg += `\n*TOTAL A PAGAR: $${total.toLocaleString("es-CL")}*`;
-
-  lastWhatsAppUrl = `https://wa.me/${VENDEDOR_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-
-  window.open(lastWhatsAppUrl, "_blank");
-  openConfirm("order", 2);
-}
-
-function handleConfirmOrderSent() {
-  if (!pendingOrderData) {
-    closeConfirm();
-    return;
-  }
-
-  const { customerName, customerPhone, items } = pendingOrderData;
-
-  // 1. Guardar pedido en Firestore
-  if (typeof window.saveOrderToFirestore === "function") {
-    window.saveOrderToFirestore({
-      customerName,
-      customerPhone,
-      items
-    }).catch(err => console.warn("Aviso guardando pedido en Firestore:", err));
-  }
-
-  // 2. Enviar pedido automáticamente a la planilla Google Sheets SOLO cuando confirma
-  if (GOOGLE_SCRIPT_URL && GOOGLE_SCRIPT_URL.startsWith("https")) {
-    const payload = JSON.stringify({
-      customerName: customerName,
-      customerPhone: customerPhone,
-      items: items
-    });
-
-    fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      mode: "no-cors",
-      keepalive: true,
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: payload
-    }).catch(err => console.error("Error enviando a Sheets:", err));
-  }
-
-  // 2. Limpieza de carrito y campos si no quería recordar
-  clearCart();
-
-  const rememberCheckbox = document.getElementById("rememberCustomerData");
-  if (!rememberCheckbox || !rememberCheckbox.checked) {
-    document.getElementById("customerName").value = "";
-    document.getElementById("customerPhone").value = "";
-  }
-
-  pendingOrderData = null;
-
-  // 3. Mostrar pantalla de éxito
-  openConfirm("order", 3);
-}
-
-function confirmSendToWhatsApp() {
-  closeConfirm();
-  if (confirmMode === "change") {
-    performChangeSend();
+  // Feedback visual en el botón de enviar
+  const sendBtn = document.querySelector('[data-action="send-whatsapp"]');
+  if (sendBtn) {
+    const originalContent = sendBtn.innerHTML;
+    sendBtn.innerHTML = `<i data-lucide="check" aria-hidden="true"></i> ¡Pedido validado!`;
+    sendBtn.disabled = true;
+    renderLucideIcons();
+    setTimeout(() => {
+      sendBtn.innerHTML = originalContent;
+      sendBtn.disabled = false;
+      renderLucideIcons();
+    }, 2500);
   }
 }
 
@@ -1369,7 +1453,7 @@ function sendChangeToWhatsApp() {
   nameInput.removeAttribute("aria-invalid");
   nameError.hidden = true;
 
-  openConfirm("change");
+  performChangeSend();
 }
 
 function performChangeSend() {
@@ -1403,7 +1487,7 @@ function performChangeSend() {
   });
 
   exitChangeFlow();
-  window.location.href = `https://wa.me/${VENDEDOR_WHATSAPP}?text=${encodeURIComponent(msg)}`;
+  // Envío a WhatsApp desactivado temporalmente para pruebas visuales y rediseño de estructura
 }
 
 const changeOverlay = document.getElementById("changeOverlay");
@@ -1418,16 +1502,6 @@ changeOverlay.addEventListener("input", event => {
 
 document.addEventListener("click", event => {
   if (!event.target.closest("#helpWrap")) setHelpOpen(false);
-});
-
-document.addEventListener("keydown", event => {
-  if (event.key !== "Escape") return;
-  if (!document.getElementById("confirmOverlay").hidden) {
-    closeConfirm();
-    return;
-  }
-  setHelpOpen(false);
-  if (changeFlow && !document.getElementById("changeOverlay").hidden) showCatalogForChange();
 });
 
 // Event Delegation táctil
@@ -1446,8 +1520,8 @@ document.addEventListener("click", event => {
     closeCartModal();
     return;
   }
-  if (event.target && event.target.id === "confirmOverlay") {
-    closeConfirm();
+  if (event.target && event.target.id === "changeOverlay") {
+    showCatalogForChange();
     return;
   }
 
@@ -1455,18 +1529,6 @@ document.addEventListener("click", event => {
   if (!control) return;
 
   switch (control.dataset.action) {
-    case "close-confirm":
-      closeConfirm();
-      break;
-    case "confirm-send":
-      confirmSendToWhatsApp();
-      break;
-    case "step-open-whatsapp":
-      handleStepOpenWhatsApp();
-      break;
-    case "confirm-order-sent":
-      handleConfirmOrderSent();
-      break;
     case "open-change":
       openChangeFlow();
       break;
@@ -1560,8 +1622,9 @@ document.addEventListener("click", event => {
 // Cerrar modales con tecla Escape
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
+    setHelpOpen(false);
     closeCartModal();
-    closeConfirm();
+    if (changeFlow && !document.getElementById("changeOverlay").hidden) showCatalogForChange();
   }
 });
 
@@ -1638,7 +1701,14 @@ function initCustomerMemory() {
     const savedName = localStorage.getItem("notes_customer_name");
     const savedPhone = localStorage.getItem("notes_customer_phone");
     if (savedName) nameInput.value = savedName;
-    if (savedPhone) phoneInput.value = savedPhone;
+    if (savedPhone) {
+      let digits = savedPhone.replace(/\D/g, "");
+      if (digits.startsWith("569")) digits = digits.slice(3);
+      else if (digits.startsWith("56")) digits = digits.slice(2);
+      else if (digits.length === 9 && digits.startsWith("9")) digits = digits.slice(1);
+      digits = digits.slice(0, 8);
+      phoneInput.value = digits.length > 4 ? digits.slice(0, 4) + " " + digits.slice(4) : digits;
+    }
   }
 
   const saveIfChecked = () => {
@@ -1650,7 +1720,24 @@ function initCustomerMemory() {
   };
 
   nameInput.addEventListener("input", saveIfChecked);
-  phoneInput.addEventListener("input", saveIfChecked);
+
+  phoneInput.addEventListener("input", event => {
+    let digits = event.target.value.replace(/\D/g, "");
+    if (digits.startsWith("569")) digits = digits.slice(3);
+    else if (digits.startsWith("56")) digits = digits.slice(2);
+    else if (digits.length === 9 && digits.startsWith("9")) digits = digits.slice(1);
+    digits = digits.slice(0, 8);
+
+    event.target.value = digits.length > 4 ? digits.slice(0, 4) + " " + digits.slice(4) : digits;
+
+    event.currentTarget.removeAttribute("aria-invalid");
+    const group = event.target.closest(".phone-input-group");
+    if (group) group.removeAttribute("aria-invalid");
+    const phoneErr = document.getElementById("customerPhoneError");
+    if (phoneErr) phoneErr.hidden = true;
+
+    saveIfChecked();
+  });
 
   rememberCheck.addEventListener("change", () => {
     if (rememberCheck.checked) {
@@ -1662,12 +1749,6 @@ function initCustomerMemory() {
       localStorage.removeItem("notes_customer_name");
       localStorage.removeItem("notes_customer_phone");
     }
-  });
-
-  phoneInput.addEventListener("input", event => {
-    event.currentTarget.removeAttribute("aria-invalid");
-    const phoneErr = document.getElementById("customerPhoneError");
-    if (phoneErr) phoneErr.hidden = true;
   });
 }
 
@@ -1913,6 +1994,7 @@ function initApp() {
   }
   initTheme();
   initAuthModal();
+  initTopSellingProducts();
   renderProducts();
   renderLucideIcons();
   if (currentCategory === "all") {
@@ -1921,6 +2003,7 @@ function initApp() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  initCustomerMemory();
   initTheme();
   initAuthModal();
   if (currentCategory === "all") resetCategoryBarScroll();
@@ -1938,6 +2021,19 @@ window.addEventListener("catalog:ready", () => {
 window.addEventListener("catalog:updated", () => {
   initApp();
 });
+
+// Sincronización entre pestañas y Firestore en segundo plano para Los Más Comprados
+window.addEventListener("storage", e => {
+  if (e.key === "notes_sales_updated" || e.key === "notes_top_sellers_cache") {
+    refreshTopSellingProducts();
+  }
+});
+
+// Reintentos automáticos por si Firebase termina de inicializar instantes después
+if (typeof window.getSalesHistory !== "function") {
+  setTimeout(refreshTopSellingProducts, 700);
+  setTimeout(refreshTopSellingProducts, 2200);
+}
 
 // Si CatalogData ya tiene productos al momento de ejecutar app.js
 if (window.CatalogData && Array.isArray(window.CatalogData.products) && window.CatalogData.products.length > 0) {

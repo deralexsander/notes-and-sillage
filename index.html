@@ -159,17 +159,6 @@
     </button>
   </div>
 
-  <!-- Confirmación antes de enviar el pedido por WhatsApp -->
-  <div class="confirm-overlay" id="confirmOverlay" data-action="close-confirm" hidden>
-    <div class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmText">
-      <p class="confirm-title" id="confirmTitle">¿Ya terminaste tu pedido?</p>
-      <p class="confirm-text" id="confirmText">Se abrirá WhatsApp con tu pedido listo para enviar. Si aún quieres agregar, editar o quitar algo, vuelve al pedido.</p>
-      <div class="confirm-actions" id="confirmActions">
-        <button type="button" class="confirm-back-btn" data-action="close-confirm">Volver al pedido</button>
-        <button type="button" class="confirm-send-btn" data-action="confirm-send">Sí, enviar</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Aviso permanente del modo cambio o cancelación -->
   <div class="change-bar" id="changeBar" role="status" hidden>
@@ -181,7 +170,7 @@
   </div>
 
   <!-- Asistente para cambiar o cancelar un pedido -->
-  <div class="cart-modal-overlay" id="changeOverlay" data-action="close-change" hidden>
+  <div class="cart-modal-overlay" id="changeOverlay" hidden>
     <div class="cart-modal" role="dialog" aria-modal="true" aria-labelledby="changeTitle">
       <div class="cart-header">
         <span class="cart-title" id="changeTitle">Cambiar o cancelar pedido</span>
@@ -196,7 +185,7 @@
   </div>
 
   <!-- MODAL / BOTTOM SHEET DE EDICIÓN DEL CARRITO -->
-  <div class="cart-modal-overlay" id="cartModalOverlay" data-action="close-cart" hidden>
+  <div class="cart-modal-overlay" id="cartModalOverlay" hidden>
     <div class="cart-modal">
       <div class="cart-header">
         <span class="cart-title">Tu Pedido</span>
@@ -217,14 +206,23 @@
         </div>
         <div class="customer-name-field">
           <label for="customerPhone">WhatsApp / Teléfono</label>
-          <input id="customerPhone" type="tel" maxlength="25" autocomplete="tel" aria-describedby="customerPhoneError" placeholder="Ej. +56 9 1234 5678" required>
-          <p id="customerPhoneError" class="customer-name-error" role="alert" hidden>Escribe un número de WhatsApp o teléfono válido.</p>
+          <div class="phone-input-group">
+            <span class="phone-prefix">+56 9</span>
+            <input id="customerPhone" type="tel" inputmode="numeric" maxlength="9" autocomplete="tel-national" aria-describedby="customerPhoneError" placeholder="1234 5678" required>
+          </div>
+          <p id="customerPhoneError" class="customer-name-error" role="alert" hidden>Ingresa los 8 dígitos de tu número de teléfono (ej. 1234 5678).</p>
         </div>
         <div class="customer-remember-field">
           <label class="remember-checkbox-label">
             <input type="checkbox" id="rememberCustomerData" checked>
             <span>Recordar mis datos para futuros pedidos</span>
           </label>
+        </div>
+        <div class="customer-privacy-prompt">
+          <button type="button" class="privacy-prompt-btn" data-action="open-privacy-modal">
+            <i data-lucide="shield-check" aria-hidden="true"></i>
+            <span>¿Por qué te pedimos esto? Cuidamos tu privacidad</span>
+          </button>
         </div>
         <div class="cart-footer-row">
           <span class="cart-footer-total-label">Total a pagar:</span>
@@ -234,9 +232,108 @@
           <button class="clear-cart-btn" data-action="clear-cart">Vaciar</button>
           <button class="whatsapp-send-btn" data-action="send-whatsapp">
             <i data-lucide="message-circle" aria-hidden="true"></i>
-            Pedir por WhatsApp
+            Enviar mi pedido
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Informativo: Protección de Datos y Privacidad -->
+  <div class="cart-modal-overlay privacy-modal-overlay" id="privacyModalOverlay" hidden>
+    <div class="cart-modal privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacyModalTitle">
+      <div class="cart-header privacy-modal-header">
+        <div class="privacy-header-content">
+          <div class="privacy-badge">
+            <i data-lucide="shield-check" aria-hidden="true"></i>
+            <span>Tu tranquilidad es lo primero</span>
+          </div>
+          <h2 class="privacy-modal-title" id="privacyModalTitle">¿Por qué te pedimos estos datos?</h2>
+        </div>
+        <button class="close-btn" data-action="close-privacy-modal" aria-label="Cerrar explicación" title="Cerrar">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="privacy-modal-body">
+        <div class="privacy-lead-card">
+          <div class="privacy-lead-icon">
+            <i data-lucide="heart-handshake" aria-hidden="true"></i>
+          </div>
+          <div class="privacy-lead-text">
+            <strong>Somos una tienda real y honesta.</strong>
+            <p>Sabemos que en internet muchas veces da desconfianza poner datos personales. Por eso queremos que estés 100% seguro de que <strong>Notes &amp; Sillage no usa tus datos para estafar, engañar ni hacer ningún uso indebido</strong>.</p>
+          </div>
+        </div>
+
+        <div class="privacy-section">
+          <h3 class="privacy-section-title">
+            <i data-lucide="user-check" aria-hidden="true"></i>
+            1. ¿Para qué necesitamos tu Nombre y Apellido?
+          </h3>
+          <p class="privacy-section-desc">
+            Solo lo usamos para saber con quién estamos tratando y cómo dirigirnos a ti con el respeto que mereces al preparar tu entrega. Queremos darte una atención personalizada y humana, no somos un robot frío ni te crearemos cuentas extrañas.
+          </p>
+        </div>
+
+        <div class="privacy-section">
+          <h3 class="privacy-section-title">
+            <i data-lucide="phone-call" aria-hidden="true"></i>
+            2. ¿Para qué usamos tu WhatsApp / Teléfono?
+          </h3>
+          <p class="privacy-section-desc">
+            Tu número se utiliza <strong>únicamente para coordinar la entrega</strong> de tus perfumes:
+          </p>
+          <ul class="privacy-list">
+            <li>Avisarte apenas tengamos listas tus fragancias.</li>
+            <li>Coordinar contigo el punto, dirección u horario más cómodo para entregártelas.</li>
+            <li>Aclarar cualquier duda o consulta que tengas sobre tus productos.</li>
+          </ul>
+        </div>
+
+        <div class="privacy-card-highlight">
+          <div class="privacy-highlight-header">
+            <i data-lucide="ban" aria-hidden="true"></i>
+            <span>Lo que NUNCA haremos con tus datos (Cero Spam):</span>
+          </div>
+          <ul class="privacy-highlight-list">
+            <li><strong>Cero llamadas molestas:</strong> Odiamos el spam tanto como tú. Jamás recibirás llamadas publicitarias sorpresa, llamadas de grabaciones ni ventas invasivas.</li>
+            <li><strong>No compartimos ni vendemos tu información:</strong> Tus datos no se entregan, no se filtran ni se venden a empresas externas, bancos ni agencias de publicidad.</li>
+            <li><strong>Cero mensajes basura:</strong> Tu contacto no se agregará a cadenas masivas ni listas de spam publicitario.</li>
+          </ul>
+        </div>
+
+        <div class="privacy-section">
+          <h3 class="privacy-section-title">
+            <i data-lucide="hard-drive" aria-hidden="true"></i>
+            3. ¿Qué significa "Recordar mis datos"?
+          </h3>
+          <p class="privacy-section-desc">
+            Si dejas esa casilla marcada, tu nombre y teléfono quedan guardados <strong>exclusivamente dentro de este navegador en tu teléfono o computador</strong>. Esto es solo por tu comodidad, para que la próxima vez que pidas no tengas que escribirlos otra vez. Si prefieres que no se guarden, simplemente desmarca la casilla y se borrarán al instante de tu equipo.
+          </p>
+        </div>
+
+        <div class="privacy-section">
+          <h3 class="privacy-section-title">
+            <i data-lucide="lock" aria-hidden="true"></i>
+            4. Tu seguridad y control
+          </h3>
+          <p class="privacy-section-desc">
+            En cualquier momento que desees que borremos tu número de nuestra agenda de entregas, solo nos dices por WhatsApp y lo eliminamos enseguida sin preguntas.
+          </p>
+        </div>
+
+        <div class="privacy-final-note">
+          <i data-lucide="check-circle-2" aria-hidden="true"></i>
+          <span>Nuestro único objetivo es que disfrutes de tus perfumes favoritos con total tranquilidad, honestidad y seguridad.</span>
+        </div>
+      </div>
+
+      <div class="privacy-modal-footer">
+        <button type="button" class="privacy-btn-ok" data-action="close-privacy-modal">
+          <i data-lucide="check" aria-hidden="true"></i>
+          <span>Entendido, volver a mi pedido</span>
+        </button>
       </div>
     </div>
   </div>
@@ -328,8 +425,107 @@
     </div>
   </div>
 
+  <!-- Modal Informativo: Protección de Datos y Privacidad -->
+  <div class="cart-modal-overlay privacy-modal-overlay" id="privacyModalOverlay" hidden>
+    <div class="cart-modal privacy-modal" role="dialog" aria-modal="true" aria-labelledby="privacyModalTitle">
+      <div class="cart-header privacy-modal-header">
+        <div class="privacy-header-content">
+          <div class="privacy-badge">
+            <i data-lucide="shield-check" aria-hidden="true"></i>
+            <span>Tu tranquilidad es lo primero</span>
+          </div>
+          <h2 class="privacy-modal-title" id="privacyModalTitle">¿Por qué te pedimos estos datos?</h2>
+        </div>
+        <button class="close-btn" data-action="close-privacy-modal" aria-label="Cerrar explicación" title="Cerrar">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="privacy-modal-body">
+        <div class="privacy-lead-card">
+          <div class="privacy-lead-icon">
+            <i data-lucide="heart-handshake" aria-hidden="true"></i>
+          </div>
+          <div class="privacy-lead-text">
+            <strong>Somos una tienda real y honesta.</strong>
+            <p>Sabemos que en internet muchas veces da desconfianza poner datos personales. Por eso queremos que estés 100% seguro de que <strong>Notes &amp; Sillage no usa tus datos para estafar, engañar ni hacer ningún uso indebido</strong>.</p>
+          </div>
+        </div>
+
+        <div class="privacy-section">
+          <h3 class="privacy-section-title">
+            <i data-lucide="user-check" aria-hidden="true"></i>
+            1. ¿Para qué necesitamos tu Nombre y Apellido?
+          </h3>
+          <p class="privacy-section-desc">
+            Solo lo usamos para saber con quién estamos tratando y cómo dirigirnos a ti con el respeto que mereces al preparar tu entrega. Queremos darte una atención personalizada y humana, no somos un robot frío ni te crearemos cuentas extrañas.
+          </p>
+        </div>
+
+        <div class="privacy-section">
+          <h3 class="privacy-section-title">
+            <i data-lucide="phone-call" aria-hidden="true"></i>
+            2. ¿Para qué usamos tu WhatsApp / Teléfono?
+          </h3>
+          <p class="privacy-section-desc">
+            Tu número se utiliza <strong>únicamente para coordinar la entrega</strong> de tus perfumes:
+          </p>
+          <ul class="privacy-list">
+            <li>Avisarte apenas tengamos listas tus fragancias.</li>
+            <li>Coordinar contigo el punto, dirección u horario más cómodo para entregártelas.</li>
+            <li>Aclarar cualquier duda o consulta que tengas sobre tus productos.</li>
+          </ul>
+        </div>
+
+        <div class="privacy-card-highlight">
+          <div class="privacy-highlight-header">
+            <i data-lucide="ban" aria-hidden="true"></i>
+            <span>Lo que NUNCA haremos con tus datos (Cero Spam):</span>
+          </div>
+          <ul class="privacy-highlight-list">
+            <li><strong>Cero llamadas molestas:</strong> Odiamos el spam tanto como tú. Jamás recibirás llamadas publicitarias sorpresa, llamadas de grabaciones ni ventas invasivas.</li>
+            <li><strong>No compartimos ni vendemos tu información:</strong> Tus datos no se entregan, no se filtran ni se venden a empresas externas, bancos ni agencias de publicidad.</li>
+            <li><strong>Cero mensajes basura:</strong> Tu contacto no se agregará a cadenas masivas ni listas de spam publicitario.</li>
+          </ul>
+        </div>
+
+        <div class="privacy-section">
+          <h3 class="privacy-section-title">
+            <i data-lucide="hard-drive" aria-hidden="true"></i>
+            3. ¿Qué significa "Recordar mis datos"?
+          </h3>
+          <p class="privacy-section-desc">
+            Si dejas esa casilla marcada, tu nombre y teléfono quedan guardados <strong>exclusivamente dentro de este navegador en tu teléfono o computador</strong>. Esto es solo por tu comodidad, para que la próxima vez que pidas no tengas que escribirlos otra vez. Si prefieres que no se guarden, simplemente desmarca la casilla y se borrarán al instante de tu equipo.
+          </p>
+        </div>
+
+        <div class="privacy-section">
+          <h3 class="privacy-section-title">
+            <i data-lucide="lock" aria-hidden="true"></i>
+            4. Tu seguridad y control
+          </h3>
+          <p class="privacy-section-desc">
+            En cualquier momento que desees que borremos tu número de nuestra agenda de entregas, solo nos dices por WhatsApp y lo eliminamos enseguida sin preguntas.
+          </p>
+        </div>
+
+        <div class="privacy-final-note">
+          <i data-lucide="check-circle-2" aria-hidden="true"></i>
+          <span>Nuestro único objetivo es que disfrutes de tus perfumes favoritos con total tranquilidad, honestidad y seguridad.</span>
+        </div>
+      </div>
+
+      <div class="privacy-modal-footer">
+        <button type="button" class="privacy-btn-ok" data-action="close-privacy-modal">
+          <i data-lucide="check" aria-hidden="true"></i>
+          <span>Entendido, volver a mi pedido</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="js/firebase-config.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="js/app.js?v=20261108_12"></script>
+  <script src="js/app.js?v=20261108_14"></script>
 </body>
 </html>
