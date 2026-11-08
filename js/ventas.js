@@ -289,6 +289,7 @@ async function loadSales() {
     allSaleRows = rows;
     updateKnownCustomersDirectory(rows);
     applyFilters();
+    renderAnalyticsDashboard(allSaleRows);
   } catch (err) {
     console.error("Error al cargar ventas:", err);
     tableBody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding:30px; color:#ef4444;">Error al consultar Firestore: ${err.message}</td></tr>`;
@@ -420,6 +421,515 @@ function updateMetrics(rows) {
   kpiFilasMostradas.textContent = `${rows.length} / ${allSaleRows.length}`;
 }
 
+// ==========================================================================
+// SECCIÓN DE GRÁFICOS Y ANALYTICS (Métricas, Instituciones y Clientes)
+// ==========================================================================
+let chartTopProductsInstance = null;
+let chartTopInstitutionsInstance = null;
+let chartTopCustomersInstance = null;
+
+const badgeTotalPerfumes = document.getElementById("badgeTotalPerfumes");
+const badgeTotalInstituciones = document.getElementById("badgeTotalInstituciones");
+const badgeTotalClientes = document.getElementById("badgeTotalClientes");
+const listTopProducts = document.getElementById("listTopProducts");
+const listTopInstitutions = document.getElementById("listTopInstitutions");
+const listTopCustomers = document.getElementById("listTopCustomers");
+
+function getChartThemeColors() {
+  const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+  return {
+    isDark,
+    textColor: isDark ? "#cbd5e1" : "#475569",
+    textMuted: isDark ? "#94a3b8" : "#64748b",
+    gridColor: isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)",
+    tooltipBg: isDark ? "#1f242d" : "#0f172a",
+    tooltipTitle: "#ffffff",
+    tooltipBody: isDark ? "#e2e8f0" : "#f8fafc",
+    borderCutoutBg: isDark ? "#181a20" : "#ffffff"
+  };
+}
+
+function renderAnalyticsDashboard(rows) {
+  if (!window.Chart) {
+    setTimeout(() => renderAnalyticsDashboard(rows), 200);
+    return;
+  }
+
+  // Filtrar pedidos no cancelados
+  const activeRows = (rows || []).filter(r => {
+    const st = (r.estado || "").toLowerCase().trim();
+    return st !== "cancelado";
+  });
+
+  const theme = getChartThemeColors();
+
+  renderTopProductsAnalytics(activeRows, theme);
+  renderTopInstitutionsAnalytics(activeRows, theme);
+  renderTopCustomersAnalytics(activeRows, theme);
+}
+
+// 1. Gráfico y Ranking: Perfumes Más Vendidos
+function renderTopProductsAnalytics(rows, theme) {
+  const canvas = document.getElementById("chartTopProducts");
+  if (!canvas) return;
+
+  const fragranceMap = new Map();
+  rows.forEach(r => {
+    const name = (r.fragrance || "Sin nombre").trim();
+    const code = (r.code || "").trim();
+    const key = name.toLowerCase();
+
+    if (!fragranceMap.has(key)) {
+      fragranceMap.set(key, {
+        name,
+        code,
+        qty: 0,
+        totalVenta: 0
+      });
+    }
+    const entry = fragranceMap.get(key);
+    entry.qty += (Number(r.qty) || 1);
+    entry.totalVenta += (Number(r.precioVenta) || 0);
+    if (!entry.code && code) entry.code = code;
+  });
+
+  const sorted = Array.from(fragranceMap.values()).sort((a, b) => b.qty - a.qty || b.totalVenta - a.totalVenta);
+
+  if (badgeTotalPerfumes) {
+    badgeTotalPerfumes.textContent = `${sorted.length} ${sorted.length === 1 ? "fragancia" : "fragancias"}`;
+  }
+
+  const topItems = sorted.slice(0, 5);
+  const maxQty = sorted[0]?.qty || 1;
+
+  if (listTopProducts) {
+    if (topItems.length === 0) {
+      listTopProducts.innerHTML = `<div class="ranking-empty">No hay ventas registradas aún</div>`;
+    } else {
+      listTopProducts.innerHTML = topItems.map((item, idx) => {
+        const medalClass = idx === 0 ? "rank-gold" : idx === 1 ? "rank-silver" : idx === 2 ? "rank-bronze" : "";
+        const pct = Math.min(100, Math.max(8, Math.round((item.qty / maxQty) * 100)));
+        const codeDisplay = item.code && item.code !== "-" ? `(${item.code})` : "";
+        return `
+          <div class="ranking-row">
+            <span class="ranking-pos ${medalClass}">${idx + 1}</span>
+            <div class="ranking-details">
+              <div class="ranking-label-wrap">
+                <span class="ranking-name" title="${item.name}">${item.name} <span class="ranking-sub-label">${codeDisplay}</span></span>
+                <span class="ranking-val">${item.qty} un. · ${formatCLP(item.totalVenta)}</span>
+              </div>
+              <div class="ranking-bar-track">
+                <div class="ranking-bar-fill bar-gold" style="width: ${pct}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  if (chartTopProductsInstance) {
+    chartTopProductsInstance.destroy();
+    chartTopProductsInstance = null;
+  }
+
+  if (topItems.length === 0) return;
+
+  const ctx = canvas.getContext("2d");
+  chartTopProductsInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: topItems.map(p => p.name.length > 18 ? p.name.substring(0, 16) + "…" : p.name),
+      datasets: [{
+        label: "Unidades vendidas",
+        data: topItems.map(p => p.qty),
+        backgroundColor: theme.isDark ? "rgba(212, 175, 55, 0.85)" : "rgba(180, 83, 9, 0.85)",
+        borderColor: theme.isDark ? "#d4af37" : "#b45309",
+        borderWidth: 1,
+        borderRadius: 5,
+        maxBarThickness: 24
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: theme.tooltipBg,
+          titleColor: theme.tooltipTitle,
+          bodyColor: theme.tooltipBody,
+          padding: 8,
+          cornerRadius: 6,
+          callbacks: {
+            title: (items) => {
+              const idx = items[0].dataIndex;
+              return topItems[idx]?.name || "";
+            },
+            label: (item) => {
+              const entry = topItems[item.dataIndex];
+              return ` ${item.parsed.x} unidades vendidas (${formatCLP(entry?.totalVenta || 0)})`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            color: theme.textColor,
+            stepSize: 1,
+            precision: 0,
+            font: { size: 10 }
+          },
+          grid: {
+            color: theme.gridColor
+          }
+        },
+        y: {
+          ticks: {
+            color: theme.textColor,
+            font: { size: 10.5, weight: "500" }
+          },
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  });
+}
+
+// 2. Gráfico y Ranking: Instituciones con Más Ventas
+function renderTopInstitutionsAnalytics(rows, theme) {
+  const canvas = document.getElementById("chartTopInstitutions");
+  if (!canvas) return;
+
+  const instMap = new Map();
+  let totalInstUnits = 0;
+
+  rows.forEach(r => {
+    let inst = (r.institution || "").trim();
+    if (!inst || inst === "-" || inst.toLowerCase() === "sin institución" || inst.toLowerCase() === "ninguna") {
+      inst = "Venta Directa / Particulares";
+    }
+    const key = inst.toLowerCase();
+    if (!instMap.has(key)) {
+      instMap.set(key, {
+        displayName: inst,
+        qty: 0,
+        totalVenta: 0
+      });
+    }
+    const entry = instMap.get(key);
+    const q = Number(r.qty) || 1;
+    entry.qty += q;
+    entry.totalVenta += (Number(r.precioVenta) || 0);
+    totalInstUnits += q;
+  });
+
+  const sorted = Array.from(instMap.values()).sort((a, b) => b.qty - a.qty || b.totalVenta - a.totalVenta);
+
+  if (badgeTotalInstituciones) {
+    badgeTotalInstituciones.textContent = `${sorted.length} ${sorted.length === 1 ? "institución" : "instituciones"}`;
+  }
+
+  const topItems = sorted.slice(0, 5);
+  const maxQty = sorted[0]?.qty || 1;
+
+  if (listTopInstitutions) {
+    if (topItems.length === 0) {
+      listTopInstitutions.innerHTML = `<div class="ranking-empty">No hay instituciones registradas aún</div>`;
+    } else {
+      listTopInstitutions.innerHTML = topItems.map((item, idx) => {
+        const medalClass = idx === 0 ? "rank-gold" : idx === 1 ? "rank-silver" : idx === 2 ? "rank-bronze" : "";
+        const pctTotal = totalInstUnits > 0 ? Math.round((item.qty / totalInstUnits) * 100) : 0;
+        const pctBar = Math.min(100, Math.max(8, Math.round((item.qty / maxQty) * 100)));
+        return `
+          <div class="ranking-row">
+            <span class="ranking-pos ${medalClass}">${idx + 1}</span>
+            <div class="ranking-details">
+              <div class="ranking-label-wrap">
+                <span class="ranking-name" title="${item.displayName}">${item.displayName}</span>
+                <span class="ranking-val">${item.qty} un. (${pctTotal}%) · ${formatCLP(item.totalVenta)}</span>
+              </div>
+              <div class="ranking-bar-track">
+                <div class="ranking-bar-fill bar-purple" style="width: ${pctBar}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  if (chartTopInstitutionsInstance) {
+    chartTopInstitutionsInstance.destroy();
+    chartTopInstitutionsInstance = null;
+  }
+
+  if (topItems.length === 0) return;
+
+  const chartColors = [
+    "#8b5cf6", // Morado
+    "#d4af37", // Oro
+    "#10b981", // Esmeralda
+    "#3b82f6", // Azul
+    "#ec4899", // Rosa
+    "#f97316"  // Naranja
+  ];
+
+  const ctx = canvas.getContext("2d");
+  chartTopInstitutionsInstance = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels: topItems.map(i => i.displayName.length > 20 ? i.displayName.substring(0, 18) + "…" : i.displayName),
+      datasets: [{
+        data: topItems.map(i => i.qty),
+        backgroundColor: chartColors.slice(0, topItems.length),
+        borderColor: theme.borderCutoutBg,
+        borderWidth: 2,
+        hoverOffset: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: "60%",
+      plugins: {
+        legend: {
+          display: true,
+          position: "bottom",
+          labels: {
+            color: theme.textColor,
+            boxWidth: 9,
+            padding: 6,
+            font: { size: 10 }
+          }
+        },
+        tooltip: {
+          backgroundColor: theme.tooltipBg,
+          titleColor: theme.tooltipTitle,
+          bodyColor: theme.tooltipBody,
+          padding: 8,
+          cornerRadius: 6,
+          callbacks: {
+            title: (items) => {
+              const idx = items[0].dataIndex;
+              return topItems[idx]?.displayName || "";
+            },
+            label: (item) => {
+              const entry = topItems[item.dataIndex];
+              const pct = totalInstUnits > 0 ? Math.round((entry.qty / totalInstUnits) * 100) : 0;
+              return ` ${entry.qty} perfumes (${pct}%) · ${formatCLP(entry.totalVenta)}`;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// 3. Gráfico y Ranking: Clientes con Más Pedidos
+function renderTopCustomersAnalytics(rows, theme) {
+  const canvas = document.getElementById("chartTopCustomers");
+  if (!canvas) return;
+
+  const clientMap = new Map();
+  rows.forEach(r => {
+    const rawName = (r.clientName || "").trim();
+    if (!rawName || rawName.toLowerCase() === "cliente" || rawName === "-") return;
+    const norm = normalizeCustomerName(rawName);
+    if (!norm) return;
+
+    if (!clientMap.has(norm)) {
+      clientMap.set(norm, {
+        displayName: rawName,
+        phone: (r.clientPhone || "").trim(),
+        institution: (r.institution || "").trim(),
+        qty: 0,
+        totalVenta: 0,
+        orderIds: new Set()
+      });
+    }
+    const entry = clientMap.get(norm);
+    entry.qty += (Number(r.qty) || 1);
+    entry.totalVenta += (Number(r.precioVenta) || 0);
+    if (r.saleId) entry.orderIds.add(r.saleId);
+    if (!entry.phone && r.clientPhone) entry.phone = r.clientPhone.trim();
+    if (!entry.institution && r.institution) entry.institution = r.institution.trim();
+  });
+
+  const sorted = Array.from(clientMap.values()).sort((a, b) => b.qty - a.qty || b.totalVenta - a.totalVenta);
+
+  if (badgeTotalClientes) {
+    badgeTotalClientes.textContent = `${sorted.length} ${sorted.length === 1 ? "cliente" : "clientes"}`;
+  }
+
+  const topItems = sorted.slice(0, 5);
+  const maxQty = sorted[0]?.qty || 1;
+
+  if (listTopCustomers) {
+    if (topItems.length === 0) {
+      listTopCustomers.innerHTML = `<div class="ranking-empty">No hay clientes con pedidos registrados aún</div>`;
+    } else {
+      listTopCustomers.innerHTML = topItems.map((item, idx) => {
+        const medalClass = idx === 0 ? "rank-gold" : idx === 1 ? "rank-silver" : idx === 2 ? "rank-bronze" : "";
+        const pctBar = Math.min(100, Math.max(8, Math.round((item.qty / maxQty) * 100)));
+        const extraLabel = item.institution ? `(${item.institution})` : (item.phone ? `(${item.phone})` : "");
+        const ordersText = item.orderIds.size > 1 ? ` · ${item.orderIds.size} compras` : "";
+        return `
+          <div class="ranking-row">
+            <span class="ranking-pos ${medalClass}">${idx + 1}</span>
+            <div class="ranking-details">
+              <div class="ranking-label-wrap">
+                <span class="ranking-name" title="${item.displayName}">${item.displayName} <span class="ranking-sub-label">${extraLabel}</span></span>
+                <span class="ranking-val">${item.qty} un.${ordersText} · ${formatCLP(item.totalVenta)}</span>
+              </div>
+              <div class="ranking-bar-track">
+                <div class="ranking-bar-fill bar-green" style="width: ${pctBar}%"></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  if (chartTopCustomersInstance) {
+    chartTopCustomersInstance.destroy();
+    chartTopCustomersInstance = null;
+  }
+
+  if (topItems.length === 0) return;
+
+  const ctx = canvas.getContext("2d");
+  chartTopCustomersInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: topItems.map(c => c.displayName.length > 18 ? c.displayName.substring(0, 16) + "…" : c.displayName),
+      datasets: [{
+        label: "Perfumes pedidos",
+        data: topItems.map(c => c.qty),
+        backgroundColor: theme.isDark ? "rgba(16, 185, 129, 0.85)" : "rgba(21, 128, 61, 0.85)",
+        borderColor: theme.isDark ? "#10b981" : "#15803d",
+        borderWidth: 1,
+        borderRadius: 5,
+        maxBarThickness: 24
+      }]
+    },
+    options: {
+      indexAxis: "y",
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: theme.tooltipBg,
+          titleColor: theme.tooltipTitle,
+          bodyColor: theme.tooltipBody,
+          padding: 8,
+          cornerRadius: 6,
+          callbacks: {
+            title: (items) => {
+              const idx = items[0].dataIndex;
+              return topItems[idx]?.displayName || "";
+            },
+            label: (item) => {
+              const entry = topItems[item.dataIndex];
+              const instText = entry?.institution ? ` (${entry.institution})` : "";
+              return ` ${item.parsed.x} perfumes pedidos${instText} · ${formatCLP(entry?.totalVenta || 0)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            color: theme.textColor,
+            stepSize: 1,
+            precision: 0,
+            font: { size: 10 }
+          },
+          grid: {
+            color: theme.gridColor
+          }
+        },
+        y: {
+          ticks: {
+            color: theme.textColor,
+            font: { size: 10.5, weight: "500" }
+          },
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  });
+}
+
+// 4. Control de colapso y sincronización del dashboard
+function initAnalyticsControls() {
+  const btnToggleAnalytics = document.getElementById("btnToggleAnalytics");
+  const analyticsGrid = document.getElementById("analyticsGrid");
+  const btnToggleAnalyticsText = document.getElementById("btnToggleAnalyticsText");
+  const iconToggleAnalytics = document.getElementById("iconToggleAnalytics");
+
+  if (btnToggleAnalytics && analyticsGrid) {
+    const savedState = localStorage.getItem("notes_analytics_visible");
+    if (savedState === "hidden") {
+      analyticsGrid.classList.add("is-collapsed");
+      btnToggleAnalytics.setAttribute("aria-expanded", "false");
+      if (btnToggleAnalyticsText) btnToggleAnalyticsText.textContent = "Mostrar análisis";
+      if (iconToggleAnalytics) iconToggleAnalytics.setAttribute("data-lucide", "chevron-down");
+    }
+
+    btnToggleAnalytics.addEventListener("click", () => {
+      const isCollapsed = analyticsGrid.classList.toggle("is-collapsed");
+      btnToggleAnalytics.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+      if (btnToggleAnalyticsText) {
+        btnToggleAnalyticsText.textContent = isCollapsed ? "Mostrar análisis" : "Ocultar análisis";
+      }
+      if (iconToggleAnalytics) {
+        iconToggleAnalytics.setAttribute("data-lucide", isCollapsed ? "chevron-down" : "chevron-up");
+      }
+      localStorage.setItem("notes_analytics_visible", isCollapsed ? "hidden" : "visible");
+      if (window.lucide) lucide.createIcons();
+      if (!isCollapsed) {
+        setTimeout(() => {
+          if (chartTopProductsInstance) chartTopProductsInstance.resize();
+          if (chartTopInstitutionsInstance) chartTopInstitutionsInstance.resize();
+          if (chartTopCustomersInstance) chartTopCustomersInstance.resize();
+        }, 60);
+      }
+    });
+  }
+
+  // Observer para cambios de tema (dark/light)
+  const themeObserver = new MutationObserver(mutations => {
+    mutations.forEach(m => {
+      if (m.attributeName === "data-theme") {
+        if (allSaleRows && allSaleRows.length > 0) {
+          renderAnalyticsDashboard(allSaleRows);
+        }
+      }
+    });
+  });
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  window.addEventListener("storage", e => {
+    if (e.key === "notes_theme" && allSaleRows && allSaleRows.length > 0) {
+      renderAnalyticsDashboard(allSaleRows);
+    }
+  });
+}
+
+// Inicializar controles de analíticas
+initAnalyticsControls();
+
 // 7. Manejo de cambios interactivos directos en la tabla
 tableBody.addEventListener("change", async event => {
   const target = event.target;
@@ -444,6 +954,7 @@ tableBody.addEventListener("change", async event => {
         r.estado = newStatus;
       }
     });
+    renderAnalyticsDashboard(allSaleRows);
 
     try {
       await updateSaleRow(saleId, code, { estado: newStatus });

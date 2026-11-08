@@ -84,6 +84,97 @@
       </div>
     </section>
 
+    <!-- Sección de Gráficos y Estadísticas -->
+    <section class="analytics-dashboard-section" id="analyticsSection">
+      <div class="analytics-header">
+        <div class="analytics-header-title">
+          <div class="analytics-title-wrap">
+            <span class="analytics-icon-badge">
+              <i data-lucide="bar-chart-3" aria-hidden="true"></i>
+            </span>
+            <div>
+              <h2 class="analytics-title">Métricas y Rendimiento</h2>
+              <p class="analytics-subtitle">Perfumes más vendidos, instituciones con más volumen y clientes más frecuentes</p>
+            </div>
+          </div>
+        </div>
+        <div class="analytics-header-actions">
+          <button type="button" id="btnToggleAnalytics" class="btn-analytics-toggle" title="Mostrar u ocultar gráficos" aria-expanded="true">
+            <span id="btnToggleAnalyticsText">Ocultar análisis</span>
+            <i data-lucide="chevron-up" id="iconToggleAnalytics" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="analytics-grid" id="analyticsGrid">
+        <!-- Tarjeta 1: Perfumes Más Vendidos -->
+        <div class="analytics-card">
+          <div class="analytics-card-header">
+            <div class="analytics-card-title-group">
+              <span class="card-icon-pill icon-gold">
+                <i data-lucide="flame" aria-hidden="true"></i>
+              </span>
+              <div>
+                <h3 class="analytics-card-title">Más Vendidos</h3>
+                <span class="analytics-card-sub">Top fragancias por unidades</span>
+              </div>
+            </div>
+            <span class="card-stat-pill" id="badgeTotalPerfumes">0 fragancias</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chartTopProducts"></canvas>
+          </div>
+          <div class="ranking-list" id="listTopProducts">
+            <!-- Ranking generado dinámicamente -->
+          </div>
+        </div>
+
+        <!-- Tarjeta 2: Instituciones con Más Ventas -->
+        <div class="analytics-card">
+          <div class="analytics-card-header">
+            <div class="analytics-card-title-group">
+              <span class="card-icon-pill icon-purple">
+                <i data-lucide="building-2" aria-hidden="true"></i>
+              </span>
+              <div>
+                <h3 class="analytics-card-title">Por Institución</h3>
+                <span class="analytics-card-sub">Distribución de compras</span>
+              </div>
+            </div>
+            <span class="card-stat-pill" id="badgeTotalInstituciones">0 sedes</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chartTopInstitutions"></canvas>
+          </div>
+          <div class="ranking-list" id="listTopInstitutions">
+            <!-- Ranking generado dinámicamente -->
+          </div>
+        </div>
+
+        <!-- Tarjeta 3: Clientes con Más Pedidos -->
+        <div class="analytics-card">
+          <div class="analytics-card-header">
+            <div class="analytics-card-title-group">
+              <span class="card-icon-pill icon-green">
+                <i data-lucide="users" aria-hidden="true"></i>
+              </span>
+              <div>
+                <h3 class="analytics-card-title">Top Clientes</h3>
+                <span class="analytics-card-sub">Clientes con más perfumes</span>
+              </div>
+            </div>
+            <span class="card-stat-pill" id="badgeTotalClientes">0 clientes</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="chartTopCustomers"></canvas>
+          </div>
+          <div class="ranking-list" id="listTopCustomers">
+            <!-- Ranking generado dinámicamente -->
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Controles de Búsqueda -->
     <section class="table-controls">
       <div class="search-field">
@@ -309,6 +400,7 @@
   </div>
 
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/ventas.js"></script>
 </body>
