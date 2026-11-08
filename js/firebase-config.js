@@ -1,4 +1,4 @@
-// Configuración e integración de Firebase Cloud Firestore para Notes & Sillage
+// Configuración e integración de Firebase Cloud Firestore y Auth para Notes & Sillage
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-app.js";
 import {
   getFirestore,
@@ -13,6 +13,12 @@ import {
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/11.0.2/firebase-auth.js";
 
 // Credenciales del proyecto en Firebase
 export const firebaseConfig = {
@@ -27,9 +33,66 @@ export const firebaseConfig = {
 // Inicializar servicios
 export const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
 
 window.firebaseApp = app;
 window.firebaseDb = db;
+window.firebaseAuth = auth;
+
+// Helper de autenticación con Firebase (Email / Password)
+export async function loginWithEmail(email, password) {
+  try {
+    const cleanEmail = (email || "").trim();
+    if (!cleanEmail || !password) {
+      return { success: false, message: "Por favor ingresa tu correo y contraseña." };
+    }
+    const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
+    return { success: true, user: userCredential.user };
+  } catch (error) {
+    console.warn("Fallo de autenticación Firebase:", error.code, error.message);
+    let message = "No fue posible iniciar sesión. Verifica tus datos.";
+    switch (error.code) {
+      case "auth/invalid-credential":
+      case "auth/wrong-password":
+      case "auth/user-not-found":
+        message = "El correo o la contraseña ingresada son incorrectos.";
+        break;
+      case "auth/invalid-email":
+        message = "El correo electrónico no tiene un formato válido.";
+        break;
+      case "auth/user-disabled":
+        message = "Esta cuenta ha sido inhabilitada en Firebase.";
+        break;
+      case "auth/too-many-requests":
+        message = "Demasiados intentos fallidos. Inténtalo de nuevo en unos minutos.";
+        break;
+      case "auth/network-request-failed":
+        message = "Error de conexión. Verifica tu conexión a internet.";
+        break;
+      default:
+        message = error.message || message;
+    }
+    return { success: false, code: error.code, message };
+  }
+}
+
+export async function logoutUser() {
+  try {
+    await signOut(auth);
+    return { success: true };
+  } catch (error) {
+    console.error("Error al cerrar sesión:", error);
+    return { success: false, message: error.message };
+  }
+}
+
+export function onAuthStatusChange(callback) {
+  return onAuthStateChanged(auth, callback);
+}
+
+export function getCurrentUser() {
+  return auth.currentUser;
+}
 
 const CACHE_KEY = "notes_catalog_cache_v3";
 
@@ -496,7 +559,7 @@ export async function updateFullSaleRow(saleId, oldCode, updatedData) {
   }
 }
 
-// Compatibilidad
+// Compatibilidad y APIs Globales
 export const saveOrderToFirestore = recordSale;
 window.saveOrderToFirestore = recordSale;
 window.recordSaleInFirestore = recordSale;
@@ -507,6 +570,10 @@ window.updateFullSaleRow = updateFullSaleRow;
 window.deleteSaleRow = deleteSaleRow;
 window.getUnitFinancials = getUnitFinancials;
 window.loadCatalogFromFirestore = loadCatalogFromFirestore;
+window.loginWithEmail = loginWithEmail;
+window.logoutUser = logoutUser;
+window.onAuthStatusChange = onAuthStatusChange;
+window.getCurrentUser = getCurrentUser;
 
 // Sincronizar catálogo
 loadCatalogFromFirestore();

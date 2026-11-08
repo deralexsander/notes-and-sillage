@@ -92,6 +92,41 @@ body.sales-table-view {
   gap: 10px;
 }
 
+.auth-ventas-user-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.auth-ventas-email {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  color: var(--gold-primary);
+  font-weight: 600;
+}
+
+.auth-ventas-email i,
+.auth-ventas-email svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-ventas-logout {
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.btn-ventas-logout:hover {
+  background: rgba(239, 68, 68, 0.12) !important;
+  border-color: #ef4444 !important;
+}
+
 .btn-secondary {
   background-color: var(--bg-secondary);
   color: var(--text-main);

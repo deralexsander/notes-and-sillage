@@ -37,7 +37,11 @@
           <i data-lucide="moon" class="theme-icon-moon" aria-hidden="true"></i>
           <i data-lucide="sun" class="theme-icon-sun" aria-hidden="true"></i>
         </button>
-        <a href="ventas.html" class="sales-link-btn" title="Historial y Gestión de Ventas" aria-label="Historial y Gestión de Ventas">
+        <button id="btnOpenAuthModal" class="auth-action-btn" type="button" aria-label="Ingresar al sistema" title="Ingresar">
+          <i data-lucide="user" class="auth-btn-icon" aria-hidden="true"></i>
+          <span id="authBtnLabel" class="auth-btn-label">Ingresar</span>
+        </button>
+        <a href="ventas.html" id="headerSalesLink" class="sales-link-btn" title="Historial y Gestión de Ventas" aria-label="Historial y Gestión de Ventas" hidden>
           <i data-lucide="bar-chart-2" aria-hidden="true"></i>
         </a>
       </div>
@@ -210,8 +214,95 @@
     </div>
   </div>
 
+  <!-- Modal de Ingreso (Firebase Auth) -->
+  <div id="authModalOverlay" class="auth-modal-overlay" hidden>
+    <div class="auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="authModalTitle">
+      <button type="button" id="btnCloseAuthModal" class="auth-modal-close" aria-label="Cerrar modal">
+        <i data-lucide="x" aria-hidden="true"></i>
+      </button>
+
+      <!-- Vista 1: Formulario de Login -->
+      <div id="authLoginFormView">
+        <div class="auth-modal-header">
+          <div class="auth-modal-badge">
+            <i data-lucide="shield-check" aria-hidden="true"></i>
+            <span>Acceso Privado</span>
+          </div>
+          <h2 id="authModalTitle" class="auth-modal-title">Ingreso al Sistema</h2>
+          <p class="auth-modal-subtitle">Inicia sesión con tu correo y contraseña registrados en Firebase.</p>
+        </div>
+
+        <div id="authErrorAlert" class="auth-error-alert" hidden role="alert">
+          <i data-lucide="alert-circle" aria-hidden="true"></i>
+          <span id="authErrorMessage"></span>
+        </div>
+
+        <form id="authLoginForm" class="auth-login-form" novalidate>
+          <div class="auth-field-group">
+            <label for="authEmailInput" class="auth-field-label">Correo electrónico</label>
+            <div class="auth-input-container">
+              <i data-lucide="mail" class="auth-input-icon" aria-hidden="true"></i>
+              <input type="email" id="authEmailInput" class="auth-input" placeholder="tu-correo@ejemplo.com" required autocomplete="username">
+            </div>
+          </div>
+
+          <div class="auth-field-group">
+            <label for="authPasswordInput" class="auth-field-label">Contraseña</label>
+            <div class="auth-input-container">
+              <i data-lucide="lock" class="auth-input-icon" aria-hidden="true"></i>
+              <input type="password" id="authPasswordInput" class="auth-input" placeholder="••••••••" required autocomplete="current-password">
+              <button type="button" id="btnToggleAuthPassword" class="auth-toggle-pwd-btn" title="Mostrar contraseña" aria-label="Mostrar contraseña">
+                <i data-lucide="eye" id="authEyeOpen" aria-hidden="true"></i>
+                <i data-lucide="eye-off" id="authEyeClosed" aria-hidden="true" style="display:none;"></i>
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" id="btnSubmitAuthLogin" class="auth-submit-btn">
+            <span id="authBtnSpinner" class="auth-spinner" hidden></span>
+            <span id="authBtnText">Ingresar</span>
+            <i data-lucide="arrow-right" class="auth-submit-arrow" aria-hidden="true"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- Vista 2: Sesión Activa -->
+      <div id="authLoggedInView" hidden>
+        <div class="auth-modal-header">
+          <div class="auth-modal-badge badge-active">
+            <i data-lucide="check-circle" aria-hidden="true"></i>
+            <span>Sesión Activa</span>
+          </div>
+          <h2 class="auth-modal-title">Cuenta Autorizada</h2>
+          <p class="auth-modal-subtitle">Has iniciado sesión correctamente con Firebase.</p>
+        </div>
+
+        <div class="auth-user-card">
+          <div class="auth-user-avatar">
+            <i data-lucide="user-check" aria-hidden="true"></i>
+          </div>
+          <div class="auth-user-details">
+            <span class="auth-user-email-label">Usuario Conectado:</span>
+            <strong id="authLoggedEmailDisplay" class="auth-user-email-val"></strong>
+          </div>
+        </div>
+
+        <div class="auth-logged-actions">
+          <a href="ventas.html" class="auth-btn-ventas">
+            <i data-lucide="bar-chart-2" aria-hidden="true"></i>
+            <span>Ir a Planilla de Ventas</span>
+          </a>
+          <button type="button" id="btnAuthLogout" class="auth-btn-logout">
+            <i data-lucide="log-out" aria-hidden="true"></i>
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="js/firebase-config.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="js/app.js?v=20261108_11"></script>
+  <script src="js/app.js?v=20261108_12"></script>
 </body>
 </html>

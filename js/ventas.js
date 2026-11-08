@@ -6,7 +6,11 @@ import {
   updateFullSaleRow,
   deleteSaleRow,
   getUnitFinancials,
-  loadCatalogFromFirestore
+  loadCatalogFromFirestore,
+  loginWithEmail,
+  logoutUser,
+  onAuthStatusChange,
+  getCurrentUser
 } from "./firebase-config.js";
 
 let allSaleRows = [];
@@ -876,6 +880,137 @@ document.addEventListener("keydown", e => {
   }
 });
 
-// Arranque
-initCatalog();
-loadSales();
+// ==========================================================================
+// CONTROL DE AUTENTICACIÓN Y PROTECCIÓN DE ACCESO (FIREBASE AUTH)
+// ==========================================================================
+const ventasAuthModalOverlay = document.getElementById("ventasAuthModalOverlay");
+const authVentasUserBar = document.getElementById("authVentasUserBar");
+const authVentasEmailText = document.getElementById("authVentasEmailText");
+const btnVentasLogout = document.getElementById("btnVentasLogout");
+const ventasAuthForm = document.getElementById("ventasAuthForm");
+const ventasAuthEmail = document.getElementById("ventasAuthEmail");
+const ventasAuthPassword = document.getElementById("ventasAuthPassword");
+const btnToggleVentasAuthPassword = document.getElementById("btnToggleVentasAuthPassword");
+const ventasEyeOpen = document.getElementById("ventasEyeOpen");
+const ventasEyeClosed = document.getElementById("ventasEyeClosed");
+const ventasAuthErrorAlert = document.getElementById("ventasAuthErrorAlert");
+const ventasAuthErrorMsg = document.getElementById("ventasAuthErrorMsg");
+const btnSubmitVentasAuth = document.getElementById("btnSubmitVentasAuth");
+const ventasAuthSpinner = document.getElementById("ventasAuthSpinner");
+const ventasAuthBtnText = document.getElementById("ventasAuthBtnText");
+
+let isVentasAuthenticated = false;
+
+function showVentasAuthError(msg) {
+  if (ventasAuthErrorMsg) ventasAuthErrorMsg.textContent = msg;
+  if (ventasAuthErrorAlert) ventasAuthErrorAlert.hidden = false;
+  if (window.lucide) lucide.createIcons();
+}
+
+function clearVentasAuthError() {
+  if (ventasAuthErrorAlert) ventasAuthErrorAlert.hidden = true;
+  if (ventasAuthErrorMsg) ventasAuthErrorMsg.textContent = "";
+}
+
+function setVentasAuthState(user) {
+  if (user && user.email) {
+    isVentasAuthenticated = true;
+    if (ventasAuthModalOverlay) ventasAuthModalOverlay.hidden = true;
+    if (authVentasUserBar) authVentasUserBar.hidden = false;
+    if (authVentasEmailText) {
+      const short = user.displayName || user.email.split("@")[0];
+      authVentasEmailText.textContent = short;
+      if (authVentasEmailText.parentElement) {
+        authVentasEmailText.parentElement.title = `Sesión activa: ${user.email}`;
+      }
+    }
+    if (btnNewManualSale) btnNewManualSale.disabled = false;
+    if (btnExportCSV) btnExportCSV.disabled = false;
+
+    // Cargar datos una vez validada la autenticación
+    initCatalog();
+    loadSales();
+  } else {
+    isVentasAuthenticated = false;
+    if (authVentasUserBar) authVentasUserBar.hidden = true;
+    if (ventasAuthModalOverlay) {
+      ventasAuthModalOverlay.hidden = false;
+      clearVentasAuthError();
+    }
+    if (btnNewManualSale) btnNewManualSale.disabled = true;
+    if (btnExportCSV) btnExportCSV.disabled = true;
+    allSaleRows = [];
+    tableBody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding:50px 20px; color:var(--text-muted);"><i data-lucide="lock" style="width:28px; height:28px; display:block; margin:0 auto 12px; color:var(--gold-primary);"></i> Acceso protegido. Por favor inicia sesión con tu cuenta de Firebase para visualizar la planilla.</td></tr>`;
+    updateMetrics([]);
+  }
+  if (window.lucide) lucide.createIcons();
+}
+
+// Toggle mostrar / ocultar contraseña en el modal de ventas
+if (btnToggleVentasAuthPassword && ventasAuthPassword) {
+  btnToggleVentasAuthPassword.addEventListener("click", () => {
+    const isPass = ventasAuthPassword.type === "password";
+    ventasAuthPassword.type = isPass ? "text" : "password";
+    if (ventasEyeOpen && ventasEyeClosed) {
+      ventasEyeOpen.style.display = isPass ? "none" : "";
+      ventasEyeClosed.style.display = isPass ? "" : "none";
+    }
+    btnToggleVentasAuthPassword.setAttribute("title", isPass ? "Ocultar contraseña" : "Mostrar contraseña");
+    if (window.lucide) lucide.createIcons();
+  });
+}
+
+// Submit del formulario de inicio de sesión en ventas
+if (ventasAuthForm) {
+  ventasAuthForm.addEventListener("submit", async e => {
+    e.preventDefault();
+    clearVentasAuthError();
+
+    const email = (ventasAuthEmail?.value || "").trim();
+    const password = ventasAuthPassword?.value || "";
+
+    if (!email || !password) {
+      showVentasAuthError("Ingresa tu correo y contraseña.");
+      return;
+    }
+
+    if (btnSubmitVentasAuth) btnSubmitVentasAuth.disabled = true;
+    if (ventasAuthSpinner) ventasAuthSpinner.hidden = false;
+    if (ventasAuthBtnText) ventasAuthBtnText.textContent = "Verificando...";
+
+    try {
+      const res = await loginWithEmail(email, password);
+      if (res.success) {
+        clearVentasAuthError();
+        if (ventasAuthPassword) ventasAuthPassword.value = "";
+        setVentasAuthState(res.user);
+      } else {
+        showVentasAuthError(res.message || "Error al iniciar sesión.");
+      }
+    } catch (err) {
+      showVentasAuthError(err.message || "Ocurrió un error inesperado al conectar.");
+    } finally {
+      if (btnSubmitVentasAuth) btnSubmitVentasAuth.disabled = false;
+      if (ventasAuthSpinner) ventasAuthSpinner.hidden = true;
+      if (ventasAuthBtnText) ventasAuthBtnText.textContent = "Ingresar";
+      if (window.lucide) lucide.createIcons();
+    }
+  });
+}
+
+// Cerrar sesión
+if (btnVentasLogout) {
+  btnVentasLogout.addEventListener("click", async () => {
+    try {
+      await logoutUser();
+      setVentasAuthState(null);
+    } catch (err) {
+      console.error("Error al salir:", err);
+    }
+  });
+}
+
+// Arranque reactivo protegido
+onAuthStatusChange(user => {
+  setVentasAuthState(user);
+});

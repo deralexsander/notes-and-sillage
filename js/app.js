@@ -1703,6 +1703,214 @@ function initTheme() {
   }
 }
 
+// Gestión de Autenticación de Usuarios (Firebase Auth)
+let authModalInitialized = false;
+
+function initAuthModal() {
+  const btnOpenAuthModal = document.getElementById("btnOpenAuthModal");
+  const authBtnLabel = document.getElementById("authBtnLabel");
+  const headerSalesLink = document.getElementById("headerSalesLink");
+  const authModalOverlay = document.getElementById("authModalOverlay");
+  const btnCloseAuthModal = document.getElementById("btnCloseAuthModal");
+  const authLoginFormView = document.getElementById("authLoginFormView");
+  const authLoggedInView = document.getElementById("authLoggedInView");
+  const authErrorAlert = document.getElementById("authErrorAlert");
+  const authErrorMessage = document.getElementById("authErrorMessage");
+  const authLoginForm = document.getElementById("authLoginForm");
+  const authEmailInput = document.getElementById("authEmailInput");
+  const authPasswordInput = document.getElementById("authPasswordInput");
+  const btnToggleAuthPassword = document.getElementById("btnToggleAuthPassword");
+  const authEyeOpen = document.getElementById("authEyeOpen");
+  const authEyeClosed = document.getElementById("authEyeClosed");
+  const btnSubmitAuthLogin = document.getElementById("btnSubmitAuthLogin");
+  const authBtnSpinner = document.getElementById("authBtnSpinner");
+  const authBtnText = document.getElementById("authBtnText");
+  const authLoggedEmailDisplay = document.getElementById("authLoggedEmailDisplay");
+  const btnAuthLogout = document.getElementById("btnAuthLogout");
+
+  if (!authModalOverlay) return;
+
+  function clearAuthError() {
+    if (authErrorAlert) authErrorAlert.hidden = true;
+    if (authErrorMessage) authErrorMessage.textContent = "";
+  }
+
+  function showAuthError(msg) {
+    if (authErrorMessage) authErrorMessage.textContent = msg;
+    if (authErrorAlert) authErrorAlert.hidden = false;
+    renderLucideIcons();
+  }
+
+  function updateAuthState(user) {
+    if (user && user.email) {
+      if (btnOpenAuthModal) {
+        btnOpenAuthModal.classList.add("logged-in");
+        btnOpenAuthModal.setAttribute("title", `Sesión iniciada: ${user.email}`);
+        btnOpenAuthModal.setAttribute("aria-label", `Sesión iniciada: ${user.email}`);
+      }
+      if (authBtnLabel) {
+        const shortName = user.displayName || user.email.split("@")[0];
+        authBtnLabel.textContent = shortName;
+      }
+      if (headerSalesLink) {
+        headerSalesLink.hidden = false;
+      }
+      if (authLoggedEmailDisplay) {
+        authLoggedEmailDisplay.textContent = user.email;
+      }
+      if (authLoginFormView) authLoginFormView.hidden = true;
+      if (authLoggedInView) authLoggedInView.hidden = false;
+    } else {
+      if (btnOpenAuthModal) {
+        btnOpenAuthModal.classList.remove("logged-in");
+        btnOpenAuthModal.setAttribute("title", "Ingresar al sistema");
+        btnOpenAuthModal.setAttribute("aria-label", "Ingresar al sistema");
+      }
+      if (authBtnLabel) {
+        authBtnLabel.textContent = "Ingresar";
+      }
+      if (headerSalesLink) {
+        headerSalesLink.hidden = true;
+      }
+      if (authLoginFormView) authLoginFormView.hidden = false;
+      if (authLoggedInView) authLoggedInView.hidden = true;
+    }
+    renderLucideIcons();
+  }
+
+  // Escuchar estado de autenticación en Firebase
+  if (typeof window.onAuthStatusChange === "function") {
+    window.onAuthStatusChange(user => {
+      updateAuthState(user);
+    });
+  } else {
+    // Si la función aún está cargándose en el módulo
+    const checkInterval = setInterval(() => {
+      if (typeof window.onAuthStatusChange === "function") {
+        clearInterval(checkInterval);
+        window.onAuthStatusChange(user => {
+          updateAuthState(user);
+        });
+      }
+    }, 150);
+    setTimeout(() => clearInterval(checkInterval), 5000);
+  }
+
+  if (authModalInitialized) return;
+
+  // Abrir Modal
+  if (btnOpenAuthModal) {
+    btnOpenAuthModal.addEventListener("click", () => {
+      clearAuthError();
+      authModalOverlay.hidden = false;
+      renderLucideIcons();
+      if (!authLoggedInView || authLoggedInView.hidden) {
+        setTimeout(() => {
+          if (authEmailInput) authEmailInput.focus();
+        }, 120);
+      }
+    });
+  }
+
+  // Cerrar Modal
+  function closeAuthModal() {
+    authModalOverlay.hidden = true;
+    clearAuthError();
+  }
+
+  if (btnCloseAuthModal) {
+    btnCloseAuthModal.addEventListener("click", closeAuthModal);
+  }
+
+  authModalOverlay.addEventListener("click", event => {
+    if (event.target === authModalOverlay) {
+      closeAuthModal();
+    }
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && !authModalOverlay.hidden) {
+      closeAuthModal();
+    }
+  });
+
+  // Mostrar / Ocultar contraseña
+  if (btnToggleAuthPassword && authPasswordInput) {
+    btnToggleAuthPassword.addEventListener("click", () => {
+      const isPass = authPasswordInput.type === "password";
+      authPasswordInput.type = isPass ? "text" : "password";
+      if (authEyeOpen && authEyeClosed) {
+        authEyeOpen.style.display = isPass ? "none" : "";
+        authEyeClosed.style.display = isPass ? "" : "none";
+      }
+      btnToggleAuthPassword.setAttribute("title", isPass ? "Ocultar contraseña" : "Mostrar contraseña");
+      renderLucideIcons();
+    });
+  }
+
+  // Enviar Formulario de Login
+  if (authLoginForm) {
+    authLoginForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      clearAuthError();
+
+      const email = (authEmailInput?.value || "").trim();
+      const password = authPasswordInput?.value || "";
+
+      if (!email || !password) {
+        showAuthError("Ingresa tu correo y contraseña.");
+        return;
+      }
+
+      // Estado de carga en el botón
+      if (btnSubmitAuthLogin) btnSubmitAuthLogin.disabled = true;
+      if (authBtnSpinner) authBtnSpinner.hidden = false;
+      if (authBtnText) authBtnText.textContent = "Verificando...";
+
+      try {
+        if (typeof window.loginWithEmail !== "function") {
+          throw new Error("El módulo de autenticación de Firebase no está listo. Recarga la página.");
+        }
+
+        const res = await window.loginWithEmail(email, password);
+        if (res.success) {
+          clearAuthError();
+          if (authPasswordInput) authPasswordInput.value = "";
+          updateAuthState(res.user);
+          // Opcional: Cerrar modal tras login o mantener la confirmación
+          authModalOverlay.hidden = true;
+        } else {
+          showAuthError(res.message || "Error al iniciar sesión.");
+        }
+      } catch (err) {
+        showAuthError(err.message || "Ocurrió un error inesperado al conectar.");
+      } finally {
+        if (btnSubmitAuthLogin) btnSubmitAuthLogin.disabled = false;
+        if (authBtnSpinner) authBtnSpinner.hidden = true;
+        if (authBtnText) authBtnText.textContent = "Ingresar";
+        renderLucideIcons();
+      }
+    });
+  }
+
+  // Cerrar Sesión
+  if (btnAuthLogout) {
+    btnAuthLogout.addEventListener("click", async () => {
+      try {
+        if (typeof window.logoutUser === "function") {
+          await window.logoutUser();
+        }
+        updateAuthState(null);
+        closeAuthModal();
+      } catch (err) {
+        console.error("Error al cerrar sesión:", err);
+      }
+    });
+  }
+
+  authModalInitialized = true;
+}
+
 // Render y arranque reactivo con Firebase
 let appInitialized = false;
 
@@ -1713,6 +1921,7 @@ function initApp() {
     appInitialized = true;
   }
   initTheme();
+  initAuthModal();
   renderProducts();
   renderLucideIcons();
   if (currentCategory === "all") {
@@ -1722,10 +1931,12 @@ function initApp() {
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
+  initAuthModal();
   if (currentCategory === "all") resetCategoryBarScroll();
 });
 
 window.addEventListener("pageshow", () => {
+  initAuthModal();
   if (currentCategory === "all") resetCategoryBarScroll();
 });
 
