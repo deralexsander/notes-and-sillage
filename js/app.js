@@ -223,12 +223,12 @@ function getPresentationImage(product) {
   if (product.cat === "crema") {
     const code = (product.code || "").toUpperCase().replace(/\s+/g, "");
     if (code.includes("T-03") || code.includes("T03")) {
-      return { src: "img/cremas/Presentaci%C3%B3n%20general/crema-perfection-frasco.webp", alt: "Crema Perfection Essien 50 ml" };
+      return { src: "img/cremas/Presentaci%C3%B3n%20general/crema-perfection-t03-50ml.webp", alt: "Crema Perfection Essien 50 ml" };
     }
     if (code.includes("T-04") || code.includes("T04")) {
-      return { src: "img/cremas/Presentaci%C3%B3n%20general/crema-propoleo-frasco.webp", alt: "Crema de Propóleo Essien 50 ml" };
+      return { src: "img/cremas/Presentaci%C3%B3n%20general/crema-propoleo-t04-50ml.webp", alt: "Crema de Propóleo Essien 50 ml" };
     }
-    return { src: "img/cremas/Presentaci%C3%B3n%20general/crema-perfection-frasco.webp", alt: "Crema y tratamiento facial 50 ml" };
+    return { src: "img/cremas/Presentaci%C3%B3n%20general/crema-perfection-t03-50ml.webp", alt: "Crema y tratamiento facial 50 ml" };
   }
   return null;
 }
