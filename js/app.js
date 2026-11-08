@@ -542,7 +542,7 @@ function buildProductCard(p, rankNumber) {
   let rankBadgeHtml = "";
   if (typeof rankNumber === "number" && rankNumber >= 1 && rankNumber <= 4) {
     const rankIcons = ["🥇", "🥈", "🥉", "⭐"];
-    rankBadgeHtml = `<span class="card-badge badge-rank-top rank-${rankNumber}">${rankIcons[rankNumber - 1]} #${rankNumber} Más Vendido</span>`;
+    rankBadgeHtml = `<span class="card-badge badge-rank-top rank-${rankNumber}">${rankIcons[rankNumber - 1]} #${rankNumber}</span>`;
   }
 
   const presentationVisible = isPresentationVisible(p);
@@ -1016,6 +1016,22 @@ function openCartModal() {
 
 function closeCartModal() {
   document.getElementById("cartModalOverlay").hidden = true;
+}
+
+// Modal informativo de privacidad y resguardo de datos
+function openPrivacyModal() {
+  const overlay = document.getElementById("privacyModalOverlay");
+  if (!overlay) return;
+  overlay.hidden = false;
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    window.lucide.createIcons();
+  }
+}
+
+function closePrivacyModal() {
+  const overlay = document.getElementById("privacyModalOverlay");
+  if (!overlay) return;
+  overlay.hidden = true;
 }
 
 // Renderizar contenido del modal de carrito
@@ -1516,6 +1532,10 @@ document.addEventListener("error", event => {
 
 document.addEventListener("click", event => {
   // Cerrar al hacer clic en el fondo oscuro
+  if (event.target && event.target.id === "privacyModalOverlay") {
+    closePrivacyModal();
+    return;
+  }
   if (event.target && event.target.id === "cartModalOverlay") {
     closeCartModal();
     return;
@@ -1529,6 +1549,12 @@ document.addEventListener("click", event => {
   if (!control) return;
 
   switch (control.dataset.action) {
+    case "open-privacy-modal":
+      openPrivacyModal();
+      break;
+    case "close-privacy-modal":
+      closePrivacyModal();
+      break;
     case "open-change":
       openChangeFlow();
       break;
@@ -1622,6 +1648,11 @@ document.addEventListener("click", event => {
 // Cerrar modales con tecla Escape
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
+    const privacyOverlay = document.getElementById("privacyModalOverlay");
+    if (privacyOverlay && !privacyOverlay.hidden) {
+      closePrivacyModal();
+      return;
+    }
     setHelpOpen(false);
     closeCartModal();
     if (changeFlow && !document.getElementById("changeOverlay").hidden) showCatalogForChange();
