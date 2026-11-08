@@ -1743,17 +1743,12 @@ function initAuthModal() {
 
   function updateAuthState(user) {
     if (user && user.email) {
-      if (btnOpenAuthModal) {
-        btnOpenAuthModal.classList.add("logged-in");
-        btnOpenAuthModal.setAttribute("title", `Sesión iniciada: ${user.email}`);
-        btnOpenAuthModal.setAttribute("aria-label", `Sesión iniciada: ${user.email}`);
-      }
-      if (authBtnLabel) {
-        const shortName = user.displayName || user.email.split("@")[0];
-        authBtnLabel.textContent = shortName;
-      }
+      // Usuario autenticado / registrado: muestra el botón de ventas y oculta el de ingreso
       if (headerSalesLink) {
         headerSalesLink.hidden = false;
+      }
+      if (btnOpenAuthModal) {
+        btnOpenAuthModal.hidden = true;
       }
       if (authLoggedEmailDisplay) {
         authLoggedEmailDisplay.textContent = user.email;
@@ -1761,16 +1756,12 @@ function initAuthModal() {
       if (authLoginFormView) authLoginFormView.hidden = true;
       if (authLoggedInView) authLoggedInView.hidden = false;
     } else {
-      if (btnOpenAuthModal) {
-        btnOpenAuthModal.classList.remove("logged-in");
-        btnOpenAuthModal.setAttribute("title", "Ingresar al sistema");
-        btnOpenAuthModal.setAttribute("aria-label", "Ingresar al sistema");
-      }
-      if (authBtnLabel) {
-        authBtnLabel.textContent = "Ingresar";
-      }
+      // Usuario no autenticado: muestra el botón de ingreso y oculta el de ventas
       if (headerSalesLink) {
         headerSalesLink.hidden = true;
+      }
+      if (btnOpenAuthModal) {
+        btnOpenAuthModal.hidden = false;
       }
       if (authLoginFormView) authLoginFormView.hidden = false;
       if (authLoggedInView) authLoggedInView.hidden = true;

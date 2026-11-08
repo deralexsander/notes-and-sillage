@@ -11,7 +11,19 @@
   <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css">
+  <link rel="stylesheet" href="css/ventas.css?v=20261108_02">
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('notes_theme');
+        if (savedTheme === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body class="sales-table-view">
   <div class="container-fluid">
@@ -25,6 +37,10 @@
         </div>
       </div>
       <div class="header-actions">
+        <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Cambiar tema" title="Cambiar tema">
+          <i data-lucide="moon" class="theme-icon-moon" aria-hidden="true"></i>
+          <i data-lucide="sun" class="theme-icon-sun" aria-hidden="true"></i>
+        </button>
         <a href="index.html" class="btn-secondary">
           <i data-lucide="arrow-left" aria-hidden="true"></i> Volver al Catálogo
         </a>
@@ -295,9 +311,9 @@
 
   <!-- Modal de Autenticación Requerida (Firebase Auth) -->
   <div id="ventasAuthModalOverlay" class="modal-overlay" hidden>
-    <div class="modal-content auth-modal-box" style="max-width: 420px; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+    <div class="modal-content auth-modal-box" style="max-width: 420px; box-shadow: var(--shadow-modal);">
       <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 14px;">
-        <span class="badge-code" style="background: rgba(212, 175, 55, 0.15); color: #d4af37; border: 1px solid rgba(212, 175, 55, 0.3);">
+        <span class="badge-code" style="background: var(--gold-muted); color: var(--gold-primary); border: 1px solid rgba(212, 175, 55, 0.3);">
           <i data-lucide="shield-check" aria-hidden="true" style="width: 14px; height: 14px;"></i> Acceso Privado
         </span>
         <a href="index.html" class="modal-close" title="Volver al Catálogo">
@@ -306,8 +322,8 @@
       </div>
 
       <div style="padding: 18px 4px 14px;">
-        <h3 style="font-size: 1.25rem; font-weight: 800; color: #f3f4f6; margin-bottom: 4px;">Ingreso a Planilla de Ventas</h3>
-        <p style="font-size: 0.82rem; color: #9ca3af; line-height: 1.45;">Inicia sesión con tu correo y contraseña registrados en Firebase para gestionar las ventas.</p>
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-title); margin-bottom: 4px;">Ingreso a Planilla de Ventas</h3>
+        <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.45;">Inicia sesión con tu correo y contraseña registrados en Firebase para gestionar las ventas.</p>
       </div>
 
       <div id="ventasAuthErrorAlert" hidden style="display: flex; gap: 8px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); color: #f87171; padding: 10px 12px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 14px; line-height: 1.35;">

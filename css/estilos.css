@@ -165,16 +165,18 @@
 
     /* Botón de acceso a Ventas */
     .sales-link-btn {
-      width: 36px;
       height: 36px;
       display: inline-flex;
       align-items: center;
-      justify-content: center;
+      gap: 6px;
+      padding: 0 11px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: #f1f5f9;
-      color: var(--text-muted);
+      color: var(--text);
       text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 700;
       flex-shrink: 0;
       transition: all 0.2s ease;
     }
@@ -185,8 +187,8 @@
     }
 
     .sales-link-btn svg {
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
     }
 
     /* Buscador */
@@ -2096,6 +2098,16 @@
   background: #2a2d37;
 }
 
+[data-theme="dark"] .sales-link-btn {
+  background: #1f222a;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+[data-theme="dark"] .sales-link-btn:hover {
+  background: #2a2d37;
+}
+
 [data-theme="dark"] .auth-action-btn.logged-in {
   background: rgba(16, 185, 129, 0.15);
   border-color: rgba(16, 185, 129, 0.35);
@@ -2192,13 +2204,13 @@
     gap: 6px;
   }
 
-  .theme-toggle-btn,
-  .sales-link-btn {
+  .theme-toggle-btn {
     width: 32px;
     height: 32px;
     border-radius: 8px;
   }
 
+  .sales-link-btn,
   .auth-action-btn {
     height: 32px;
     padding: 0 8px;
@@ -2207,7 +2219,8 @@
   }
 
   .theme-toggle-btn svg,
-  .sales-link-btn svg {
+  .sales-link-btn svg,
+  .auth-action-btn svg {
     width: 16px;
     height: 16px;
   }

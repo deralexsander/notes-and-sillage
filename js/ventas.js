@@ -1010,6 +1010,35 @@ if (btnVentasLogout) {
   });
 }
 
+// Control de Modo Claro / Modo Oscuro
+function initVentasTheme() {
+  const toggleBtn = document.getElementById("themeToggleBtn");
+  if (!toggleBtn) return;
+
+  const updateToggleLabels = () => {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    toggleBtn.setAttribute("aria-label", isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro");
+    toggleBtn.setAttribute("title", isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro");
+  };
+
+  updateToggleLabels();
+
+  toggleBtn.addEventListener("click", () => {
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    if (isDark) {
+      document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("notes_theme", "light");
+    } else {
+      document.documentElement.setAttribute("data-theme", "dark");
+      localStorage.setItem("notes_theme", "dark");
+    }
+    updateToggleLabels();
+    if (window.lucide) lucide.createIcons();
+  });
+}
+
+initVentasTheme();
+
 // Arranque reactivo protegido
 onAuthStatusChange(user => {
   setVentasAuthState(user);
