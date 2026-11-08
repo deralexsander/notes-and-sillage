@@ -24,10 +24,6 @@ const tableBody = document.getElementById("salesTableBody");
 const emptyState = document.getElementById("tableEmptyState");
 const searchInput = document.getElementById("searchInput");
 const btnClearSearch = document.getElementById("btnClearSearch");
-const filterEstado = document.getElementById("filterEstado");
-const filterPagado = document.getElementById("filterPagado");
-const filterConfirmado = document.getElementById("filterConfirmado");
-const filterFormato = document.getElementById("filterFormato");
 const btnRefresh = document.getElementById("btnRefresh");
 const btnExportCSV = document.getElementById("btnExportCSV");
 const toastNotification = document.getElementById("toastNotification");
@@ -195,37 +191,13 @@ function getStatusSlug(estado) {
   return "entregado";
 }
 
-// 4. Filtros en tiempo real
+// 4. Filtro de búsqueda en tiempo real
 function applyFilters() {
   const query = (searchInput.value || "").toLowerCase().trim();
-  const estadoFilter = filterEstado.value;
-  const pagadoFilter = filterPagado.value;
-  const confirmadoFilter = filterConfirmado.value;
-  const formatoFilter = filterFormato.value;
 
   btnClearSearch.hidden = !query;
 
   const filtered = allSaleRows.filter(row => {
-    // Filtro Estado
-    if (estadoFilter !== "all") {
-      if (getStatusSlug(row.estado) !== getStatusSlug(estadoFilter)) {
-        return false;
-      }
-    }
-
-    // Filtro Pagado
-    if (pagadoFilter === "true" && !row.pagado) return false;
-    if (pagadoFilter === "false" && row.pagado) return false;
-
-    // Filtro Confirmado
-    if (confirmadoFilter === "true" && !row.confirmado) return false;
-    if (confirmadoFilter === "false" && row.confirmado) return false;
-
-    // Filtro Formato
-    if (formatoFilter !== "all" && !row.size.includes(formatoFilter)) {
-      return false;
-    }
-
     // Filtro Texto
     if (!query) return true;
     const matchTarget = `${row.clientName} ${row.fragrance} ${row.code} ${row.institution} ${row.clientPhone} ${row.codigoVenta}`.toLowerCase();
@@ -400,20 +372,10 @@ tableBody.addEventListener("change", async event => {
 // 8. Exportar a CSV compatible con Excel
 function exportToCSV() {
   const query = (searchInput.value || "").toLowerCase().trim();
-  const estadoFilter = filterEstado.value;
-  const pagadoFilter = filterPagado.value;
-  const confirmadoFilter = filterConfirmado.value;
-  const formatoFilter = filterFormato.value;
 
   const filtered = allSaleRows.filter(row => {
-    if (estadoFilter !== "all" && getStatusSlug(row.estado) !== getStatusSlug(estadoFilter)) return false;
-    if (pagadoFilter === "true" && !row.pagado) return false;
-    if (pagadoFilter === "false" && row.pagado) return false;
-    if (confirmadoFilter === "true" && !row.confirmado) return false;
-    if (confirmadoFilter === "false" && row.confirmado) return false;
-    if (formatoFilter !== "all" && !row.size.includes(formatoFilter)) return false;
     if (!query) return true;
-    const matchTarget = `${row.clientName} ${row.fragrance} ${row.code} ${row.institution} ${row.clientPhone}`.toLowerCase();
+    const matchTarget = `${row.clientName} ${row.fragrance} ${row.code} ${row.institution} ${row.clientPhone} ${row.codigoVenta}`.toLowerCase();
     return matchTarget.includes(query);
   });
 
@@ -852,18 +814,14 @@ tableBody.addEventListener("click", e => {
   openEditSaleModal(saleId, code);
 });
 
-// Event listeners de controles y filtros
+// Event listeners de controles de búsqueda y sincronización
 searchInput.addEventListener("input", applyFilters);
 btnClearSearch.addEventListener("click", () => {
   searchInput.value = "";
   applyFilters();
 });
-filterEstado.addEventListener("change", applyFilters);
-filterPagado.addEventListener("change", applyFilters);
-filterConfirmado.addEventListener("change", applyFilters);
-filterFormato.addEventListener("change", applyFilters);
 btnRefresh.addEventListener("click", loadSales);
-btnExportCSV.addEventListener("click", exportToCSV);
+if (btnExportCSV) btnExportCSV.addEventListener("click", exportToCSV);
 
 // Cerrar modal al hacer clic en fondo o botones
 document.addEventListener("click", e => {
@@ -915,6 +873,7 @@ function clearVentasAuthError() {
 function setVentasAuthState(user) {
   if (user && user.email) {
     isVentasAuthenticated = true;
+    document.body.classList.remove("auth-checking");
     if (ventasAuthModalOverlay) ventasAuthModalOverlay.hidden = true;
     if (authVentasUserBar) authVentasUserBar.hidden = false;
     if (authVentasEmailText) {
@@ -930,20 +889,12 @@ function setVentasAuthState(user) {
     // Cargar datos una vez validada la autenticación
     initCatalog();
     loadSales();
+    if (window.lucide) lucide.createIcons();
   } else {
     isVentasAuthenticated = false;
-    if (authVentasUserBar) authVentasUserBar.hidden = true;
-    if (ventasAuthModalOverlay) {
-      ventasAuthModalOverlay.hidden = false;
-      clearVentasAuthError();
-    }
-    if (btnNewManualSale) btnNewManualSale.disabled = true;
-    if (btnExportCSV) btnExportCSV.disabled = true;
-    allSaleRows = [];
-    tableBody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding:50px 20px; color:var(--text-muted);"><i data-lucide="lock" style="width:28px; height:28px; display:block; margin:0 auto 12px; color:var(--gold-primary);"></i> Acceso protegido. Por favor inicia sesión con tu cuenta de Firebase para visualizar la planilla.</td></tr>`;
-    updateMetrics([]);
+    // Si intenta ingresar por la URL sin sesión activa, redirige inmediatamente al inicio
+    window.location.replace("index.html");
   }
-  if (window.lucide) lucide.createIcons();
 }
 
 // Toggle mostrar / ocultar contraseña en el modal de ventas
@@ -1039,7 +990,15 @@ function initVentasTheme() {
 
 initVentasTheme();
 
+// Timeout de resguardo: si en 2.5 segundos no hay sesión activa, redirigir al inicio
+const authRedirectTimer = setTimeout(() => {
+  if (!isVentasAuthenticated) {
+    window.location.replace("index.html");
+  }
+}, 2500);
+
 // Arranque reactivo protegido
 onAuthStatusChange(user => {
+  clearTimeout(authRedirectTimer);
   setVentasAuthState(user);
 });

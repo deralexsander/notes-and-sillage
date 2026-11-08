@@ -100,6 +100,12 @@ body.sales-table-view {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* Ocultar contenido mientras se verifica la autenticación en ventas.html */
+body.auth-checking .container-fluid {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .container-fluid {
   max-width: 1560px;
   margin: 0 auto;
@@ -387,37 +393,10 @@ body.sales-table-view {
   line-height: 1;
 }
 
-.filters-row {
+.table-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.filter-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.filter-item label {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-}
-
-.select-filter {
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  color: var(--text-main);
-  padding: 7px 10px;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  outline: none;
-  cursor: pointer;
-}
-
-.select-filter:focus {
-  border-color: var(--gold-primary);
+  gap: 8px;
 }
 
 .select-filter option,

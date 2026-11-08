@@ -25,7 +25,7 @@
     })();
   </script>
 </head>
-<body class="sales-table-view">
+<body class="sales-table-view auth-checking">
   <div class="container-fluid">
     <!-- Encabezado -->
     <header class="dashboard-header">
@@ -42,7 +42,7 @@
           <i data-lucide="sun" class="theme-icon-sun" aria-hidden="true"></i>
         </button>
         <a href="index.html" class="btn-secondary">
-          <i data-lucide="arrow-left" aria-hidden="true"></i> Volver al Catálogo
+          <i data-lucide="arrow-left" aria-hidden="true"></i> Catálogo
         </a>
         <div id="authVentasUserBar" class="auth-ventas-user-bar" hidden>
           <span class="auth-ventas-email" id="authVentasUserEmail">
@@ -96,7 +96,7 @@
       </div>
     </section>
 
-    <!-- Controles de Búsqueda y Filtros -->
+    <!-- Controles de Búsqueda -->
     <section class="table-controls">
       <div class="search-field">
         <i data-lucide="search" aria-hidden="true"></i>
@@ -104,51 +104,7 @@
         <button type="button" id="btnClearSearch" class="btn-clear-search" hidden title="Limpiar búsqueda">&times;</button>
       </div>
 
-      <div class="filters-row">
-        <div class="filter-item">
-          <label for="filterEstado">Estado:</label>
-          <select id="filterEstado" class="select-filter">
-            <option value="all">Todos los estados</option>
-            <option value="Pedido">Pedido</option>
-            <option value="Recepcionado">Recepcionado</option>
-            <option value="Pendiente">Pendiente</option>
-            <option value="Entregado">Entregado</option>
-            <option value="Cancelado">Cancelado</option>
-            <option value="Faltante">Faltante</option>
-            <option value="en carrito">en carrito</option>
-          </select>
-        </div>
-
-        <div class="filter-item">
-          <label for="filterPagado">Pagado:</label>
-          <select id="filterPagado" class="select-filter">
-            <option value="all">Todos</option>
-            <option value="true">Pagado (Check)</option>
-            <option value="false">Pendiente</option>
-          </select>
-        </div>
-
-        <div class="filter-item">
-          <label for="filterConfirmado">Confirmado:</label>
-          <select id="filterConfirmado" class="select-filter">
-            <option value="all">Todos</option>
-            <option value="true">Confirmado (Check)</option>
-            <option value="false">Sin confirmar</option>
-          </select>
-        </div>
-
-        <div class="filter-item">
-          <label for="filterFormato">Formato:</label>
-          <select id="filterFormato" class="select-filter">
-            <option value="all">Todos</option>
-            <option value="100">100 ml</option>
-            <option value="50">50 ml</option>
-            <option value="20">20 ml</option>
-            <option value="400">400 ml</option>
-            <option value="500">500 ml</option>
-          </select>
-        </div>
-
+      <div class="table-actions">
         <button id="btnRefresh" class="btn-secondary" title="Recargar ventas en vivo desde Firestore">
           <i data-lucide="refresh-cw" aria-hidden="true"></i> Sincronizar
         </button>

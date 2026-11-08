@@ -165,19 +165,18 @@
 
     /* Botón de acceso a Ventas */
     .sales-link-btn {
+      width: 36px;
       height: 36px;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 0 11px;
+      justify-content: center;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: #f1f5f9;
-      color: var(--text);
+      color: var(--text-muted);
       text-decoration: none;
-      font-size: 0.8rem;
-      font-weight: 700;
       flex-shrink: 0;
+      padding: 0;
       transition: all 0.2s ease;
     }
 
@@ -187,8 +186,8 @@
     }
 
     .sales-link-btn svg {
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
     }
 
     /* Buscador */
@@ -1679,18 +1678,17 @@
    BOTÓN DE INGRESO Y MODAL DE AUTENTICACIÓN (FIREBASE AUTH)
    ========================================================================== */
 .auth-action-btn {
+  width: 36px;
   height: 36px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 11px;
+  justify-content: center;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: #f1f5f9;
-  color: var(--text);
-  font-size: 0.8rem;
-  font-weight: 700;
+  color: var(--text-muted);
   cursor: pointer;
+  padding: 0;
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
@@ -1701,8 +1699,8 @@
 }
 
 .auth-action-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
 }
 
@@ -2204,18 +2202,13 @@
     gap: 6px;
   }
 
-  .theme-toggle-btn {
+  .theme-toggle-btn,
+  .sales-link-btn,
+  .auth-action-btn {
     width: 32px;
     height: 32px;
     border-radius: 8px;
-  }
-
-  .sales-link-btn,
-  .auth-action-btn {
-    height: 32px;
-    padding: 0 8px;
-    font-size: 0.75rem;
-    border-radius: 8px;
+    padding: 0;
   }
 
   .theme-toggle-btn svg,
