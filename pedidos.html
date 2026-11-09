@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historial y Control de Pedidos | Notes & Sillage</title>
+  <meta name="description" content="Historial completo de pedidos al proveedor, agrupaciones por mes y análisis consolidado de productos en Notes & Sillage.">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
+  
+  <!-- Estilos del Sistema -->
+  <link rel="stylesheet" href="css/ventas.css?v=20261108_02">
+  <link rel="stylesheet" href="css/pedidos.css?v=20261108_01">
+  
+  <!-- Script para mantener tema oscuro o claro antes de pintar -->
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('notes_theme');
+        if (savedTheme === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      } catch(e) {}
+    })();
+  </script>
+</head>
+<body class="sales-table-view pedidos-dashboard-view">
+  <div class="container-fluid">
+    <!-- Encabezado Principal -->
+    <header class="dashboard-header">
+      <div class="brand-section">
+        <img src="img/logo-notes-and-sillage-hd.webp" alt="Notes & Sillage" class="brand-logo" onerror="this.src='favicon.ico'">
+        <div class="brand-title">
+          <h1 style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <span>Historial y Agrupación de Pedidos</span>
+            <span class="pedidos-header-badge">
+              <i data-lucide="package-check" style="width: 14px; height: 14px;"></i> Parfums
+            </span>
+          </h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="index.html" class="btn-secondary" title="Volver al catálogo online">
+          <i data-lucide="shopping-bag" aria-hidden="true"></i> Catálogo
+        </a>
+        <a href="ventas.html" class="btn-secondary" title="Ir a la planilla de registro de ventas">
+          <i data-lucide="table" aria-hidden="true"></i> Ventas
+        </a>
+        <button type="button" id="btnToggleTheme" class="btn-secondary" title="Cambiar tema claro / oscuro">
+          <i data-lucide="sun-moon" aria-hidden="true"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Barra de Métricas Globales -->
+    <section class="summary-metrics-bar">
+      <div class="metric-item">
+        <span class="metric-label">Inversión Total en Pedidos</span>
+        <span class="metric-value highlight-green" id="kpiTotalInversion">$0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Pedidos Realizados</span>
+        <span class="metric-value" id="kpiTotalPedidos">0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Productos Solicitados</span>
+        <span class="metric-value" id="kpiTotalUnidades">0 un.</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Regalos del Proveedor</span>
+        <span class="metric-value" style="color: #9333ea;" id="kpiTotalRegalos">0 un. ($0)</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Inversión Media x Pedido</span>
+        <span class="metric-value" id="kpiPromedioPedido">$0</span>
+      </div>
+    </section>
+
+    <!-- Barra de Herramientas y Filtros -->
+    <section class="pedidos-toolbar">
+      <!-- Filtros Rápidos por Mes -->
+      <div class="month-filter-group" id="monthFilterChips">
+        <button type="button" class="filter-chip-btn is-active" data-month-filter="ALL">
+          <i data-lucide="layers" style="width: 14px; height: 14px;"></i>
+          <span>Todos los Pedidos</span>
+          <span class="filter-chip-count">6</span>
+        </button>
+        <button type="button" class="filter-chip-btn" data-month-filter="2026-10">
+          <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+          <span>Octubre 2026</span>
+          <span class="filter-chip-count">5</span>
+        </button>
+        <button type="button" class="filter-chip-btn" data-month-filter="2026-11">
+          <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+          <span>Noviembre 2026</span>
+          <span class="filter-chip-count">1</span>
+        </button>
+      </div>
+
+      <!-- Selector de Modo de Vista -->
+      <div class="view-mode-selector">
+        <button type="button" class="view-mode-btn is-active" id="viewModeOrders" title="Ver lista de pedidos agrupados por mes">
+          <i data-lucide="list-ordered" style="width: 16px; height: 16px;"></i>
+          <span>Vista por Pedidos</span>
+        </button>
+        <button type="button" class="view-mode-btn" id="viewModeProducts" title="Ver consolidado total de fragancias y stock pedido">
+          <i data-lucide="boxes" style="width: 16px; height: 16px;"></i>
+          <span>Vista por Producto</span>
+        </button>
+      </div>
+
+      <!-- Buscador en tiempo real -->
+      <div class="search-box-wrapper">
+        <i data-lucide="search" style="width: 16px; height: 16px;"></i>
+        <input type="text" id="searchPedidosInput" class="search-box-input" placeholder="Buscar por código (ej. F-57), perfume (Sauvage), tamaño o estado..." autocomplete="off">
+      </div>
+    </section>
+
+    <!-- Contenedor Principal: Vista 1 (Por Pedidos / Meses) -->
+    <main id="containerOrdersView"></main>
+
+    <!-- Contenedor Principal: Vista 2 (Por Producto Consolidado) -->
+    <main id="containerProductsView" hidden></main>
+  </div>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Dataset de Pedidos -->
+  <script src="js/pedidos-data.js?v=20261108_01"></script>
+  <!-- Lógica de la Página -->
+  <script src="js/pedidos.js?v=20261108_01"></script>
+</body>
+</html>

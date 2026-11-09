@@ -1108,36 +1108,92 @@ function finishOrderSuccess() {
   clearCart();
 }
 
-// Registro asíncrono con control de carga, chequeo de internet y timeout
+const NTFY_ORDER_TOPIC = "pedidos-notesandsillage-2042";
+
+// Enviar notificación a ntfy.sh para alertar inmediatamente al celular
+async function sendNtfyOrderNotification(payload) {
+  const itemsText = (payload.items || [])
+    .map(it => `• ${it.qty}x [${it.code}] ${it.name} (${it.size}) - $${(it.subtotal || 0).toLocaleString("es-CL")}`)
+    .join("\n");
+
+  const messageLines = [
+    `👤 Cliente: ${payload.customer?.name || "No especificado"}`,
+    `📞 Teléfono: ${payload.customer?.phone || "No especificado"}`,
+    `💵 Total: $${(payload.totalPrice || 0).toLocaleString("es-CL")} (${payload.totalItems || 0} producto${(payload.totalItems || 0) === 1 ? "" : "s"})`,
+    `🆔 Pedido: #${payload.orderId}`,
+    "",
+    "🛍️ Detalle del pedido:",
+    itemsText
+  ];
+
+  const bodyData = {
+    topic: NTFY_ORDER_TOPIC,
+    title: `🔔 ¡Nuevo Pedido de ${payload.customer?.name || "Cliente"}!`,
+    message: messageLines.join("\n"),
+    priority: 4, // Prioridad alta: suena y vibra
+    tags: ["shopping_cart", "perfume"]
+  };
+
+  // Si tiene teléfono con dígitos válidos, permitir abrir WhatsApp con un toque
+  if (payload.customer?.phoneDigits) {
+    const waUrl = `https://wa.me/569${payload.customer.phoneDigits}`;
+    bodyData.click = waUrl;
+    bodyData.actions = [
+      {
+        action: "view",
+        label: "Contactar por WhatsApp",
+        url: waUrl
+      }
+    ];
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch("https://ntfy.sh", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(bodyData),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`El servicio de notificaciones respondió con código ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error("El envío tardó demasiado tiempo en responder. Por favor revisa tu conexión e inténtalo nuevamente.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+// Registro asíncrono con control de carga, chequeo de internet y notificación a ntfy
 async function registerOrderAsync(payload) {
   if (!navigator.onLine) {
     throw new Error("No se detecta conexión a internet en tu dispositivo. Por favor revisa tu wifi o datos móviles.");
   }
 
-  return new Promise((resolve, reject) => {
-    // Si se activa test de error manual por consola (window.__forceOrderError = true)
-    if (window.__forceOrderError) {
-      setTimeout(() => reject(new Error("Simulación: Se interrumpió la conexión durante el registro.")), 900);
-      return;
-    }
+  // Si se activa test de error manual por consola (window.__forceOrderError = true)
+  if (window.__forceOrderError) {
+    throw new Error("Simulación: Se interrumpió la conexión durante el registro.");
+  }
 
-    // Tiempo de espera para simular latencia de red y procesamiento
-    const timer = setTimeout(() => {
-      resolve({
-        success: true,
-        orderId: payload.orderId,
-        registeredAt: new Date().toISOString()
-      });
-    }, 1300);
+  // Enviar la notificación push a ntfy.sh
+  await sendNtfyOrderNotification(payload);
 
-    // Detección en vivo si el usuario se desconecta durante el envío
-    const handleOffline = () => {
-      clearTimeout(timer);
-      window.removeEventListener("offline", handleOffline);
-      reject(new Error("Se interrumpió la conexión a internet durante el envío. Por favor reintenta."));
-    };
-    window.addEventListener("offline", handleOffline, { once: true });
-  });
+  return {
+    success: true,
+    orderId: payload.orderId,
+    registeredAt: new Date().toISOString()
+  };
 }
 
 async function processOrderSubmission(payload) {
