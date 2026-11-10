@@ -204,15 +204,16 @@ function renderPhoneCell(phone) {
   }
   const cleanDigits = phone.replace(/[^0-9]/g, "");
   const waUrl = cleanDigits.length >= 8 ? `https://wa.me/${cleanDigits}` : null;
+  const shortDisplay = phone.replace(/^\+56\s*/, "");
   if (waUrl) {
     return `
-      <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="phone-link" title="Abrir chat de WhatsApp con ${phone}">
+      <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="phone-link" title="Abrir WhatsApp con ${phone}">
         <i data-lucide="message-circle" aria-hidden="true"></i>
-        <span>${phone}</span>
+        <span>${shortDisplay}</span>
       </a>
     `;
   }
-  return `<span class="phone-text">${phone}</span>`;
+  return `<span class="phone-text">${shortDisplay}</span>`;
 }
 
 // ==========================================================================
@@ -461,35 +462,35 @@ function renderTableRow(row, rowNum, isPending) {
   return `
     <tr data-sale-id="${row.saleId}" data-code="${row.code}">
       <td class="td-num">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
           ${isPending ? `<input type="checkbox" class="pending-row-select" data-sale-id="${row.saleId}" data-code="${row.code}" title="Seleccionar para lote de compra al proveedor">` : ''}
           <span>${rowNum}</span>
         </div>
       </td>
       <td class="td-date">${row.fecha || "-"}</td>
-      <td>
+      <td class="td-code">
         <span class="code-chip">${row.code}</span>
       </td>
-      <td>
-        <div class="fragrance-name">${row.fragrance}</div>
+      <td class="td-name">
+        <div class="fragrance-name" title="${row.fragrance}">${row.fragrance}</div>
       </td>
-      <td>
+      <td class="td-size">
         <span class="size-tag">${row.size}</span>
       </td>
       <td class="qty-val">${row.qty}</td>
-      <td>
-        <span class="client-name">${row.clientName}</span>
+      <td class="td-client">
+        <span class="client-name" title="${row.clientName}">${row.clientName}</span>
       </td>
-      <td>
+      <td class="td-phone">
         ${renderPhoneCell(row.clientPhone)}
       </td>
-      <td>
-        <span class="inst-name">${row.institution || "-"}</span>
+      <td class="td-inst">
+        <span class="inst-name" title="${row.institution || "-"}">${row.institution || "-"}</span>
       </td>
       <td class="price-cell">${formatCLP(row.precioVenta)}</td>
       <td class="cost-cell">${formatCLP(row.costo)}</td>
       <td class="profit-cell">+${formatCLP(row.ganancia)}</td>
-      <td>
+      <td class="td-status">
         <div class="status-select-wrap">
           <span class="status-dot dot-${statusSlug}"></span>
           <select class="status-dropdown opt-${statusSlug}" data-action="change-status" data-sale-id="${row.saleId}" data-code="${row.code}">
@@ -509,7 +510,7 @@ function renderTableRow(row, rowNum, isPending) {
       <td class="cell-check">
         <input type="checkbox" class="table-checkbox check-confirmed" data-action="toggle-confirmed" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.confirmado ? "checked" : ""} title="${row.confirmado ? "Pedido Confirmado (True)" : "Sin confirmar (False)"}">
       </td>
-      <td style="text-align: center;">
+      <td class="td-action" style="text-align: center;">
         <button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" title="Editar venta o eliminar">
           <i data-lucide="pencil" aria-hidden="true"></i>
         </button>
