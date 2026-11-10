@@ -190,6 +190,9 @@
         <button type="button" id="btnToggleSupplierGrouping" class="btn-secondary btn-grouping-active" title="Alternar separación por pedidos al proveedor">
           <i data-lucide="layers" aria-hidden="true"></i> Lotes Proveedor
         </button>
+        <button type="button" id="btnToggleSummaryView" class="btn-secondary" title="Alternar vista resumida (solo códigos, cantidad, formato y estado)">
+          <i data-lucide="minimize-2" aria-hidden="true"></i> Resumir
+        </button>
         <button id="btnRefresh" class="btn-secondary" title="Recargar ventas en vivo desde Firestore">
           <i data-lucide="refresh-cw" aria-hidden="true"></i> Sincronizar
         </button>
@@ -202,17 +205,17 @@
         <thead>
           <tr>
             <th class="th-num" title="Número de fila">#</th>
-            <th class="th-date">Fecha</th>
+            <th class="th-date col-hide-summary">Fecha</th>
             <th class="th-code">Cód.</th>
-            <th class="th-name">Fragancia</th>
+            <th class="th-name col-hide-summary">Fragancia</th>
             <th class="th-size">Formato</th>
             <th class="th-qty" title="Cantidad">Cant</th>
-            <th class="th-client">Cliente</th>
-            <th class="th-phone">WhatsApp</th>
-            <th class="th-inst">Institución</th>
-            <th class="th-price">Venta</th>
-            <th class="th-cost">Costo</th>
-            <th class="th-profit">Ganancia</th>
+            <th class="th-client col-hide-summary">Cliente</th>
+            <th class="th-phone col-hide-summary">WhatsApp</th>
+            <th class="th-inst col-hide-summary">Institución</th>
+            <th class="th-price col-hide-summary">Venta</th>
+            <th class="th-cost col-hide-summary">Costo</th>
+            <th class="th-profit col-hide-summary">Ganancia</th>
             <th class="th-status">Estado</th>
             <th class="th-paid" title="¿Pagado por el cliente?">Pagado</th>
             <th class="th-confirmed" title="¿Pedido confirmado?">Conf.</th>

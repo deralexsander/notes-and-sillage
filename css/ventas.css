@@ -1823,3 +1823,36 @@ body.auth-checking .container-fluid {
   color: var(--gold-primary) !important;
   border-color: var(--gold-primary) !important;
 }
+
+/* ==========================================================================
+   VISTA RESUMIDA DE LA TABLA (SOLO CÓDIGO, CANT, FORMATO, ESTADO, CHECKBOXES)
+   ========================================================================== */
+.spreadsheet-table.is-summary-view .col-hide-summary {
+  display: none !important;
+}
+
+.spreadsheet-table.is-summary-view .th-code,
+.spreadsheet-table.is-summary-view .td-code {
+  min-width: 65px;
+}
+
+.spreadsheet-table.is-summary-view .th-size,
+.spreadsheet-table.is-summary-view .td-size {
+  min-width: 65px;
+}
+
+.spreadsheet-table.is-summary-view .th-qty,
+.spreadsheet-table.is-summary-view .qty-val {
+  min-width: 48px;
+}
+
+.spreadsheet-table.is-summary-view .th-status,
+.spreadsheet-table.is-summary-view .td-status {
+  min-width: 130px;
+}
+
+.spreadsheet-table.is-summary-view .th-paid,
+.spreadsheet-table.is-summary-view .th-confirmed,
+.spreadsheet-table.is-summary-view .cell-check {
+  min-width: 55px;
+}
