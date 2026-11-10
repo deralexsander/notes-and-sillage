@@ -1517,6 +1517,31 @@
       margin-top: auto;
     }
 
+    .customer-fields-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .customer-fields-grid .customer-name-field {
+      margin-bottom: 0;
+    }
+
+    .field-optional-badge {
+      font-weight: 400;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      opacity: 0.85;
+    }
+
+    @media (max-width: 340px) {
+      .customer-fields-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+    }
+
     .customer-name-field {
       display: grid;
       gap: 5px;

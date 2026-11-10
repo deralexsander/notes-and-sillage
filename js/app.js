@@ -1066,7 +1066,11 @@ function showOrderStatus(state, data = null) {
       const itemsContainer = document.getElementById("orderSuccessItems");
 
       if (nameEl) nameEl.textContent = data.customer?.name || "Cliente";
-      if (phoneEl) phoneEl.textContent = data.customer?.phone || "";
+      if (phoneEl) {
+        const phoneText = data.customer?.phone || "";
+        const instText = data.customer?.institution ? ` (${data.customer.institution})` : "";
+        phoneEl.textContent = `${phoneText}${instText}`;
+      }
       if (totalEl) totalEl.textContent = `$${(data.totalPrice || 0).toLocaleString("es-CL")}`;
 
       if (itemsContainer && Array.isArray(data.items)) {
@@ -1119,6 +1123,7 @@ async function sendNtfyOrderNotification(payload, codigoVenta = null) {
   const messageLines = [
     `👤 Cliente: ${payload.customer?.name || "No especificado"}`,
     `📞 Teléfono: ${payload.customer?.phone || "No especificado"}`,
+    ...(payload.customer?.institution ? [`🏢 Institución: ${payload.customer.institution}`] : []),
     `💵 Total: $${(payload.totalPrice || 0).toLocaleString("es-CL")} (${payload.totalItems || 0} producto${(payload.totalItems || 0) === 1 ? "" : "s"})`,
     `🆔 Pedido: #${payload.orderId}${codigoVenta ? ` (${codigoVenta})` : ""}`,
     `📦 Estado: Guardado en Firebase (Pendiente)`,
@@ -1207,6 +1212,7 @@ async function registerOrderAsync(payload) {
       firestoreResult = await saveFn({
         customerName: payload.customer?.name || "Cliente",
         customerPhone: payload.customer?.phone || "",
+        institution: payload.customer?.institution || "",
         items: (payload.items || []).map(it => ({
           code: it.code || "",
           name: it.name || "",
@@ -1214,8 +1220,8 @@ async function registerOrderAsync(payload) {
           qty: it.qty || 1,
           unitPrice: it.unitPrice || 0
         })),
-        origin: "Catálogo Web",
-        notes: `Pedido #${payload.orderId}`,
+        origin: payload.customer?.institution ? `Venta Directa (${payload.customer.institution})` : "Catálogo Web",
+        notes: payload.customer?.institution ? `Institución: ${payload.customer.institution} - Pedido #${payload.orderId}` : `Pedido #${payload.orderId}`,
         estado: "Pendiente",
         pagado: false,
         confirmado: false
@@ -1380,6 +1386,8 @@ function sendToWhatsApp() {
   if (customerPhoneError) customerPhoneError.hidden = true;
 
   const fullPhoneNumber = `+56 9 ${phoneDigits.slice(0, 4)} ${phoneDigits.slice(4)}`;
+  const customerInstitutionInput = document.getElementById("customerInstitution");
+  const customerInstitution = customerInstitutionInput ? customerInstitutionInput.value.trim() : "";
 
   // Actualizar memoria si el checkbox está activo (guardar datos en el navegador si quiere)
   const rememberCheckbox = document.getElementById("rememberCustomerData");
@@ -1387,10 +1395,12 @@ function sendToWhatsApp() {
     localStorage.setItem("notes_remember_customer", "true");
     localStorage.setItem("notes_customer_name", customerName);
     localStorage.setItem("notes_customer_phone", phoneDigits.length > 4 ? phoneDigits.slice(0, 4) + " " + phoneDigits.slice(4) : phoneDigits);
+    localStorage.setItem("notes_customer_institution", customerInstitution);
   } else {
     localStorage.setItem("notes_remember_customer", "false");
     localStorage.removeItem("notes_customer_name");
     localStorage.removeItem("notes_customer_phone");
+    localStorage.removeItem("notes_customer_institution");
   }
 
   // Construir payload del pedido y procesar registro
@@ -1399,7 +1409,8 @@ function sendToWhatsApp() {
     customer: {
       name: customerName,
       phone: fullPhoneNumber,
-      phoneDigits: phoneDigits
+      phoneDigits: phoneDigits,
+      institution: customerInstitution
     },
     items: cart.map(item => ({
       code: item.code,
@@ -1986,6 +1997,7 @@ window.addEventListener("resize", () => {
 function initCustomerMemory() {
   const nameInput = document.getElementById("customerName");
   const phoneInput = document.getElementById("customerPhone");
+  const instInput = document.getElementById("customerInstitution");
   const rememberCheck = document.getElementById("rememberCustomerData");
   if (!nameInput || !phoneInput || !rememberCheck) return;
 
@@ -1996,7 +2008,9 @@ function initCustomerMemory() {
     rememberCheck.checked = true;
     const savedName = localStorage.getItem("notes_customer_name");
     const savedPhone = localStorage.getItem("notes_customer_phone");
+    const savedInst = localStorage.getItem("notes_customer_institution");
     if (savedName) nameInput.value = savedName;
+    if (savedInst && instInput) instInput.value = savedInst;
     if (savedPhone) {
       let digits = savedPhone.replace(/\D/g, "");
       if (digits.startsWith("569")) digits = digits.slice(3);
@@ -2012,10 +2026,16 @@ function initCustomerMemory() {
       localStorage.setItem("notes_remember_customer", "true");
       localStorage.setItem("notes_customer_name", nameInput.value.trim());
       localStorage.setItem("notes_customer_phone", phoneInput.value.trim());
+      if (instInput) {
+        localStorage.setItem("notes_customer_institution", instInput.value.trim());
+      }
     }
   };
 
   nameInput.addEventListener("input", saveIfChecked);
+  if (instInput) {
+    instInput.addEventListener("input", saveIfChecked);
+  }
 
   phoneInput.addEventListener("input", event => {
     let digits = event.target.value.replace(/\D/g, "");
@@ -2040,10 +2060,14 @@ function initCustomerMemory() {
       localStorage.setItem("notes_remember_customer", "true");
       localStorage.setItem("notes_customer_name", nameInput.value.trim());
       localStorage.setItem("notes_customer_phone", phoneInput.value.trim());
+      if (instInput) {
+        localStorage.setItem("notes_customer_institution", instInput.value.trim());
+      }
     } else {
       localStorage.setItem("notes_remember_customer", "false");
       localStorage.removeItem("notes_customer_name");
       localStorage.removeItem("notes_customer_phone");
+      localStorage.removeItem("notes_customer_institution");
     }
   });
 }

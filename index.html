@@ -204,13 +204,19 @@
           <input id="customerName" type="text" maxlength="80" autocomplete="name" aria-describedby="customerNameError" placeholder="Ej. Ana Pérez" required>
           <p id="customerNameError" class="customer-name-error" role="alert" hidden>Escribe tu nombre y apellido para continuar.</p>
         </div>
-        <div class="customer-name-field">
-          <label for="customerPhone">WhatsApp / Teléfono</label>
-          <div class="phone-input-group">
-            <span class="phone-prefix">+56 9</span>
-            <input id="customerPhone" type="tel" inputmode="numeric" maxlength="9" autocomplete="tel-national" aria-describedby="customerPhoneError" placeholder="1234 5678" required>
+        <div class="customer-fields-grid">
+          <div class="customer-name-field">
+            <label for="customerPhone">WhatsApp / Teléfono</label>
+            <div class="phone-input-group">
+              <span class="phone-prefix">+56 9</span>
+              <input id="customerPhone" type="tel" inputmode="numeric" maxlength="9" autocomplete="tel-national" aria-describedby="customerPhoneError" placeholder="1234 5678" required>
+            </div>
+            <p id="customerPhoneError" class="customer-name-error" role="alert" hidden>Ingresa los 8 dígitos de tu número de teléfono (ej. 1234 5678).</p>
           </div>
-          <p id="customerPhoneError" class="customer-name-error" role="alert" hidden>Ingresa los 8 dígitos de tu número de teléfono (ej. 1234 5678).</p>
+          <div class="customer-name-field">
+            <label for="customerInstitution">Institución <span class="field-optional-badge">(opcional)</span></label>
+            <input id="customerInstitution" type="text" maxlength="80" autocomplete="organization" placeholder="Ej. Club, Hospital...">
+          </div>
         </div>
         <div class="customer-remember-field">
           <label class="remember-checkbox-label">
