@@ -98,17 +98,7 @@ function resolveSupplierBatch(row) {
     return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES POR PEDIR AL PROVEEDOR" };
   }
 
-  // Si tiene un lote o fecha de pedido asignada explícitamente (ej: generado con el botón de lote)
-  if (row.fechaPedidoProveedor) {
-    const customDate = row.fechaPedidoProveedor;
-    const histMatch = HISTORICAL_SUPPLIER_BATCHES.find(b => b.key === customDate);
-    if (histMatch) {
-      return { isPending: false, batchKey: histMatch.key, title: histMatch.title };
-    }
-    return { isPending: false, batchKey: customDate, title: getSupplierBatchTitle(customDate) };
-  }
-
-  // Mapear ventas históricas según su fecha a los 6 pedidos oficiales de PEDIDOS.TXT
+  // Obtener fecha de la venta en formato YYYY-MM-DD
   let dateStr = "";
   if (row.fechaISO) {
     dateStr = row.fechaISO.slice(0, 10);
@@ -124,7 +114,8 @@ function resolveSupplierBatch(row) {
     }
   }
 
-  if (dateStr) {
+  // 1. Las ventas históricas (hasta el 08-11-2026) pertenecen SIEMPRE a uno de los 6 pedidos oficiales de PEDIDOS.TXT
+  if (dateStr && dateStr <= "2026-11-08") {
     for (const b of HISTORICAL_SUPPLIER_BATCHES) {
       if (dateStr <= b.cutoff) {
         return { isPending: false, batchKey: b.key, title: b.title };
@@ -132,7 +123,23 @@ function resolveSupplierBatch(row) {
     }
   }
 
-  // Ventas posteriores al 08-11-2026 que aún no han sido pasadas a un nuevo pedido proveedor
+  // 2. Para ventas posteriores al 08-11-2026:
+  // Si se le asignó un lote específico mediante el botón/modal "Pasar a Pedido Proveedor"
+  if (row.fechaPedidoProveedor) {
+    const customDate = row.fechaPedidoProveedor;
+    const histMatch = HISTORICAL_SUPPLIER_BATCHES.find(b => b.key === customDate);
+    if (histMatch) {
+      return { isPending: false, batchKey: histMatch.key, title: histMatch.title };
+    }
+    return { isPending: false, batchKey: customDate, title: getSupplierBatchTitle(customDate) };
+  }
+
+  // 3. Ventas posteriores al 08-11-2026 que ya están en pedido/entregado pero sin lote explícito
+  if (dateStr) {
+    return { isPending: false, batchKey: dateStr, title: getSupplierBatchTitle(dateStr) };
+  }
+
+  // Por defecto, si no tiene fecha ni lote y está pendiente
   return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES POR PEDIR AL PROVEEDOR" };
 }
 
@@ -1205,7 +1212,6 @@ tableBody.addEventListener("change", async event => {
   if (action === "change-status") {
     const newStatus = target.value;
     const newSlug = getStatusSlug(newStatus);
-    const todayISO = new Date().toISOString().split("T")[0];
 
     // Actualizar aspecto visual inmediatamente
     target.className = `status-dropdown opt-${newSlug}`;
@@ -1218,19 +1224,6 @@ tableBody.addEventListener("change", async event => {
     allSaleRows.forEach(r => {
       if (r.saleId === saleId && r.code === code) {
         r.estado = newStatus;
-        if (newSlug === "pedido") {
-          if (!r.fechaPedidoProveedor) {
-            r.fechaPedidoProveedor = todayISO;
-            r.idPedidoProveedor = "PROV-" + todayISO;
-          }
-          updateFields.fechaPedidoProveedor = r.fechaPedidoProveedor;
-          updateFields.idPedidoProveedor = r.idPedidoProveedor;
-        } else if (newSlug === "pendiente" || newSlug === "encarrito") {
-          r.fechaPedidoProveedor = null;
-          r.idPedidoProveedor = null;
-          updateFields.fechaPedidoProveedor = null;
-          updateFields.idPedidoProveedor = null;
-        }
       }
     });
 
