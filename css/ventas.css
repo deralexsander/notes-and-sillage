@@ -1487,3 +1487,171 @@ body.auth-checking .container-fluid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ==========================================================================
+   SEPARADORES DE LOTES / PEDIDOS AL PROVEEDOR EN LA TABLA DE VENTAS
+   ========================================================================== */
+.tr-supplier-header td {
+  padding: 0 !important;
+  background: transparent !important;
+  border-right: none !important;
+}
+
+.supplier-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.tr-supplier-header.group-pending .supplier-header-content {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.18) 0%, rgba(245, 158, 11, 0.05) 100%);
+  border-top: 2px solid #f59e0b;
+  border-bottom: 2px solid #f59e0b;
+}
+
+[data-theme="dark"] .tr-supplier-header.group-pending .supplier-header-content {
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.24) 0%, rgba(245, 158, 11, 0.07) 100%);
+  border-top-color: #d97706;
+  border-bottom-color: #d97706;
+}
+
+.tr-supplier-header.group-ordered .supplier-header-content {
+  background: linear-gradient(90deg, rgba(180, 83, 9, 0.14) 0%, rgba(180, 83, 9, 0.03) 100%);
+  border-top: 2px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .tr-supplier-header.group-ordered .supplier-header-content {
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.16) 0%, rgba(212, 175, 55, 0.04) 100%);
+  border-top-color: #332615;
+}
+
+.supplier-header-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
+}
+
+.supplier-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+}
+
+.supplier-status-icon.pending-icon {
+  background: rgba(245, 158, 11, 0.2);
+  color: #d97706;
+}
+
+.supplier-status-icon.ordered-icon {
+  background: var(--gold-muted);
+  color: var(--gold-primary);
+}
+
+.badge-supplier-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+}
+
+.badge-supplier-tag.tag-cost {
+  color: var(--text-title);
+  font-family: var(--font-mono);
+}
+
+.badge-supplier-tag.tag-locked {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+  border-color: rgba(22, 163, 74, 0.25);
+}
+
+.supplier-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.select-all-pending-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-main);
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn-create-supplier-batch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.2);
+}
+
+.btn-create-supplier-batch:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-toggle-batch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.btn-toggle-batch:hover {
+  background: var(--bg-hover);
+  color: var(--text-title);
+}
+
+.batch-collapsed-row {
+  display: none !important;
+}
+
+.pending-row-select {
+  cursor: pointer;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--gold-primary);
+}
+
+.btn-grouping-active {
+  background: var(--gold-muted) !important;
+  color: var(--gold-primary) !important;
+  border-color: var(--gold-primary) !important;
+}

@@ -20,6 +20,122 @@ let modalMode = "new"; // "new" | "edit"
 let currentEditSaleId = null;
 let currentEditCode = null;
 
+let isSupplierGroupingEnabled = localStorage.getItem("notes_supplier_grouping") !== "false";
+const collapsedSupplierBatches = new Set();
+
+// Definición exacta de los 6 Pedidos Proveedor Históricos de PEDIDOS.TXT
+const HISTORICAL_SUPPLIER_BATCHES = [
+  {
+    key: "2026-10-05",
+    cutoff: "2026-10-05",
+    title: "Pedido #1 de Octubre — 05 de Octubre 2026",
+    orderNum: 1
+  },
+  {
+    key: "2026-10-08",
+    cutoff: "2026-10-08",
+    title: "Pedido #2 de Octubre — 08 de Octubre 2026",
+    orderNum: 2
+  },
+  {
+    key: "2026-10-19",
+    cutoff: "2026-10-19",
+    title: "Pedido #3 de Octubre — 19 de Octubre 2026 (Web #860036)",
+    orderNum: 3
+  },
+  {
+    key: "2026-10-23",
+    cutoff: "2026-10-23",
+    title: "Pedido #4 de Octubre — 23 de Octubre 2026 (Web #861233)",
+    orderNum: 4
+  },
+  {
+    key: "2026-10-31",
+    cutoff: "2026-10-31",
+    title: "Pedido #5 de Octubre — 31 de Octubre 2026 (Web #863113)",
+    orderNum: 5
+  },
+  {
+    key: "2026-11-08",
+    cutoff: "2026-11-08",
+    title: "Pedido #1 de Noviembre — 08 de Noviembre 2026 (Web #865454)",
+    orderNum: 6
+  }
+];
+
+function getSupplierBatchTitle(dateStr) {
+  if (!dateStr || dateStr === "ANTERIOR") return "Pedidos Anteriores / Sin fecha lote";
+
+  const histMatch = HISTORICAL_SUPPLIER_BATCHES.find(b => b.key === dateStr);
+  if (histMatch) return histMatch.title;
+
+  const parts = dateStr.split("-");
+  const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  let legibleDate = dateStr;
+  if (parts.length === 3) {
+    const day = parts[2].padStart(2, '0');
+    const mIdx = parseInt(parts[1], 10) - 1;
+    const year = parts[0];
+    if (mIdx >= 0 && mIdx < 12) {
+      legibleDate = `${day} de ${monthNames[mIdx]} ${year}`;
+    }
+  }
+
+  if (window.HISTORIAL_PEDIDOS && Array.isArray(window.HISTORIAL_PEDIDOS)) {
+    const match = window.HISTORIAL_PEDIDOS.find(o => o.date === dateStr || (o.date && o.date.startsWith(dateStr)));
+    if (match) {
+      return `${match.title} — ${legibleDate}`;
+    }
+  }
+
+  return `Pedido Proveedor — ${legibleDate}`;
+}
+
+// Resuelve de manera exacta a qué lote de proveedor pertenece cada fila de venta
+function resolveSupplierBatch(row) {
+  const slug = getStatusSlug(row.estado);
+  if (slug === "pendiente" || slug === "encarrito") {
+    return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES POR PEDIR AL PROVEEDOR" };
+  }
+
+  // Si tiene un lote o fecha de pedido asignada explícitamente (ej: generado con el botón de lote)
+  if (row.fechaPedidoProveedor) {
+    const customDate = row.fechaPedidoProveedor;
+    const histMatch = HISTORICAL_SUPPLIER_BATCHES.find(b => b.key === customDate);
+    if (histMatch) {
+      return { isPending: false, batchKey: histMatch.key, title: histMatch.title };
+    }
+    return { isPending: false, batchKey: customDate, title: getSupplierBatchTitle(customDate) };
+  }
+
+  // Mapear ventas históricas según su fecha a los 6 pedidos oficiales de PEDIDOS.TXT
+  let dateStr = "";
+  if (row.fechaISO) {
+    dateStr = row.fechaISO.slice(0, 10);
+  } else if (row.createdAtDate && row.createdAtDate.toISOString) {
+    dateStr = row.createdAtDate.toISOString().slice(0, 10);
+  } else if (row.fecha) {
+    const cleaned = String(row.fecha).replace(/\//g, "-");
+    const parts = cleaned.split("-");
+    if (parts.length === 3 && parts[2].length === 4) {
+      dateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+    } else {
+      dateStr = cleaned.slice(0, 10);
+    }
+  }
+
+  if (dateStr) {
+    for (const b of HISTORICAL_SUPPLIER_BATCHES) {
+      if (dateStr <= b.cutoff) {
+        return { isPending: false, batchKey: b.key, title: b.title };
+      }
+    }
+  }
+
+  // Ventas posteriores al 08-11-2026 que aún no han sido pasadas a un nuevo pedido proveedor
+  return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES POR PEDIR AL PROVEEDOR" };
+}
+
 // Elementos del DOM
 const tableBody = document.getElementById("salesTableBody");
 const emptyState = document.getElementById("tableEmptyState");
@@ -279,7 +395,9 @@ async function loadSales() {
           ganancia: subtotalGanancia,
           estado: item.estado || estadoGeneral,
           pagado: typeof item.pagado === "boolean" ? item.pagado : pagadoGeneral,
-          confirmado: typeof item.confirmado === "boolean" ? item.confirmado : confirmadoGeneral
+          confirmado: typeof item.confirmado === "boolean" ? item.confirmado : confirmadoGeneral,
+          fechaPedidoProveedor: item.fechaPedidoProveedor || sale.fechaPedidoProveedor || null,
+          idPedidoProveedor: item.idPedidoProveedor || sale.idPedidoProveedor || null
         });
       });
     });
@@ -329,7 +447,71 @@ function applyFilters() {
   updateMetrics(filtered);
 }
 
-// 5. Renderizar filas en la tabla con controles interactivos
+// Helper para renderizar una fila individual
+function renderTableRow(row, rowNum, isPending) {
+  const statusSlug = getStatusSlug(row.estado);
+
+  return `
+    <tr data-sale-id="${row.saleId}" data-code="${row.code}">
+      <td class="td-num">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+          ${isPending ? `<input type="checkbox" class="pending-row-select" data-sale-id="${row.saleId}" data-code="${row.code}" title="Seleccionar para lote de compra al proveedor">` : ''}
+          <span>${rowNum}</span>
+        </div>
+      </td>
+      <td class="td-date">${row.fecha || "-"}</td>
+      <td>
+        <span class="code-chip">${row.code}</span>
+      </td>
+      <td>
+        <div class="fragrance-name">${row.fragrance}</div>
+      </td>
+      <td>
+        <span class="size-tag">${row.size}</span>
+      </td>
+      <td class="qty-val">${row.qty}</td>
+      <td>
+        <span class="client-name">${row.clientName}</span>
+      </td>
+      <td>
+        ${renderPhoneCell(row.clientPhone)}
+      </td>
+      <td>
+        <span class="inst-name">${row.institution || "-"}</span>
+      </td>
+      <td class="price-cell">${formatCLP(row.precioVenta)}</td>
+      <td class="cost-cell">${formatCLP(row.costo)}</td>
+      <td class="profit-cell">+${formatCLP(row.ganancia)}</td>
+      <td>
+        <div class="status-select-wrap">
+          <span class="status-dot dot-${statusSlug}"></span>
+          <select class="status-dropdown opt-${statusSlug}" data-action="change-status" data-sale-id="${row.saleId}" data-code="${row.code}">
+            <option value="Pedido" ${statusSlug === "pedido" ? "selected" : ""}>Pedido</option>
+            <option value="Recepcionado" ${statusSlug === "recepcionado" ? "selected" : ""}>Recepcionado</option>
+            <option value="Pendiente" ${statusSlug === "pendiente" ? "selected" : ""}>Pendiente</option>
+            <option value="Entregado" ${statusSlug === "entregado" ? "selected" : ""}>Entregado</option>
+            <option value="Cancelado" ${statusSlug === "cancelado" ? "selected" : ""}>Cancelado</option>
+            <option value="Faltante" ${statusSlug === "faltante" ? "selected" : ""}>Faltante</option>
+            <option value="en carrito" ${statusSlug === "encarrito" ? "selected" : ""}>en carrito</option>
+          </select>
+        </div>
+      </td>
+      <td class="cell-check">
+        <input type="checkbox" class="table-checkbox" data-action="toggle-paid" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.pagado ? "checked" : ""} title="${row.pagado ? "Pagado (True)" : "Pendiente de pago (False)"}">
+      </td>
+      <td class="cell-check">
+        <input type="checkbox" class="table-checkbox check-confirmed" data-action="toggle-confirmed" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.confirmado ? "checked" : ""} title="${row.confirmado ? "Pedido Confirmado (True)" : "Sin confirmar (False)"}">
+      </td>
+      <td style="text-align: center;">
+        <button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" title="Editar venta o eliminar">
+          <i data-lucide="pencil" aria-hidden="true"></i>
+        </button>
+      </td>
+    </tr>
+  `;
+}
+
+// 5. Renderizar filas en la tabla con controles interactivos y agrupación por lotes proveedor
 function renderTable(rows) {
   if (rows.length === 0) {
     tableBody.innerHTML = "";
@@ -339,64 +521,142 @@ function renderTable(rows) {
 
   emptyState.hidden = true;
 
-  tableBody.innerHTML = rows.map((row, index) => {
-    const statusSlug = getStatusSlug(row.estado);
+  // Si la separación por lotes está desactivada por el usuario
+  if (!isSupplierGroupingEnabled) {
+    tableBody.innerHTML = rows.map((row, index) => renderTableRow(row, rows.length - index, false)).join("");
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
 
-    return `
-      <tr data-sale-id="${row.saleId}" data-code="${row.code}">
-        <td class="td-num">${rows.length - index}</td>
-        <td class="td-date">${row.fecha || "-"}</td>
-        <td>
-          <span class="code-chip">${row.code}</span>
-        </td>
-        <td>
-          <div class="fragrance-name">${row.fragrance}</div>
-        </td>
-        <td>
-          <span class="size-tag">${row.size}</span>
-        </td>
-        <td class="qty-val">${row.qty}</td>
-        <td>
-          <span class="client-name">${row.clientName}</span>
-        </td>
-        <td>
-          ${renderPhoneCell(row.clientPhone)}
-        </td>
-        <td>
-          <span class="inst-name">${row.institution || "-"}</span>
-        </td>
-        <td class="price-cell">${formatCLP(row.precioVenta)}</td>
-        <td class="cost-cell">${formatCLP(row.costo)}</td>
-        <td class="profit-cell">+${formatCLP(row.ganancia)}</td>
-        <td>
-          <div class="status-select-wrap">
-            <span class="status-dot dot-${statusSlug}"></span>
-            <select class="status-dropdown opt-${statusSlug}" data-action="change-status" data-sale-id="${row.saleId}" data-code="${row.code}">
-              <option value="Pedido" ${statusSlug === "pedido" ? "selected" : ""}>Pedido</option>
-              <option value="Recepcionado" ${statusSlug === "recepcionado" ? "selected" : ""}>Recepcionado</option>
-              <option value="Pendiente" ${statusSlug === "pendiente" ? "selected" : ""}>Pendiente</option>
-              <option value="Entregado" ${statusSlug === "entregado" ? "selected" : ""}>Entregado</option>
-              <option value="Cancelado" ${statusSlug === "cancelado" ? "selected" : ""}>Cancelado</option>
-              <option value="Faltante" ${statusSlug === "faltante" ? "selected" : ""}>Faltante</option>
-              <option value="en carrito" ${statusSlug === "encarrito" ? "selected" : ""}>en carrito</option>
-            </select>
+  // Agrupación de filas: Pendientes vs Lotes de Pedidos Proveedor
+  const pendingRows = [];
+  const orderedBatches = {};
+
+  rows.forEach(r => {
+    const batchInfo = resolveSupplierBatch(r);
+    if (batchInfo.isPending) {
+      pendingRows.push(r);
+    } else {
+      const bKey = batchInfo.batchKey;
+      if (!orderedBatches[bKey]) {
+        orderedBatches[bKey] = {
+          batchKey: bKey,
+          title: batchInfo.title,
+          rows: []
+        };
+      }
+      orderedBatches[bKey].rows.push(r);
+    }
+  });
+
+  let html = "";
+  let overallIndex = rows.length;
+
+  // 1. Sección PENDIENTES POR PEDIR AL PROVEEDOR
+  if (pendingRows.length > 0) {
+    const pendingUnits = pendingRows.reduce((sum, r) => sum + r.qty, 0);
+    const pendingCost = pendingRows.reduce((sum, r) => sum + r.costo, 0);
+    const pendingSale = pendingRows.reduce((sum, r) => sum + r.precioVenta, 0);
+
+    html += `
+      <tr class="tr-supplier-header group-pending">
+        <td colspan="16">
+          <div class="supplier-header-content">
+            <div class="supplier-header-title">
+              <span class="supplier-status-icon pending-icon">
+                <i data-lucide="clock" style="width: 16px; height: 16px;"></i>
+              </span>
+              <strong style="color: #b45309; font-size: 0.92rem;">PENDIENTES POR PEDIR AL PROVEEDOR</strong>
+              <span class="badge-supplier-tag" style="background: rgba(245, 158, 11, 0.2); color: #b45309;">
+                ${pendingUnits} perfumes (${pendingRows.length} líneas)
+              </span>
+              <span class="badge-supplier-tag tag-cost" title="Costo estimado a pagar al proveedor">
+                Costo: ${formatCLP(pendingCost)}
+              </span>
+              <span class="badge-supplier-tag" style="color: var(--text-title);" title="Total ventas a cobrar">
+                Venta: ${formatCLP(pendingSale)}
+              </span>
+            </div>
+            <div class="supplier-header-actions">
+              <label class="select-all-pending-label">
+                <input type="checkbox" id="checkSelectAllPending" title="Seleccionar todos los pendientes">
+                <span>Seleccionar todos</span>
+              </label>
+              <button type="button" class="btn-create-supplier-batch" id="btnOpenBatchModal" title="Marcar los perfumes seleccionados como Pedido Proveedor">
+                <i data-lucide="package-plus" style="width: 14px; height: 14px;"></i>
+                <span>Pasar a Pedido Proveedor</span>
+              </button>
+            </div>
           </div>
-        </td>
-        <td class="cell-check">
-          <input type="checkbox" class="table-checkbox" data-action="toggle-paid" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.pagado ? "checked" : ""} title="${row.pagado ? "Pagado (True)" : "Pendiente de pago (False)"}">
-        </td>
-        <td class="cell-check">
-          <input type="checkbox" class="table-checkbox check-confirmed" data-action="toggle-confirmed" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.confirmado ? "checked" : ""} title="${row.confirmado ? "Pedido Confirmado (True)" : "Sin confirmar (False)"}">
-        </td>
-        <td style="text-align: center;">
-          <button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" title="Editar venta o eliminar">
-            <i data-lucide="pencil" aria-hidden="true"></i>
-          </button>
         </td>
       </tr>
     `;
-  }).join("");
 
+    pendingRows.forEach(r => {
+      html += renderTableRow(r, overallIndex--, true);
+    });
+  }
+
+  // 2. Grupos de Lotes de Pedidos Proveedor (Ordenados por fecha descendente)
+  const sortedBatchKeys = Object.keys(orderedBatches).sort((a, b) => b.localeCompare(a));
+
+  sortedBatchKeys.forEach(batchKey => {
+    const batchObj = orderedBatches[batchKey];
+    const bRows = batchObj.rows;
+    const bUnits = bRows.reduce((sum, r) => sum + r.qty, 0);
+    const bCost = bRows.reduce((sum, r) => sum + r.costo, 0);
+    const bSale = bRows.reduce((sum, r) => sum + r.precioVenta, 0);
+    const bTitle = batchObj.title || getSupplierBatchTitle(batchKey);
+    const isCollapsed = collapsedSupplierBatches.has(batchKey);
+
+    html += `
+      <tr class="tr-supplier-header group-ordered" data-batch-key="${batchKey}">
+        <td colspan="16">
+          <div class="supplier-header-content">
+            <div class="supplier-header-title">
+              <span class="supplier-status-icon ordered-icon">
+                <i data-lucide="package-check" style="width: 16px; height: 16px;"></i>
+              </span>
+              <strong style="color: var(--text-title); font-size: 0.92rem;">${bTitle}</strong>
+              <span class="badge-supplier-tag">
+                ${bUnits} perfumes (${bRows.length} líneas)
+              </span>
+              <span class="badge-supplier-tag tag-cost">
+                Costo: ${formatCLP(bCost)}
+              </span>
+              <span class="badge-supplier-tag" style="color: var(--text-title);">
+                Venta: ${formatCLP(bSale)}
+              </span>
+              <span class="badge-supplier-tag tag-locked">
+                <i data-lucide="lock" style="width: 12px; height: 12px;"></i> Pedido Cerrado
+              </span>
+              <a href="pedidos.html" class="badge-supplier-tag" style="text-decoration: none; color: var(--gold-primary); display: inline-flex; align-items: center; gap: 4px;" title="Ver detalle completo del comprobante en Historial de Pedidos">
+                <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Ver en Historial
+              </a>
+            </div>
+            <div class="supplier-header-actions">
+              <button type="button" class="btn-toggle-batch" data-action="toggle-batch-collapse" data-batch-key="${batchKey}">
+                <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
+                <span>${isCollapsed ? 'Desplegar' : 'Contraer'}</span>
+              </button>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
+
+    bRows.forEach(r => {
+      let rHtml = renderTableRow(r, overallIndex--, false);
+      if (isCollapsed) {
+        rHtml = rHtml.replace('<tr ', `<tr data-batch-row="${batchKey}" class="batch-collapsed-row" `);
+      } else {
+        rHtml = rHtml.replace('<tr ', `<tr data-batch-row="${batchKey}" `);
+      }
+      html += rHtml;
+    });
+  });
+
+  tableBody.innerHTML = html;
   if (window.lucide) lucide.createIcons();
 }
 
@@ -945,26 +1205,44 @@ tableBody.addEventListener("change", async event => {
   if (action === "change-status") {
     const newStatus = target.value;
     const newSlug = getStatusSlug(newStatus);
+    const todayISO = new Date().toISOString().split("T")[0];
 
     // Actualizar aspecto visual inmediatamente
     target.className = `status-dropdown opt-${newSlug}`;
     const dot = target.parentElement.querySelector(".status-dot");
     if (dot) dot.className = `status-dot dot-${newSlug}`;
 
+    let updateFields = { estado: newStatus };
+
     // Actualizar en el modelo local
     allSaleRows.forEach(r => {
       if (r.saleId === saleId && r.code === code) {
         r.estado = newStatus;
+        if (newSlug === "pedido") {
+          if (!r.fechaPedidoProveedor) {
+            r.fechaPedidoProveedor = todayISO;
+            r.idPedidoProveedor = "PROV-" + todayISO;
+          }
+          updateFields.fechaPedidoProveedor = r.fechaPedidoProveedor;
+          updateFields.idPedidoProveedor = r.idPedidoProveedor;
+        } else if (newSlug === "pendiente" || newSlug === "encarrito") {
+          r.fechaPedidoProveedor = null;
+          r.idPedidoProveedor = null;
+          updateFields.fechaPedidoProveedor = null;
+          updateFields.idPedidoProveedor = null;
+        }
       }
     });
+
     renderAnalyticsDashboard(allSaleRows);
     try {
       localStorage.setItem("notes_sales_updated", Date.now().toString());
     } catch (e) {}
 
     try {
-      await updateSaleRow(saleId, code, { estado: newStatus });
+      await updateSaleRow(saleId, code, updateFields);
       showToast(`Estado cambiado a "${newStatus}" ✓`);
+      applyFilters();
     } catch (err) {
       alert("Error al actualizar estado en Firestore: " + err.message);
     }
@@ -1001,6 +1279,173 @@ tableBody.addEventListener("change", async event => {
       target.checked = !isConfirmed;
     }
   }
+});
+
+// ==========================================================================
+// 7.1 CONTROL Y GESTIÓN DE LOTES / PEDIDOS AL PROVEEDOR
+// ==========================================================================
+
+// Alternar checkbox "Seleccionar todos los pendientes"
+document.addEventListener("change", event => {
+  if (event.target && event.target.id === "checkSelectAllPending") {
+    const isChecked = event.target.checked;
+    document.querySelectorAll(".pending-row-select").forEach(cb => {
+      cb.checked = isChecked;
+    });
+  }
+});
+
+// Abrir modal de creación de lote con los pendientes seleccionados
+document.addEventListener("click", event => {
+  const btn = event.target.closest("#btnOpenBatchModal");
+  if (!btn) return;
+
+  const selectedCbs = Array.from(document.querySelectorAll(".pending-row-select:checked"));
+  if (selectedCbs.length === 0) {
+    showToast("Selecciona al menos un perfume pendiente para crear el pedido");
+    return;
+  }
+
+  const selectedItems = [];
+  let totalCost = 0;
+  let totalQty = 0;
+
+  selectedCbs.forEach(cb => {
+    const saleId = cb.dataset.saleId;
+    const code = cb.dataset.code;
+    const row = allSaleRows.find(r => r.saleId === saleId && r.code === code);
+    if (row) {
+      selectedItems.push(row);
+      totalCost += row.costo;
+      totalQty += row.qty;
+    }
+  });
+
+  const modalEl = document.getElementById("modalSupplierBatch");
+  const countEl = document.getElementById("batchModalItemCount");
+  const costEl = document.getElementById("batchModalTotalCost");
+  const listEl = document.getElementById("batchModalItemsList");
+  const dateInput = document.getElementById("batchSupplierDate");
+
+  if (countEl) countEl.textContent = `${totalQty} perfumes (${selectedItems.length} líneas)`;
+  if (costEl) costEl.textContent = formatCLP(totalCost);
+  if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
+
+  if (listEl) {
+    listEl.innerHTML = selectedItems.map(it => `
+      <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border-subtle);">
+        <span><strong>[${it.code}]</strong> ${it.fragrance} (${it.size}) x${it.qty}</span>
+        <span style="font-family: var(--font-mono);">${formatCLP(it.costo)}</span>
+      </div>
+    `).join("");
+  }
+
+  if (modalEl) modalEl.hidden = false;
+  if (window.lucide) lucide.createIcons();
+});
+
+// Confirmar creación de lote de Pedido Proveedor
+const btnConfirmBatch = document.getElementById("btnConfirmSupplierBatch");
+if (btnConfirmBatch) {
+  btnConfirmBatch.addEventListener("click", async () => {
+    const selectedCbs = Array.from(document.querySelectorAll(".pending-row-select:checked"));
+    if (selectedCbs.length === 0) {
+      const m = document.getElementById("modalSupplierBatch");
+      if (m) m.hidden = true;
+      return;
+    }
+
+    const dateInput = document.getElementById("batchSupplierDate");
+    const chosenDate = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().split("T")[0];
+    const batchId = "PROV-" + chosenDate;
+
+    btnConfirmBatch.disabled = true;
+    btnConfirmBatch.textContent = "Guardando lote...";
+
+    try {
+      const updatePromises = [];
+      selectedCbs.forEach(cb => {
+        const saleId = cb.dataset.saleId;
+        const code = cb.dataset.code;
+
+        // Actualizar en memoria local
+        allSaleRows.forEach(r => {
+          if (r.saleId === saleId && r.code === code) {
+            r.estado = "Pedido";
+            r.fechaPedidoProveedor = chosenDate;
+            r.idPedidoProveedor = batchId;
+          }
+        });
+
+        // Guardar en Firestore
+        updatePromises.push(updateSaleRow(saleId, code, {
+          estado: "Pedido",
+          fechaPedidoProveedor: chosenDate,
+          idPedidoProveedor: batchId
+        }));
+      });
+
+      await Promise.all(updatePromises);
+      const m = document.getElementById("modalSupplierBatch");
+      if (m) m.hidden = true;
+      showToast(`¡Pedido Proveedor creado! (${selectedCbs.length} productos agrupados para el ${chosenDate}) ✓`);
+      applyFilters();
+    } catch (err) {
+      alert("Error al crear el lote de pedido: " + err.message);
+    } finally {
+      btnConfirmBatch.disabled = false;
+      btnConfirmBatch.innerHTML = `<i data-lucide="check" aria-hidden="true"></i> Confirmar Pedido Proveedor`;
+      if (window.lucide) lucide.createIcons();
+    }
+  });
+}
+
+// Cerrar modal de lote
+document.addEventListener("click", event => {
+  if (event.target.closest('[data-action="close-batch-modal"]')) {
+    const m = document.getElementById("modalSupplierBatch");
+    if (m) m.hidden = true;
+  }
+});
+
+// Botón para activar/desactivar la separación por lotes en la tabla
+const btnToggleGrouping = document.getElementById("btnToggleSupplierGrouping");
+if (btnToggleGrouping) {
+  if (!isSupplierGroupingEnabled) {
+    btnToggleGrouping.classList.remove("btn-grouping-active");
+  }
+  btnToggleGrouping.addEventListener("click", () => {
+    isSupplierGroupingEnabled = !isSupplierGroupingEnabled;
+    localStorage.setItem("notes_supplier_grouping", isSupplierGroupingEnabled.toString());
+    btnToggleGrouping.classList.toggle("btn-grouping-active", isSupplierGroupingEnabled);
+    applyFilters();
+    showToast(isSupplierGroupingEnabled ? "Separación por lotes de proveedor activada" : "Vista corrida plana activada");
+  });
+}
+
+// Botón de colapsar / desplegar un lote cerrado
+document.addEventListener("click", event => {
+  const btn = event.target.closest('[data-action="toggle-batch-collapse"]');
+  if (!btn) return;
+
+  const batchKey = btn.dataset.batchKey;
+  if (!batchKey) return;
+
+  if (collapsedSupplierBatches.has(batchKey)) {
+    collapsedSupplierBatches.delete(batchKey);
+  } else {
+    collapsedSupplierBatches.add(batchKey);
+  }
+
+  const isNowCollapsed = collapsedSupplierBatches.has(batchKey);
+  const rows = document.querySelectorAll(`tr[data-batch-row="${batchKey}"]`);
+  rows.forEach(r => r.classList.toggle("batch-collapsed-row", isNowCollapsed));
+
+  btn.innerHTML = `
+    <i data-lucide="${isNowCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
+    <span>${isNowCollapsed ? 'Desplegar' : 'Contraer'}</span>
+  `;
+  if (window.lucide) lucide.createIcons();
 });
 
 // 8. Exportar a CSV compatible con Excel
