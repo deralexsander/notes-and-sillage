@@ -210,7 +210,7 @@ export async function recordSale(saleData) {
       items,
       origin = "WhatsApp / Catálogo Web",
       notes = "",
-      estado = "Enviado por WhatsApp",
+      estado = "Pendiente",
       pagado,
       confirmado
     } = saleData;
@@ -244,7 +244,10 @@ export async function recordSale(saleData) {
         unitProfit: unitProfit,
         subtotal: subtotal,
         subtotalCosto: subtotalCosto,
-        subtotalGanancia: subtotalGanancia
+        subtotalGanancia: subtotalGanancia,
+        estado: item.estado || estado || "Pendiente",
+        pagado: typeof item.pagado === "boolean" ? item.pagado : (typeof pagado === "boolean" ? pagado : false),
+        confirmado: typeof item.confirmado === "boolean" ? item.confirmado : (typeof confirmado === "boolean" ? confirmado : false)
       };
     });
 
@@ -266,9 +269,11 @@ export async function recordSale(saleData) {
         totalUnidades: totalUnidades,
         margenPorcentaje: totalVenta > 0 ? Number(((totalGanancia / totalVenta) * 100).toFixed(1)) : 50.0
       },
-      estado: estado || "Enviado por WhatsApp",
+      estado: estado || "Pendiente",
       origen: origin,
       notas: notes,
+      pagado: typeof pagado === "boolean" ? pagado : false,
+      confirmado: typeof confirmado === "boolean" ? confirmado : false,
       createdAt: serverTimestamp(),
       fechaISO: now.toISOString(),
       fechaLegible: now.toLocaleString("es-CL", {
@@ -279,8 +284,6 @@ export async function recordSale(saleData) {
         minute: "2-digit"
       })
     };
-    if (typeof pagado === "boolean") ventaDoc.pagado = pagado;
-    if (typeof confirmado === "boolean") ventaDoc.confirmado = confirmado;
 
     // Guardar en la colección 'ventas' (Historial de ventas principal)
     const ventasRef = collection(db, "ventas");

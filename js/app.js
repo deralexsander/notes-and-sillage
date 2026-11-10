@@ -1111,7 +1111,7 @@ function finishOrderSuccess() {
 const NTFY_ORDER_TOPIC = "pedidos-notesandsillage-2042";
 
 // Enviar notificación a ntfy.sh para alertar inmediatamente al celular
-async function sendNtfyOrderNotification(payload) {
+async function sendNtfyOrderNotification(payload, codigoVenta = null) {
   const itemsText = (payload.items || [])
     .map(it => `• ${it.qty}x [${it.code}] ${it.name} (${it.size}) - $${(it.subtotal || 0).toLocaleString("es-CL")}`)
     .join("\n");
@@ -1120,7 +1120,8 @@ async function sendNtfyOrderNotification(payload) {
     `👤 Cliente: ${payload.customer?.name || "No especificado"}`,
     `📞 Teléfono: ${payload.customer?.phone || "No especificado"}`,
     `💵 Total: $${(payload.totalPrice || 0).toLocaleString("es-CL")} (${payload.totalItems || 0} producto${(payload.totalItems || 0) === 1 ? "" : "s"})`,
-    `🆔 Pedido: #${payload.orderId}`,
+    `🆔 Pedido: #${payload.orderId}${codigoVenta ? ` (${codigoVenta})` : ""}`,
+    `📦 Estado: Guardado en Firebase (Pendiente)`,
     "",
     "🛍️ Detalle del pedido:",
     itemsText
@@ -1175,7 +1176,7 @@ async function sendNtfyOrderNotification(payload) {
   }
 }
 
-// Registro asíncrono con control de carga, chequeo de internet y notificación a ntfy
+// Registro asíncrono con control de carga, chequeo de internet, guardado en Firebase y notificación a ntfy
 async function registerOrderAsync(payload) {
   if (!navigator.onLine) {
     throw new Error("No se detecta conexión a internet en tu dispositivo. Por favor revisa tu wifi o datos móviles.");
@@ -1186,12 +1187,62 @@ async function registerOrderAsync(payload) {
     throw new Error("Simulación: Se interrumpió la conexión durante el registro.");
   }
 
-  // Enviar la notificación push a ntfy.sh
-  await sendNtfyOrderNotification(payload);
+  // 1. Guardar el pedido en Firebase Firestore (colección 'ventas' y 'pedidos')
+  let firestoreResult = null;
+  let saveFn = window.saveOrderToFirestore || window.recordSaleInFirestore;
+
+  if (!saveFn) {
+    try {
+      const fbModule = await import("./firebase-config.js");
+      if (fbModule && typeof fbModule.recordSale === "function") {
+        saveFn = fbModule.recordSale;
+      }
+    } catch (e) {
+      console.warn("Intento de importación dinámica de firebase-config:", e);
+    }
+  }
+
+  if (typeof saveFn === "function") {
+    try {
+      firestoreResult = await saveFn({
+        customerName: payload.customer?.name || "Cliente",
+        customerPhone: payload.customer?.phone || "",
+        items: (payload.items || []).map(it => ({
+          code: it.code || "",
+          name: it.name || "",
+          size: it.size || "100 ml",
+          qty: it.qty || 1,
+          unitPrice: it.unitPrice || 0
+        })),
+        origin: "Catálogo Web",
+        notes: `Pedido #${payload.orderId}`,
+        estado: "Pendiente",
+        pagado: false,
+        confirmado: false
+      });
+      console.log("Pedido guardado exitosamente en Firestore:", firestoreResult);
+    } catch (fbErr) {
+      console.error("Error al guardar pedido en Firestore:", fbErr);
+      throw new Error("No pudimos registrar tu pedido en la base de datos: " + (fbErr.message || "Error al conectar con Firestore"));
+    }
+  } else {
+    console.error("No se encontró el módulo de guardado en Firestore.");
+    throw new Error("El sistema de registro en base de datos no está disponible. Por favor recarga la página.");
+  }
+
+  // 2. Enviar notificación push a ntfy.sh (para que te llegue al celular)
+  const codigoVenta = firestoreResult?.codigoVenta || null;
+  try {
+    await sendNtfyOrderNotification(payload, codigoVenta);
+  } catch (ntfyErr) {
+    console.warn("El pedido se guardó en Firebase pero la notificación tuvo una demora:", ntfyErr);
+  }
 
   return {
     success: true,
     orderId: payload.orderId,
+    codigoVenta: codigoVenta,
+    firestoreId: firestoreResult?.id || null,
     registeredAt: new Date().toISOString()
   };
 }
@@ -1205,8 +1256,8 @@ async function processOrderSubmission(payload) {
   showOrderStatus("loading");
 
   try {
-    await registerOrderAsync(payload);
-    showOrderStatus("success", payload);
+    const regResult = await registerOrderAsync(payload);
+    showOrderStatus("success", { ...payload, codigoVenta: regResult?.codigoVenta });
   } catch (err) {
     console.warn("Error en registro de pedido:", err);
     showOrderStatus("error", { error: err, payload });
