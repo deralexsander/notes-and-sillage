@@ -591,6 +591,7 @@ function renderTable(rows) {
     const pendingUnits = pendingRows.reduce((sum, r) => sum + r.qty, 0);
     const pendingCost = pendingRows.reduce((sum, r) => sum + r.costo, 0);
     const pendingSale = pendingRows.reduce((sum, r) => sum + r.precioVenta, 0);
+    const pendingProfit = pendingSale - pendingCost;
 
     html += `
       <tr class="tr-supplier-header group-pending">
@@ -609,6 +610,9 @@ function renderTable(rows) {
               </span>
               <span class="badge-supplier-tag" style="color: var(--text-title);" title="Total ventas a cobrar">
                 Venta: ${formatCLP(pendingSale)}
+              </span>
+              <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Costo)">
+                Ganancia Real: ${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}
               </span>
             </div>
             <div class="supplier-header-actions">
@@ -640,6 +644,7 @@ function renderTable(rows) {
     const bUnits = bRows.reduce((sum, r) => sum + r.qty, 0);
     const bCost = bRows.reduce((sum, r) => sum + r.costo, 0);
     const bSale = bRows.reduce((sum, r) => sum + r.precioVenta, 0);
+    const bProfit = bSale - bCost;
     const bTitle = batchObj.title || getSupplierBatchTitle(batchKey);
     const isCollapsed = collapsedSupplierBatches.has(batchKey);
 
@@ -660,6 +665,9 @@ function renderTable(rows) {
               </span>
               <span class="badge-supplier-tag" style="color: var(--text-title);">
                 Venta: ${formatCLP(bSale)}
+              </span>
+              <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Costo)">
+                Ganancia Real: ${bProfit > 0 ? '+' : ''}${formatCLP(bProfit)}
               </span>
               <span class="badge-supplier-tag tag-locked">
                 <i data-lucide="lock" style="width: 12px; height: 12px;"></i> Pedido Cerrado
