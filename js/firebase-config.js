@@ -174,30 +174,50 @@ export function getUnitFinancials(code, size, unitPrice) {
   const normCode = (code || "").toUpperCase().trim();
   const cleanSize = (size || "").toLowerCase().replace(/\s+/g, "");
 
+  let unitCost = 0;
+
   // Cremas
-  if (normCode === "T-03") return { unitCost: 8000, unitProfit: 5600 };
-  if (normCode === "T-04") return { unitCost: 4500, unitProfit: 3150 };
-
+  if (normCode === "T-03") {
+    unitCost = 8000;
+  } else if (normCode === "T-04") {
+    unitCost = 4500;
+  }
   // Body Splash
-  if (normCode.startsWith("SPLASH") || normCode === "B101" || normCode === "B-101") return { unitCost: 3300, unitProfit: 3300 };
-
+  else if (normCode.startsWith("SPLASH") || normCode === "B101" || normCode === "B-101") {
+    unitCost = 3300;
+  }
   // Colonias Corporales S-400
-  if (/^S-?\d+/.test(normCode)) return { unitCost: 3000, unitProfit: 3000 };
-
+  else if (/^S-?\d+/.test(normCode)) {
+    unitCost = 3000;
+  }
   // Alta Gama / Nicho Q
-  if (normCode.startsWith("Q")) return { unitCost: 13000, unitProfit: 13000 };
-
+  else if (normCode.startsWith("Q")) {
+    if (cleanSize === "50ml") unitCost = 8500;
+    else if (cleanSize === "20ml") unitCost = 4750;
+    else unitCost = 13000;
+  }
   // Línea Juvenil J
-  if (normCode.startsWith("J")) return { unitCost: 4000, unitProfit: 4000 };
-
+  else if (normCode.startsWith("J")) {
+    if (cleanSize === "20ml") unitCost = 2500;
+    else unitCost = 4000;
+  }
   // Perfumería Tradicional F y H
-  if (cleanSize === "100ml") return { unitCost: 8500, unitProfit: 8500 };
-  if (cleanSize === "50ml") return { unitCost: 5500, unitProfit: 5500 };
-  if (cleanSize === "20ml") return { unitCost: 3250, unitProfit: 3250 };
+  else if (cleanSize === "100ml") {
+    unitCost = 8500;
+  } else if (cleanSize === "50ml") {
+    unitCost = 5500;
+  } else if (cleanSize === "20ml") {
+    unitCost = 3250;
+  } else {
+    // Estimación genérica de 50% de margen si no coincide
+    unitCost = Math.round((Number(unitPrice) || 0) * 0.5);
+  }
 
-  // Estimación genérica de 50% de margen si no coincide
-  const cost = Math.round(unitPrice * 0.5);
-  return { unitCost: cost, unitProfit: unitPrice - cost };
+  const priceNum = Number(unitPrice) || 0;
+  // La ganancia real es el precio de venta cobrado menos el costo del producto
+  const unitProfit = Math.max(0, priceNum - unitCost);
+
+  return { unitCost, unitProfit };
 }
 
 // 3. Registrar venta en Firestore (Colección 'ventas' y 'pedidos')
@@ -536,7 +556,7 @@ export async function updateFullSaleRow(saleId, oldCode, updatedData) {
       const q = Number(it.qty) || 1;
       const up = Number(it.unitPrice) || 0;
       const uc = Number(it.unitCost) || 0;
-      const ug = Number(it.unitProfit) || (up - uc);
+      const ug = typeof it.unitProfit === "number" ? it.unitProfit : (up - uc);
 
       totalVenta += up * q;
       totalCosto += uc * q;

@@ -313,6 +313,26 @@
             </div>
           </div>
 
+          <!-- Ajuste de Precio Unitario y Venta al Costo (Ganancia $0) -->
+          <div class="form-grid" style="margin-top: 14px; grid-template-columns: 1fr 1fr; align-items: end;">
+            <div class="form-group">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <label for="manualUnitPrice">Precio Unitario ($)</label>
+                <button type="button" id="btnSetAtCost" class="btn-pill-cost" title="Fijar precio igual al costo del proveedor (Ganancia $0 para uso personal o familia)">
+                  <i data-lucide="tag" style="width: 12px; height: 12px;"></i>
+                  <span>Al costo ($0 ganancia)</span>
+                </button>
+              </div>
+              <input type="number" id="manualUnitPrice" placeholder="Precio venta (ej: 26000 o 13000)" min="0" step="500">
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label" style="height: 42px; display: flex; align-items: center; margin: 0; padding: 0 10px; background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;">
+                <input type="checkbox" id="manualAtCost">
+                <span style="font-size: 0.82rem; font-weight: 600;">Venta al Costo / Uso Personal</span>
+              </label>
+            </div>
+          </div>
+
           <!-- Panel de Cálculos Financieros en Tiempo Real -->
           <div class="modal-calc-preview" id="modalCalcPreview">
             <div class="calc-card-item">

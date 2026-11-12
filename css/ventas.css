@@ -663,6 +663,11 @@ body.auth-checking .container-fluid {
   padding: 5px 4px;
 }
 
+.profit-cell.profit-zero {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
 .th-status, .td-status {
   width: 104px;
   min-width: 100px;
@@ -1129,6 +1134,33 @@ body.auth-checking .container-fluid {
   height: 11px;
 }
 
+.btn-pill-cost {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--gold-muted);
+  color: var(--gold-primary);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.btn-pill-cost:hover {
+  background: rgba(212, 175, 55, 0.25);
+  border-color: var(--gold-primary);
+  transform: translateY(-1px);
+}
+
+.btn-pill-cost.active {
+  background: var(--gold-primary);
+  color: #111827;
+}
+
 .modal-calc-preview {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1162,6 +1194,10 @@ body.auth-checking .container-fluid {
 
 .calc-card-item.highlight .calc-val.profit {
   color: var(--green-main);
+}
+
+.calc-card-item.highlight .calc-val.profit.profit-zero {
+  color: var(--text-muted) !important;
 }
 
 .modal-checks-bar {

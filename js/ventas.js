@@ -178,6 +178,9 @@ const manualQty = document.getElementById("manualQty");
 const manualStatus = document.getElementById("manualStatus");
 const manualPaid = document.getElementById("manualPaid");
 const manualConfirmed = document.getElementById("manualConfirmed");
+const manualUnitPrice = document.getElementById("manualUnitPrice");
+const manualAtCost = document.getElementById("manualAtCost");
+const btnSetAtCost = document.getElementById("btnSetAtCost");
 const calcUnitPrice = document.getElementById("calcUnitPrice");
 const calcTotalPrice = document.getElementById("calcTotalPrice");
 const calcTotalCost = document.getElementById("calcTotalCost");
@@ -318,6 +321,15 @@ function handleCustomerNameAutoRecognition() {
     badge.hidden = false;
     if (window.lucide) lucide.createIcons();
   }
+
+  // Si el cliente es el dueño (Alexander Muñoz), autoconfigurar al costo por defecto
+  const isOwner = norm.includes("alexander") || (match.phone && match.phone.replace(/\D/g, "").includes("68787862"));
+  if (isOwner && modalMode === "new") {
+    if (manualAtCost && !manualAtCost.checked) {
+      manualAtCost.checked = true;
+      updateModalFinancialPreview(false);
+    }
+  }
 }
 
 // 1. Cargar catálogo de Firestore para el formulario manual
@@ -380,7 +392,7 @@ async function loadSales() {
         const qty = Number(item.qty) || 1;
         const unitPrice = Number(item.unitPrice) || 0;
         const unitCost = Number(item.unitCost) || 0;
-        const unitProfit = Number(item.unitProfit) || (unitPrice - unitCost);
+        const unitProfit = typeof item.unitProfit === "number" ? item.unitProfit : (unitPrice - unitCost);
 
         const subtotalVenta = unitPrice * qty;
         const subtotalCosto = unitCost * qty;
@@ -490,7 +502,7 @@ function renderTableRow(row, rowNum, isPending) {
       </td>
       <td class="price-cell col-hide-summary">${formatCLP(row.precioVenta)}</td>
       <td class="cost-cell col-hide-summary">${formatCLP(row.costo)}</td>
-      <td class="profit-cell col-hide-summary">+${formatCLP(row.ganancia)}</td>
+      <td class="profit-cell col-hide-summary ${row.ganancia === 0 ? 'profit-zero' : ''}">${row.ganancia > 0 ? '+' : ''}${formatCLP(row.ganancia)}</td>
       <td class="td-status">
         <div class="status-select-wrap">
           <span class="status-dot dot-${statusSlug}"></span>
@@ -1521,87 +1533,115 @@ function exportToCSV() {
 }
 
 // 9. Lógica de Precios, Costos y Cálculos Dinámicos
-function calculateItemPricing(code, size, product) {
+function calculateItemPricing(code, size, product, overridePrice = null) {
   const normCode = (code || "").toUpperCase().trim();
   const cleanSize = (size || "").toLowerCase().replace(/\s+/g, "");
 
-  let unitPrice = 17000;
+  let defaultPrice = 17000;
 
   if (product) {
     if (product.tiered) {
-      if (cleanSize === "50ml") unitPrice = 11000;
-      else if (cleanSize === "20ml") unitPrice = 6500;
-      else unitPrice = 17000;
+      if (cleanSize === "50ml") defaultPrice = 11000;
+      else if (cleanSize === "20ml") defaultPrice = 6500;
+      else defaultPrice = 17000;
     } else if (normCode.startsWith("Q")) {
-      if (cleanSize === "50ml") unitPrice = 17000;
-      else if (cleanSize === "20ml") unitPrice = 9500;
-      else unitPrice = product.price || 26000;
+      if (cleanSize === "50ml") defaultPrice = 17000;
+      else if (cleanSize === "20ml") defaultPrice = 9500;
+      else defaultPrice = product.price || 26000;
     } else if (normCode.startsWith("J")) {
-      if (cleanSize === "20ml") unitPrice = 5000;
-      else unitPrice = product.price || 8000;
+      if (cleanSize === "20ml") defaultPrice = 5000;
+      else defaultPrice = product.price || 8000;
     } else if (/^S-?0[1-6]/.test(normCode)) {
-      if (cleanSize === "500ml") unitPrice = 7000;
-      else unitPrice = product.price || 6000;
+      if (cleanSize === "500ml") defaultPrice = 7000;
+      else defaultPrice = product.price || 6000;
     } else {
-      unitPrice = product.price || 17000;
+      defaultPrice = product.price || 17000;
     }
   } else {
     // Estimación por código si es producto histórico
     if (normCode.startsWith("Q")) {
-      if (cleanSize === "50ml") unitPrice = 17000;
-      else if (cleanSize === "20ml") unitPrice = 9500;
-      else unitPrice = 26000;
+      if (cleanSize === "50ml") defaultPrice = 17000;
+      else if (cleanSize === "20ml") defaultPrice = 9500;
+      else defaultPrice = 26000;
     } else if (normCode.startsWith("J")) {
-      if (cleanSize === "20ml") unitPrice = 5000;
-      else unitPrice = 8000;
+      if (cleanSize === "20ml") defaultPrice = 5000;
+      else defaultPrice = 8000;
     } else if (normCode === "T-03") {
-      unitPrice = 13600;
+      defaultPrice = 13600;
     } else if (normCode === "T-04") {
-      unitPrice = 7650;
+      defaultPrice = 7650;
     } else if (normCode.startsWith("SPLASH") || normCode === "B101" || normCode === "B-101") {
-      unitPrice = 6600;
+      defaultPrice = 6600;
     } else if (/^S-?\d+/.test(normCode)) {
-      if (cleanSize === "500ml") unitPrice = 7000;
-      else unitPrice = 6000;
+      if (cleanSize === "500ml") defaultPrice = 7000;
+      else defaultPrice = 6000;
     } else {
-      if (cleanSize === "50ml") unitPrice = 11000;
-      else if (cleanSize === "20ml") unitPrice = 6500;
-      else unitPrice = 17000;
+      if (cleanSize === "50ml") defaultPrice = 11000;
+      else if (cleanSize === "20ml") defaultPrice = 6500;
+      else defaultPrice = 17000;
     }
   }
 
-  // Costo y ganancia unitaria
-  let unitCost = Math.round(unitPrice * 0.5);
-  let unitProfit = unitPrice - unitCost;
-
+  // Costo base unitario del producto
+  let unitCost = Math.round(defaultPrice * 0.5);
   if (typeof getUnitFinancials === "function") {
-    const fin = getUnitFinancials(normCode, cleanSize, unitPrice);
+    const fin = getUnitFinancials(normCode, cleanSize, defaultPrice);
     if (fin) {
       unitCost = fin.unitCost;
-      unitProfit = fin.unitProfit;
     }
   }
 
-  return { unitPrice, unitCost, unitProfit };
+  const hasOverride = overridePrice !== null && overridePrice !== "" && !isNaN(Number(overridePrice));
+  const unitPrice = hasOverride ? Math.max(0, Number(overridePrice)) : defaultPrice;
+
+  // Ganancia real: precio de venta menos costo del producto
+  const unitProfit = Math.max(0, unitPrice - unitCost);
+
+  return { unitPrice, unitCost, unitProfit, defaultPrice };
 }
 
-function updateModalFinancialPreview() {
+function updateModalFinancialPreview(forceResetPrice = false) {
   const prodVal = manualProductSelect.value;
   const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
   const size = manualSizeSelect.value || "100 ml";
   const qty = Math.max(1, parseInt(manualQty.value, 10) || 1);
-
   const code = p ? p.code : (prodVal || "");
-  const { unitPrice, unitCost, unitProfit } = calculateItemPricing(code, size, p);
 
-  const subtotalVenta = unitPrice * qty;
-  const subtotalCosto = unitCost * qty;
-  const subtotalGanancia = unitProfit * qty;
+  // Precios y costos base sin override
+  const basePricing = calculateItemPricing(code, size, p);
 
-  if (calcUnitPrice) calcUnitPrice.textContent = formatCLP(unitPrice);
+  // Si está activo "Venta al costo"
+  if (manualAtCost && manualAtCost.checked) {
+    if (manualUnitPrice) manualUnitPrice.value = basePricing.unitCost;
+  } else if (forceResetPrice || (manualUnitPrice && manualUnitPrice.value === "")) {
+    if (manualUnitPrice) manualUnitPrice.value = basePricing.defaultPrice;
+  }
+
+  const rawUserPrice = manualUnitPrice ? manualUnitPrice.value.trim() : "";
+  const overrideVal = rawUserPrice !== "" ? parseFloat(rawUserPrice) : null;
+  const pricing = calculateItemPricing(code, size, p, overrideVal);
+
+  const subtotalVenta = pricing.unitPrice * qty;
+  const subtotalCosto = pricing.unitCost * qty;
+  const subtotalGanancia = pricing.unitProfit * qty;
+
+  if (calcUnitPrice) calcUnitPrice.textContent = formatCLP(pricing.unitPrice);
   if (calcTotalPrice) calcTotalPrice.textContent = formatCLP(subtotalVenta);
   if (calcTotalCost) calcTotalCost.textContent = formatCLP(subtotalCosto);
-  if (calcTotalProfit) calcTotalProfit.textContent = `+${formatCLP(subtotalGanancia)}`;
+
+  if (calcTotalProfit) {
+    if (subtotalGanancia > 0) {
+      calcTotalProfit.textContent = `+${formatCLP(subtotalGanancia)}`;
+      calcTotalProfit.classList.remove("profit-zero");
+    } else {
+      calcTotalProfit.textContent = formatCLP(0);
+      calcTotalProfit.classList.add("profit-zero");
+    }
+  }
+
+  if (btnSetAtCost) {
+    btnSetAtCost.classList.toggle("active", Boolean(manualAtCost && manualAtCost.checked));
+  }
 }
 
 function populateSizeSelectForProduct(p, currentSelectedSize) {
@@ -1704,8 +1744,10 @@ function openNewSaleModal() {
   manualStatus.value = "Entregado";
   manualPaid.checked = true;
   manualConfirmed.checked = true;
+  if (manualAtCost) manualAtCost.checked = false;
+  if (manualUnitPrice) manualUnitPrice.value = "";
 
-  updateModalFinancialPreview();
+  updateModalFinancialPreview(true);
   modalNewSale.hidden = false;
   if (window.lucide) lucide.createIcons();
 }
@@ -1762,7 +1804,17 @@ function openEditSaleModal(saleId, code) {
   manualPaid.checked = Boolean(row.pagado);
   manualConfirmed.checked = Boolean(row.confirmado);
 
-  updateModalFinancialPreview();
+  const unitPriceFromRow = (row.qty > 0) ? Math.round(row.precioVenta / row.qty) : row.precioVenta;
+  const unitCostFromRow = (row.qty > 0) ? Math.round(row.costo / row.qty) : row.costo;
+
+  if (manualUnitPrice) {
+    manualUnitPrice.value = unitPriceFromRow;
+  }
+  if (manualAtCost) {
+    manualAtCost.checked = (row.ganancia === 0) || (unitPriceFromRow === unitCostFromRow);
+  }
+
+  updateModalFinancialPreview(false);
   modalNewSale.hidden = false;
   if (window.lucide) lucide.createIcons();
 }
@@ -1773,12 +1825,43 @@ manualProductSelect.addEventListener("change", () => {
   const prodVal = manualProductSelect.value;
   const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
   populateSizeSelectForProduct(p, manualSizeSelect.value);
-  updateModalFinancialPreview();
+  updateModalFinancialPreview(true);
 });
 
-manualSizeSelect.addEventListener("change", updateModalFinancialPreview);
-manualQty.addEventListener("input", updateModalFinancialPreview);
-manualQty.addEventListener("change", updateModalFinancialPreview);
+manualSizeSelect.addEventListener("change", () => updateModalFinancialPreview(true));
+manualQty.addEventListener("input", () => updateModalFinancialPreview(false));
+manualQty.addEventListener("change", () => updateModalFinancialPreview(false));
+
+if (manualUnitPrice) {
+  manualUnitPrice.addEventListener("input", () => {
+    const prodVal = manualProductSelect.value;
+    const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
+    const size = manualSizeSelect.value || "100 ml";
+    const code = p ? p.code : (prodVal || "");
+    const base = calculateItemPricing(code, size, p);
+    if (manualAtCost && manualAtCost.checked) {
+      if (Number(manualUnitPrice.value) !== base.unitCost) {
+        manualAtCost.checked = false;
+      }
+    }
+    updateModalFinancialPreview(false);
+  });
+}
+
+if (manualAtCost) {
+  manualAtCost.addEventListener("change", () => {
+    updateModalFinancialPreview(true);
+  });
+}
+
+if (btnSetAtCost) {
+  btnSetAtCost.addEventListener("click", () => {
+    if (manualAtCost) {
+      manualAtCost.checked = true;
+    }
+    updateModalFinancialPreview(false);
+  });
+}
 
 // Guardar (Crear o Editar)
 newSaleForm.addEventListener("submit", async e => {
@@ -1813,7 +1896,9 @@ newSaleForm.addEventListener("submit", async e => {
     };
   }
 
-  const { unitPrice, unitCost, unitProfit } = calculateItemPricing(p.code, size, p);
+  const rawUserPrice = manualUnitPrice ? manualUnitPrice.value.trim() : "";
+  const overrideVal = rawUserPrice !== "" ? parseFloat(rawUserPrice) : null;
+  const { unitPrice, unitCost, unitProfit } = calculateItemPricing(p.code, size, p, overrideVal);
 
   if (modalMode === "edit" && currentEditSaleId) {
     try {
