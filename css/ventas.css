@@ -1660,7 +1660,18 @@ body.auth-checking .container-fluid {
 
   .header-actions {
     width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
     justify-content: flex-start;
+  }
+
+  .header-actions .btn-secondary,
+  .header-actions .btn-primary {
+    flex: 1 1 auto;
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    justify-content: center;
   }
 
   .summary-metrics-bar {

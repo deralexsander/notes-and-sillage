@@ -424,27 +424,27 @@ function renderMovementsTable() {
     const impactSign = isDeduction ? "-" : "+";
 
     html += `
-      <tr data-id="${m.id}">
-        <td style="text-align: center; color: var(--text-dim); font-family: var(--font-mono); font-size: 0.74rem;">${idx + 1}</td>
-        <td style="font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-muted);">${m.fecha || "-"}</td>
-        <td>${getTypeBadge(m.tipo)}</td>
-        <td style="font-weight: 600; color: var(--text-title);">${escapeHtml(m.concepto || "Sin concepto")}</td>
-        <td style="font-size: 0.78rem;">
-          ${m.persona ? `<span style="font-weight: 600; color: var(--text-main);">${escapeHtml(m.persona)}</span>` : '<span style="color: var(--text-dim);">-</span>'}
+      <tr class="mov-row" data-id="${m.id}">
+        <td class="td-mov-index" style="text-align: center; color: var(--text-dim); font-family: var(--font-mono); font-size: 0.74rem;">${idx + 1}</td>
+        <td class="td-mov-date" style="font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-muted);">${m.fecha || "-"}</td>
+        <td class="td-mov-type">${getTypeBadge(m.tipo)}</td>
+        <td class="td-mov-concept" style="font-weight: 600; color: var(--text-title);">${escapeHtml(m.concepto || "Sin concepto")}</td>
+        <td class="td-mov-person" style="font-size: 0.78rem;">
+          ${m.persona ? `<span class="mov-person-badge"><i data-lucide="user" style="width: 11px; height: 11px;"></i> ${escapeHtml(m.persona)}</span>` : '<span style="color: var(--text-dim);">-</span>'}
         </td>
-        <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; font-size: 0.85rem;" class="${impactClass}">
+        <td class="td-mov-amount ${impactClass}" style="text-align: right; font-family: var(--font-mono); font-weight: 700; font-size: 0.85rem;">
           ${impactSign}${formatCLP(m.monto)}
         </td>
-        <td style="font-size: 0.76rem; color: var(--text-muted); max-width: 220px; white-space: normal;">
-          ${escapeHtml(m.notas || "")}
+        <td class="td-mov-notes" style="font-size: 0.76rem; color: var(--text-muted); max-width: 220px; white-space: normal;">
+          ${m.notas ? `<span class="mov-notes-text">${escapeHtml(m.notas)}</span>` : ''}
         </td>
-        <td style="text-align: center;">
+        <td class="td-mov-actions" style="text-align: center;">
           <div class="action-btn-cell">
             <button type="button" class="btn-icon-action btn-edit-mov" data-id="${m.id}" title="Editar este movimiento">
-              <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i> Editar
+              <i data-lucide="edit-3" style="width: 12px; height: 12px;"></i> <span>Editar</span>
             </button>
             <button type="button" class="btn-icon-action btn-delete btn-delete-mov" data-id="${m.id}" title="Eliminar este movimiento">
-              <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+              <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i> <span>Eliminar</span>
             </button>
           </div>
         </td>
