@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Gastos, Retiros y Balances | Notes & Sillage</title>
+  <meta name="description" content="Registro y control de gastos, retiros de socios, devoluciones de clientes y cálculo de ganancia líquida mensual editable en Notes & Sillage.">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
+
+  <!-- Estilos del Sistema -->
+  <link rel="stylesheet" href="css/ventas.css?v=20261108_02">
+  <link rel="stylesheet" href="css/pedidos.css?v=20261108_01">
+  <link rel="stylesheet" href="css/gastos.css?v=20261112_01">
+
+  <!-- Restaurar Tema Claro / Oscuro antes de pintar -->
+  <script>
+    (function() {
+      try {
+        var savedTheme = localStorage.getItem('notes_theme');
+        if (savedTheme === 'dark') {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      } catch(e) {}
+    })();
+  </script>
+</head>
+<body class="sales-table-view gastos-dashboard-view">
+  <div class="container-fluid">
+
+    <!-- Encabezado Principal -->
+    <header class="dashboard-header">
+      <div class="brand-section">
+        <img src="img/logo-notes-and-sillage-hd.webp" alt="Notes & Sillage" class="brand-logo" onerror="this.src='favicon.ico'">
+        <div class="brand-title">
+          <h1 style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
+            <span>Gastos, Retiros y Balances</span>
+            <span class="gastos-header-badge">
+              <i data-lucide="wallet" style="width: 14px; height: 14px;"></i> Liquidación
+            </span>
+          </h1>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="index.html" class="btn-secondary" title="Volver al catálogo online">
+          <i data-lucide="shopping-bag" aria-hidden="true"></i> Catálogo
+        </a>
+        <a href="ventas.html" class="btn-secondary" title="Ir a la planilla interactiva de ventas">
+          <i data-lucide="table" aria-hidden="true"></i> Ventas
+        </a>
+        <a href="pedidos.html" class="btn-secondary" title="Ver historial de pedidos al proveedor">
+          <i data-lucide="package" aria-hidden="true"></i> Pedidos Proveedor
+        </a>
+        <button type="button" id="btnToggleTheme" class="btn-secondary" title="Cambiar tema claro / oscuro">
+          <i data-lucide="sun-moon" aria-hidden="true"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Barra de Métricas Globales de Ganancias -->
+    <section class="summary-metrics-bar">
+      <div class="metric-item">
+        <span class="metric-label">Ganancia Base (Ventas)</span>
+        <span class="metric-value" id="kpiBaseProfit">$0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Retiros de Ganancias</span>
+        <span class="metric-value" style="color: #a855f7;" id="kpiTotalRetiros">-$0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Devoluciones Clientes</span>
+        <span class="metric-value highlight-red" id="kpiTotalDevoluciones">-$0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Gastos Operativos</span>
+        <span class="metric-value" style="color: #ea580c;" id="kpiTotalGastos">-$0</span>
+      </div>
+      <div class="metric-divider"></div>
+      <div class="metric-item">
+        <span class="metric-label">Ganancia Líquida Final</span>
+        <span class="metric-value highlight-green" style="font-size: 1.35rem;" id="kpiGananciaLiquida">$0</span>
+      </div>
+    </section>
+
+    <!-- Barra de Período y Acciones -->
+    <section class="gastos-toolbar">
+      <div class="month-filter-group">
+        <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-right: 4px;">Período:</span>
+        <button type="button" class="filter-chip-btn active" data-month="2026-11">
+          <i data-lucide="calendar" style="width: 14px; height: 14px;"></i> Noviembre 2026
+        </button>
+        <button type="button" class="filter-chip-btn" data-month="2026-10">
+          <i data-lucide="calendar" style="width: 14px; height: 14px;"></i> Octubre 2026
+        </button>
+        <button type="button" class="filter-chip-btn" data-month="ALL">
+          <i data-lucide="layers" style="width: 14px; height: 14px;"></i> Histórico Completo
+        </button>
+        <div class="custom-month-picker-wrap">
+          <span>Otro mes:</span>
+          <input type="month" id="inputCustomMonth" title="Seleccionar otro mes">
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" id="btnEditBaseProfit" class="btn-secondary" title="Ajustar o fijar manualmente la ganancia de pedidos si no está clara">
+          <i data-lucide="sliders" style="width: 14px; height: 14px;"></i> Ajustar Ganancia Base
+        </button>
+        <button type="button" id="btnShareWhatsApp" class="btn-whatsapp-share" title="Copiar resumen del balance para enviar a Chanchis o socios por WhatsApp">
+          <i data-lucide="share-2" style="width: 14px; height: 14px;"></i> Copiar para WhatsApp
+        </button>
+      </div>
+    </section>
+
+    <!-- Tarjeta Principal de Liquidación / Balance -->
+    <section class="balance-summary-card">
+      <div class="balance-card-header">
+        <div class="balance-title-group">
+          <h2>
+            <i data-lucide="calculator" style="color: var(--gold-primary);"></i>
+            <span id="balancePeriodTitle">Balance y Cierre de Noviembre 2026</span>
+          </h2>
+          <p>Cálculo transparente paso a paso: Ganancia Base de Ventas menos retiros personales, devoluciones y gastos.</p>
+        </div>
+      </div>
+
+      <div class="balance-formula-flow">
+        <!-- Paso 1: Ganancia Base -->
+        <div class="formula-step-card">
+          <div class="formula-step-header">
+            <span class="formula-step-label">1. Ganancia Ventas</span>
+            <span class="formula-step-tag badge-type-ingreso" id="stepBaseProfitTag">VENTAS</span>
+          </div>
+          <div class="formula-step-val" style="color: var(--text-title);" id="stepBaseProfitVal">$0</div>
+          <div class="formula-step-desc">Ganancia bruta de pedidos (editable con el botón Ajustar).</div>
+        </div>
+
+        <!-- Paso 2: Retiros de Ganancias (Chanchis / Socios) -->
+        <div class="formula-step-card">
+          <div class="formula-step-header">
+            <span class="formula-step-label">2. Retiros Socios (-)</span>
+            <span class="formula-step-tag badge-type-retiro">RETIROS</span>
+          </div>
+          <div class="formula-step-val" style="color: #a855f7;" id="stepRetirosVal">-$0</div>
+          <div class="formula-step-desc">Anticipos o retiros tomados de las ganancias durante el mes.</div>
+        </div>
+
+        <!-- Paso 3: Devoluciones -->
+        <div class="formula-step-card">
+          <div class="formula-step-header">
+            <span class="formula-step-label">3. Devoluciones (-)</span>
+            <span class="formula-step-tag badge-type-devolucion">CLIENTES</span>
+          </div>
+          <div class="formula-step-val impact-negative" id="stepDevolucionesVal">-$0</div>
+          <div class="formula-step-desc">Dinero devuelto por perfumes cancelados o reembolsos.</div>
+        </div>
+
+        <!-- Paso 4: Gastos Operativos -->
+        <div class="formula-step-card">
+          <div class="formula-step-header">
+            <span class="formula-step-label">4. Gastos (-)</span>
+            <span class="formula-step-tag badge-type-gasto">OPERATIVOS</span>
+          </div>
+          <div class="formula-step-val" style="color: #ea580c;" id="stepGastosVal">-$0</div>
+          <div class="formula-step-desc">Envíos, packaging, bolsas, fletes o insumos varios.</div>
+        </div>
+
+        <!-- Paso 5: Ganancia Líquida Final -->
+        <div class="formula-step-card final-result-card" id="stepFinalCard">
+          <div class="formula-step-header">
+            <span class="formula-step-label" style="color: var(--green-main); font-weight: 800;">5. SALDO LÍQUIDO (=)</span>
+            <span class="formula-step-tag badge-type-ingreso">A FIN DE MES</span>
+          </div>
+          <div class="formula-step-val" id="stepFinalVal">$0</div>
+          <div class="formula-step-desc" style="color: var(--text-main); font-weight: 500;">
+            Ganancia real disponible para repartir tras todos los descuentos.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sección de Tabla de Movimientos / Gastos -->
+    <section class="gastos-table-section">
+      <div class="gastos-table-header-row">
+        <div class="gastos-search-wrap">
+          <i data-lucide="search" class="gastos-search-icon"></i>
+          <input type="text" id="searchGastosInput" placeholder="Buscar por concepto, persona, notas o fecha...">
+        </div>
+        <div class="gastos-actions-group">
+          <select id="selectTypeFilter" class="form-control" style="font-size: 0.82rem; padding: 7px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main);">
+            <option value="ALL">Todos los tipos</option>
+            <option value="retiro">Solo Retiros de Ganancias</option>
+            <option value="devolucion">Solo Devoluciones a Clientes</option>
+            <option value="gasto">Solo Gastos Operativos</option>
+            <option value="ingreso">Solo Ingresos Extras</option>
+          </select>
+          <button type="button" class="btn-primary" id="btnNewMovement" title="Registrar un nuevo gasto, retiro o devolución">
+            <i data-lucide="plus-circle" aria-hidden="true"></i> Registrar Movimiento
+          </button>
+          <button type="button" class="btn-secondary" id="btnExportBackup" title="Descargar copia de seguridad en JSON">
+            <i data-lucide="download" aria-hidden="true"></i> Respaldo
+          </button>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-title);">Registro Detallado de Movimientos</span>
+        <span class="badge-supplier-tag" id="gastosCountBadge">0 movimientos</span>
+      </div>
+
+      <!-- Tabla Spreadsheet de Movimientos -->
+      <div class="table-responsive-wrapper">
+        <table class="spreadsheet-table" id="gastosTable">
+          <thead>
+            <tr>
+              <th style="width: 38px; text-align: center;">#</th>
+              <th style="width: 90px;">Fecha</th>
+              <th style="width: 140px;">Tipo</th>
+              <th>Concepto / Detalle</th>
+              <th style="width: 130px;">Persona / Socio</th>
+              <th style="width: 110px; text-align: right;">Monto</th>
+              <th style="width: 220px;">Notas / Referencia</th>
+              <th style="width: 120px; text-align: center;">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="gastosTableBody">
+            <!-- Filas generadas dinámicamente -->
+          </tbody>
+        </table>
+
+        <!-- Empty State -->
+        <div class="gastos-empty-state" id="gastosEmptyState" hidden>
+          <i data-lucide="inbox" class="gastos-empty-icon"></i>
+          <h4 style="margin-bottom: 6px; color: var(--text-title);">No hay movimientos registrados en este período</h4>
+          <p style="font-size: 0.84rem; margin-bottom: 14px;">Puedes registrar retiros personales, devoluciones de perfumes o gastos operacionales.</p>
+          <button type="button" class="btn-primary" onclick="document.getElementById('btnNewMovement').click()">
+            <i data-lucide="plus-circle"></i> Registrar primer movimiento
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- MODAL: CREAR / EDITAR MOVIMIENTO -->
+  <div id="modalMovement" class="modal-overlay" hidden>
+    <div class="modal-content" style="max-width: 520px;">
+      <div class="modal-header">
+        <h3 id="modalMovementTitle">Registrar Movimiento o Gasto</h3>
+        <button type="button" class="modal-close" data-action="close-movement-modal">&times;</button>
+      </div>
+      <form id="formMovement">
+        <input type="hidden" id="movId">
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+          <div class="form-group">
+            <label for="movFecha">Fecha:</label>
+            <input type="date" id="movFecha" required>
+          </div>
+          <div class="form-group">
+            <label for="movMes">Mes de Liquidación:</label>
+            <input type="month" id="movMes" required>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="movTipo">Tipo de Movimiento:</label>
+          <select id="movTipo" required>
+            <option value="retiro">🟣 Retiro de Ganancias (Socio / Chanchis / Alexander) — Resta al cierre</option>
+            <option value="devolucion">🔴 Devolución a Cliente (Reembolso de perfumes devueltos) — Resta</option>
+            <option value="gasto">🟠 Gasto Operacional (Envío, Bolsas, Fletes, Insumos) — Resta</option>
+            <option value="ingreso">🟢 Ingreso Extra / Reintegro a Favor — Suma</option>
+            <option value="ajuste">🔵 Ajuste Directo de Ganancia</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="movConcepto">Concepto o Descripción:</label>
+          <input type="text" id="movConcepto" placeholder="Ej: Chanchis sacó de las ganancias, Devolución 2 perfumes..." required>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+          <div class="form-group">
+            <label for="movPersona">Persona / Beneficiario:</label>
+            <input type="text" id="movPersona" placeholder="Ej: Chanchis, Cliente, Alexander...">
+          </div>
+          <div class="form-group">
+            <label for="movMonto">Monto ($ CLP):</label>
+            <input type="number" id="movMonto" min="1" step="1" placeholder="Ej: 100000" required>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label for="movNotas">Notas adicionales / Comprobante:</label>
+          <textarea id="movNotas" rows="2" placeholder="Detalles de la transferencia, acuerdo o motivo..." style="width: 100%; padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-main); font-family: var(--font-family); font-size: 0.85rem; resize: vertical;"></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+          <button type="button" class="btn-secondary" data-action="close-movement-modal">Cancelar</button>
+          <button type="submit" class="btn-primary" id="btnSaveMovement">
+            <i data-lucide="check" aria-hidden="true"></i> Guardar Movimiento
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: AJUSTAR GANANCIA BASE DEL MES -->
+  <div id="modalBaseProfit" class="modal-overlay" hidden>
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Ajustar Ganancia Base del Mes</h3>
+        <button type="button" class="modal-close" data-action="close-base-profit-modal">&times;</button>
+      </div>
+      <form id="formBaseProfit">
+        <p style="font-size: 0.84rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4;">
+          Configura cómo quieres calcular la Ganancia Inicial para el período <strong id="modalBaseProfitPeriodLabel" style="color: var(--gold-primary);">2026-11</strong>. Puedes usar el cálculo automático de ventas o escribir un monto fijo manual si las ganancias anteriores aún no están definidas.
+        </p>
+
+        <div style="background: var(--bg-secondary); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); margin-bottom: 14px;">
+          <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin-bottom: 10px;">
+            <input type="radio" name="baseProfitMode" id="radioModeAuto" value="auto" checked style="margin-top: 3px;">
+            <div>
+              <strong style="font-size: 0.85rem;">Cálculo Automático desde Ventas</strong>
+              <div style="font-size: 0.78rem; color: var(--text-muted);">
+                Suma las ganancias de las filas de venta del mes en Firestore (actual: <span id="autoProfitPreviewVal" style="font-weight: 700; color: var(--green-main);">$0</span>).
+              </div>
+            </div>
+          </label>
+
+          <label style="display: flex; align-items: flex-start; gap: 8px; cursor: pointer;">
+            <input type="radio" name="baseProfitMode" id="radioModeManual" value="manual" style="margin-top: 3px;">
+            <div>
+              <strong style="font-size: 0.85rem;">Monto Manual Editable</strong>
+              <div style="font-size: 0.78rem; color: var(--text-muted);">
+                Fija una ganancia estimada personalizada (ideal si los pedidos anteriores no están claros aún).
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 14px;">
+          <label for="inputManualProfit">Monto Ganancia Base ($ CLP):</label>
+          <input type="number" id="inputManualProfit" min="0" step="1" placeholder="Ej: 250000 o 904750">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 18px;">
+          <label for="inputBaseNotes">Notas / Justificación de la ganancia:</label>
+          <input type="text" id="inputBaseNotes" placeholder="Ej: Ganancia calculada pedidos #1 al #5...">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+          <button type="button" class="btn-secondary" data-action="close-base-profit-modal">Cancelar</button>
+          <button type="submit" class="btn-primary">
+            <i data-lucide="check" aria-hidden="true"></i> Guardar Ajuste
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="js/pedidos-data.js?v=20261108_01"></script>
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/gastos.js"></script>
+</body>
+</html>
