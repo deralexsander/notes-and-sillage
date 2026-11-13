@@ -64,6 +64,9 @@ const HISTORICAL_SUPPLIER_BATCHES = [
   }
 ];
 
+// Monto mínimo de compra mayorista al proveedor para obtener despacho / transporte libre ($120.000)
+const SUPPLIER_FREE_SHIPPING_THRESHOLD = 120000;
+
 function getSupplierBatchTitle(dateStr) {
   if (!dateStr || dateStr === "ANTERIOR") return "Pedidos Anteriores / Sin fecha lote";
 
@@ -592,6 +595,8 @@ function renderTable(rows) {
     const pendingCost = pendingRows.reduce((sum, r) => sum + r.costo, 0);
     const pendingSale = pendingRows.reduce((sum, r) => sum + r.precioVenta, 0);
     const pendingProfit = pendingSale - pendingCost;
+    const shippingMissing = Math.max(0, SUPPLIER_FREE_SHIPPING_THRESHOLD - pendingCost);
+    const isShippingFree = shippingMissing === 0;
 
     html += `
       <tr class="tr-supplier-header group-pending">
@@ -614,6 +619,15 @@ function renderTable(rows) {
               <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Costo)">
                 Ganancia Real: ${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}
               </span>
+              ${isShippingFree ? `
+                <span class="badge-supplier-tag tag-shipping-free" title="¡Envío gratis conseguido! Costo acumulado (${formatCLP(pendingCost)}) supera el mínimo de ${formatCLP(SUPPLIER_FREE_SHIPPING_THRESHOLD)} del proveedor">
+                  <i data-lucide="truck" style="width: 12px; height: 12px;"></i> ¡Envío Gratis Conseguido! ✓
+                </span>
+              ` : `
+                <span class="badge-supplier-tag tag-shipping-missing" title="Monto mínimo para envío gratis del proveedor: ${formatCLP(SUPPLIER_FREE_SHIPPING_THRESHOLD)} (costo actual acumulado: ${formatCLP(pendingCost)})">
+                  <i data-lucide="truck" style="width: 12px; height: 12px;"></i> Falta ${formatCLP(shippingMissing)} para Envío Gratis
+                </span>
+              `}
             </div>
             <div class="supplier-header-actions">
               <label class="select-all-pending-label">
@@ -1359,6 +1373,24 @@ document.addEventListener("click", event => {
   if (countEl) countEl.textContent = `${totalQty} perfumes (${selectedItems.length} líneas)`;
   if (costEl) costEl.textContent = formatCLP(totalCost);
   if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
+
+  const shippingInfoEl = document.getElementById("batchModalShippingInfo");
+  if (shippingInfoEl) {
+    const missingForFree = Math.max(0, SUPPLIER_FREE_SHIPPING_THRESHOLD - totalCost);
+    if (missingForFree === 0) {
+      shippingInfoEl.innerHTML = `
+        <span style="display: inline-flex; align-items: center; gap: 5px; color: #16a34a; font-weight: 700;">
+          <i data-lucide="truck" style="width: 13px; height: 13px;"></i> ¡Envío Gratis Conseguido! ✓ (${formatCLP(totalCost)} / mín. ${formatCLP(SUPPLIER_FREE_SHIPPING_THRESHOLD)})
+        </span>
+      `;
+    } else {
+      shippingInfoEl.innerHTML = `
+        <span style="display: inline-flex; align-items: center; gap: 5px; color: #d97706; font-weight: 600;">
+          <i data-lucide="truck" style="width: 13px; height: 13px;"></i> Falta ${formatCLP(missingForFree)} para Envío Gratis (mín. ${formatCLP(SUPPLIER_FREE_SHIPPING_THRESHOLD)})
+        </span>
+      `;
+    }
+  }
 
   if (listEl) {
     listEl.innerHTML = selectedItems.map(it => `
