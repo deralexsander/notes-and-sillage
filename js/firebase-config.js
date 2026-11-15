@@ -4,6 +4,7 @@ import {
   getFirestore,
   collection,
   doc,
+  setDoc,
   getDoc,
   getDocs,
   query,
@@ -650,6 +651,179 @@ export async function syncCustomerInfoToPastSales(customerName, phone, instituti
   return { updatedCount };
 }
 
+// ==========================================================================
+// 10. CONFIGURACIÓN DE BALANCES, GASTOS Y ENVÍO GRATIS
+// ==========================================================================
+
+export const DEFAULT_BALANCES_CONFIG = {
+  envioGratisMinimo: 120000,
+  capitalOctubre: 150000,
+  datosBancarios: {
+    titular: "Christian Eduardo Fuentealba Reyes",
+    rut: "169688192",
+    banco: "Mercado Pago",
+    tipoCuenta: "Cuenta Vista",
+    numeroCuenta: "1040936214",
+    email: "christianfuentealba@gmail.com"
+  }
+};
+
+export async function getBalancesConfig() {
+  try {
+    const cfgRef = doc(db, "config", "balances");
+    const snap = await getDoc(cfgRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      return {
+        ...DEFAULT_BALANCES_CONFIG,
+        ...data,
+        datosBancarios: {
+          ...DEFAULT_BALANCES_CONFIG.datosBancarios,
+          ...(data.datosBancarios || {})
+        }
+      };
+    }
+    // Si no existe, creamos el documento con los valores predeterminados
+    try {
+      await setDoc(cfgRef, DEFAULT_BALANCES_CONFIG, { merge: true });
+    } catch (e) {
+      console.warn("No se pudo inicializar config/balances en Firestore:", e);
+    }
+    return { ...DEFAULT_BALANCES_CONFIG };
+  } catch (err) {
+    console.warn("Error leyendo config/balances:", err);
+    return { ...DEFAULT_BALANCES_CONFIG };
+  }
+}
+
+export async function saveBalancesConfig(newConfig) {
+  try {
+    const cfgRef = doc(db, "config", "balances");
+    await setDoc(cfgRef, newConfig, { merge: true });
+    return { success: true };
+  } catch (err) {
+    console.error("Error guardando config/balances:", err);
+    throw err;
+  }
+}
+
+export async function getGastos() {
+  try {
+    const gastosRef = collection(db, "gastos");
+    const snap = await getDocs(gastosRef);
+    const list = [];
+    snap.forEach(d => {
+      const data = d.data();
+      list.push({
+        id: d.id,
+        ...data
+      });
+    });
+    list.sort((a, b) => (b.fecha || "").localeCompare(a.fecha || ""));
+    return list;
+  } catch (err) {
+    console.warn("Error leyendo gastos:", err);
+    return [];
+  }
+}
+
+export async function saveGasto(gastoData) {
+  try {
+    const gastosRef = collection(db, "gastos");
+    const docRef = await addDoc(gastosRef, {
+      ...gastoData,
+      createdAt: serverTimestamp()
+    });
+    return { success: true, id: docRef.id };
+  } catch (err) {
+    console.error("Error guardando gasto:", err);
+    throw err;
+  }
+}
+
+export async function deleteGasto(gastoId) {
+  try {
+    const docRef = doc(db, "gastos", gastoId);
+    await deleteDoc(docRef);
+    return { success: true };
+  } catch (err) {
+    console.error("Error eliminando gasto:", err);
+    throw err;
+  }
+}
+
+// 11. Resumen de pedidos acumulados con estado "Pendiente" y meta de envío gratis
+export async function getPendingOrdersSummary() {
+  try {
+    const [sales, balancesConfig] = await Promise.all([
+      getSalesHistory(),
+      getBalancesConfig()
+    ]);
+
+    const envioGratisMinimo = Number(balancesConfig?.envioGratisMinimo) || 120000;
+
+    let pendingOrdersCount = 0;
+    let totalPendingUnits = 0;
+    let totalPendingCost = 0;
+    let totalPendingSale = 0;
+
+    sales.forEach(s => {
+      const items = s.items && s.items.length > 0 ? s.items : [{
+        code: s.codigoVenta || "S/C",
+        name: s.cliente?.perfume || "Perfume",
+        qty: Number(s.totales?.totalUnidades) || 1,
+        unitPrice: Number(s.totales?.totalVenta) || 0,
+        estado: s.estado || "Pendiente"
+      }];
+
+      let hasPending = false;
+      items.forEach(it => {
+        const itemEstado = it.estado || s.estado || "Pendiente";
+        if (itemEstado.toLowerCase().trim() === "pendiente") {
+          hasPending = true;
+          const q = Number(it.qty) || 1;
+          const up = Number(it.unitPrice) || 0;
+          let uc = Number(it.unitCost);
+          if (isNaN(uc) || uc === 0) {
+            uc = getUnitFinancials(it.size || "100 ml", up).costo;
+          }
+          totalPendingUnits += q;
+          totalPendingCost += uc * q;
+          totalPendingSale += up * q;
+        }
+      });
+
+      if (hasPending) {
+        pendingOrdersCount++;
+      }
+    });
+
+    const restanteEnvioGratis = Math.max(0, envioGratisMinimo - totalPendingCost);
+    const porcentajeEnvioGratis = Math.min(100, Math.round((totalPendingCost / envioGratisMinimo) * 100));
+
+    return {
+      pendingOrdersCount,
+      totalPendingUnits,
+      totalPendingCost,
+      totalPendingSale,
+      envioGratisMinimo,
+      restanteEnvioGratis,
+      porcentajeEnvioGratis
+    };
+  } catch (err) {
+    console.warn("Error obteniendo resumen de pendientes:", err);
+    return {
+      pendingOrdersCount: 0,
+      totalPendingUnits: 0,
+      totalPendingCost: 0,
+      totalPendingSale: 0,
+      envioGratisMinimo: 120000,
+      restanteEnvioGratis: 120000,
+      porcentajeEnvioGratis: 0
+    };
+  }
+}
+
 // Compatibilidad y APIs Globales
 export const saveOrderToFirestore = recordSale;
 window.saveOrderToFirestore = recordSale;
@@ -666,6 +840,13 @@ window.loginWithEmail = loginWithEmail;
 window.logoutUser = logoutUser;
 window.onAuthStatusChange = onAuthStatusChange;
 window.getCurrentUser = getCurrentUser;
+
+window.getBalancesConfig = getBalancesConfig;
+window.saveBalancesConfig = saveBalancesConfig;
+window.getGastos = getGastos;
+window.saveGasto = saveGasto;
+window.deleteGasto = deleteGasto;
+window.getPendingOrdersSummary = getPendingOrdersSummary;
 
 // Sincronizar catálogo
 loadCatalogFromFirestore();

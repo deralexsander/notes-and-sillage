@@ -42,6 +42,10 @@
         <a href="pedidos.html" class="btn-secondary" title="Ver historial y agrupación de pedidos al proveedor">
           <i data-lucide="package" aria-hidden="true"></i> Pedidos Proveedor
         </a>
+        <button type="button" id="btnOpenBalancesModal" class="btn-secondary" title="Configurar balances, gastos, meta de envío gratis y datos de transferencia">
+          <i data-lucide="wallet" aria-hidden="true"></i>
+          <span>Gastos y Balances</span>
+        </button>
         <div id="authVentasUserBar" class="auth-ventas-user-bar" hidden>
           <button type="button" id="btnVentasLogout" class="btn-secondary btn-ventas-logout" title="Cerrar sesión">
             <i data-lucide="log-out" aria-hidden="true"></i>
@@ -187,6 +191,11 @@
       </div>
 
       <div class="table-actions">
+        <button type="button" id="btnToggleUnpaidView" class="btn-secondary" title="Ver clientes con pagos pendientes por cobrar">
+          <i data-lucide="receipt" aria-hidden="true"></i>
+          <span>Faltantes por Pagar</span>
+          <span id="badgeUnpaidCount" class="badge-unpaid-chip">0</span>
+        </button>
         <button type="button" id="btnToggleSupplierGrouping" class="btn-secondary btn-grouping-active" title="Alternar separación por pedidos al proveedor">
           <i data-lucide="layers" aria-hidden="true"></i> Lotes Proveedor
         </button>
@@ -445,6 +454,181 @@
         <button type="button" class="btn-primary" id="btnConfirmSupplierBatch">
           <i data-lucide="check" aria-hidden="true"></i> Confirmar Pedido Proveedor
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Gastos y Balances -->
+  <div id="modalBalances" class="modal-overlay" hidden>
+    <div class="modal-content" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="supplier-status-icon ordered-icon"><i data-lucide="wallet"></i></span>
+          <h3 style="margin: 0;">Gastos, Balances y Configuración</h3>
+        </div>
+        <button type="button" class="modal-close" data-action="close-balances-modal">&times;</button>
+      </div>
+
+      <div class="balances-modal-body" style="padding: 16px 0;">
+        <!-- Pestañas internas -->
+        <div class="balances-tabs" style="display: flex; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+          <button type="button" class="btn-balance-tab is-active" data-tab="tabBalancesConfig">
+            <i data-lucide="settings" style="width: 14px; height: 14px;"></i> Configuración & Envíos
+          </button>
+          <button type="button" class="btn-balance-tab" data-tab="tabBalancesBank">
+            <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i> Datos de Cobro
+          </button>
+          <button type="button" class="btn-balance-tab" data-tab="tabBalancesExpenses">
+            <i data-lucide="pie-chart" style="width: 14px; height: 14px;"></i> Gastos & Octubre
+          </button>
+        </div>
+
+        <!-- Tab 1: Configuración & Envíos -->
+        <div id="tabBalancesConfig" class="balance-tab-content">
+          <form id="formShippingConfig">
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label for="cfgEnvioGratisMinimo" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">
+                Monto Mínimo de Pedido para Envío Gratis Proveedor ($ CLP):
+              </label>
+              <input type="number" id="cfgEnvioGratisMinimo" class="form-control" value="120000" min="0" step="1000" required style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main); width: 100%;">
+              <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 4px;">
+                Este valor se utiliza para calcular automáticamente cuánto falta para el envío gratis en los pedidos pendientes.
+              </small>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <button type="submit" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="save" style="width: 14px; height: 14px;"></i> Guardar Meta de Envío
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tab 2: Datos de Cobro Transferencia -->
+        <div id="tabBalancesBank" class="balance-tab-content" hidden>
+          <form id="formBankConfig">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+              <div class="form-group">
+                <label for="bankTitular" style="font-size: 0.82rem; font-weight: 600;">Nombre del Titular:</label>
+                <input type="text" id="bankTitular" class="form-control" value="Christian Eduardo Fuentealba Reyes" required>
+              </div>
+              <div class="form-group">
+                <label for="bankRut" style="font-size: 0.82rem; font-weight: 600;">RUT:</label>
+                <input type="text" id="bankRut" class="form-control" value="169688192" required>
+              </div>
+              <div class="form-group">
+                <label for="bankBanco" style="font-size: 0.82rem; font-weight: 600;">Banco / Entidad:</label>
+                <input type="text" id="bankBanco" class="form-control" value="Mercado Pago" required>
+              </div>
+              <div class="form-group">
+                <label for="bankTipoCuenta" style="font-size: 0.82rem; font-weight: 600;">Tipo de Cuenta:</label>
+                <input type="text" id="bankTipoCuenta" class="form-control" value="Cuenta Vista" required>
+              </div>
+              <div class="form-group">
+                <label for="bankNumeroCuenta" style="font-size: 0.82rem; font-weight: 600;">Número de Cuenta:</label>
+                <input type="text" id="bankNumeroCuenta" class="form-control" value="1040936214" required>
+              </div>
+              <div class="form-group">
+                <label for="bankEmail" style="font-size: 0.82rem; font-weight: 600;">Correo Electrónico:</label>
+                <input type="email" id="bankEmail" class="form-control" value="christianfuentealba@gmail.com" required>
+              </div>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <button type="submit" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="save" style="width: 14px; height: 14px;"></i> Guardar Datos de Cuenta
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Tab 3: Gastos & Octubre -->
+        <div id="tabBalancesExpenses" class="balance-tab-content" hidden>
+          <!-- Resumen Balance Octubre 2026 -->
+          <div style="background: var(--bg-hover); padding: 14px; border-radius: var(--radius-sm); margin-bottom: 16px; border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <strong style="font-size: 0.9rem; color: var(--text-title); display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="calendar" style="width: 15px; height: 15px;"></i> Balance Especial — Octubre 2026
+              </strong>
+              <span class="badge-supplier-tag" style="background: rgba(59, 130, 246, 0.15); color: #2563eb;">Capital deducible</span>
+            </div>
+            <div style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px;">
+              Capital generado en octubre: <strong style="color: #dc2626;">-$150.000</strong> (incorporado a los gastos y restado del total de ganancias de Octubre).
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; font-size: 0.82rem;">
+              <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 4px;">
+                <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Ventas Octubre:</span>
+                <strong id="balanceOctVentas" style="font-family: var(--font-mono);">$0</strong>
+              </div>
+              <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 4px;">
+                <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Costo Mercadería:</span>
+                <strong id="balanceOctCosto" style="font-family: var(--font-mono);">$0</strong>
+              </div>
+              <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 4px;">
+                <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Capital/Gastos Oct:</span>
+                <strong id="balanceOctGastos" style="font-family: var(--font-mono); color: #dc2626;">$150.000</strong>
+              </div>
+              <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 4px;">
+                <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Ganancia Neta Oct:</span>
+                <strong id="balanceOctGananciaNeta" style="font-family: var(--font-mono); color: #16a34a;">$0</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulario para Registrar Nuevo Gasto -->
+          <form id="formNewExpense" style="margin-bottom: 16px; border: 1px dashed var(--border-color); padding: 12px; border-radius: var(--radius-sm);">
+            <strong style="font-size: 0.84rem; display: block; margin-bottom: 8px;">Registrar Nuevo Gasto / Egreso:</strong>
+            <div style="display: grid; grid-template-columns: 130px 140px 1fr 120px auto; gap: 8px; align-items: flex-end;">
+              <div>
+                <label style="font-size: 0.72rem; display: block; color: var(--text-muted);">Fecha:</label>
+                <input type="date" id="expenseDate" class="form-control" required style="padding: 6px; font-size: 0.8rem;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; display: block; color: var(--text-muted);">Categoría:</label>
+                <select id="expenseCategory" class="form-control" style="padding: 6px; font-size: 0.8rem;">
+                  <option value="Capital">Capital</option>
+                  <option value="Insumos">Insumos/Bolsas</option>
+                  <option value="Envíos">Fletes/Envíos</option>
+                  <option value="Operación">Operación</option>
+                  <option value="Otros">Otros</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; display: block; color: var(--text-muted);">Descripción:</label>
+                <input type="text" id="expenseDescription" placeholder="Ej. Bolsas Kraft o Membresía" class="form-control" required style="padding: 6px; font-size: 0.8rem;">
+              </div>
+              <div>
+                <label style="font-size: 0.72rem; display: block; color: var(--text-muted);">Monto ($):</label>
+                <input type="number" id="expenseAmount" placeholder="0" class="form-control" required min="1" step="100" style="padding: 6px; font-size: 0.8rem;">
+              </div>
+              <div>
+                <button type="submit" class="btn-primary" style="padding: 7px 12px; font-size: 0.8rem;">
+                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Agregar
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <!-- Lista de Gastos Registrados -->
+          <div style="max-height: 200px; overflow-y: auto;">
+            <table class="spreadsheet-table" style="font-size: 0.8rem; width: 100%;">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Categoría</th>
+                  <th>Descripción</th>
+                  <th style="text-align: right;">Monto</th>
+                  <th style="text-align: center;">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="expensesTableBody">
+                <!-- Filas de gastos dinámicas -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px;">
+        <button type="button" class="btn-secondary" data-action="close-balances-modal">Cerrar</button>
       </div>
     </div>
   </div>

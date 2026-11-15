@@ -1181,6 +1181,71 @@ async function sendNtfyOrderNotification(payload, codigoVenta = null) {
   }
 }
 
+const NTFY_PENDING_TOTAL_TOPIC = "total-pedidos-pendientes-notes-and-sillage";
+
+// Enviar notificación a ntfy.sh con el acumulado total de pedidos pendientes y avance de envío gratis
+async function sendNtfyPendingSummaryNotification() {
+  let summaryFn = window.getPendingOrdersSummary;
+  if (!summaryFn) {
+    try {
+      const fbModule = await import("./firebase-config.js");
+      if (fbModule && typeof fbModule.getPendingOrdersSummary === "function") {
+        summaryFn = fbModule.getPendingOrdersSummary;
+      }
+    } catch (e) {
+      console.warn("Error cargando helper de resumen de pendientes:", e);
+    }
+  }
+
+  if (typeof summaryFn !== "function") return null;
+
+  try {
+    const summary = await summaryFn();
+    const minShipping = summary.envioGratisMinimo || 120000;
+    const pendingCost = summary.totalPendingCost || 0;
+    const remaining = summary.restanteEnvioGratis != null ? summary.restanteEnvioGratis : Math.max(0, minShipping - pendingCost);
+    const progressPct = summary.porcentajeEnvioGratis != null ? summary.porcentajeEnvioGratis : Math.min(100, Math.round((pendingCost / minShipping) * 100));
+
+    const statusShipping = remaining > 0
+      ? `🚚 Envío gratis ($${minShipping.toLocaleString("es-CL")}):\nLlevamos $${pendingCost.toLocaleString("es-CL")} (${progressPct}%). Faltan $${remaining.toLocaleString("es-CL")}`
+      : `🎉 ¡Meta de envío gratis alcanzada! Superada por $${(pendingCost - minShipping).toLocaleString("es-CL")}`;
+
+    const bodyData = {
+      topic: NTFY_PENDING_TOTAL_TOPIC,
+      title: `📦 Total Pedidos Pendientes: $${pendingCost.toLocaleString("es-CL")}`,
+      message: [
+        `🔔 Nuevo pedido registrado en Notes & Sillage`,
+        ``,
+        `📊 Acumulado actual de pendientes:`,
+        `• Pedidos acumulados: ${summary.pendingOrdersCount}`,
+        `• Total perfumes: ${summary.totalPendingUnits} un.`,
+        `• Inversión acumulada: $${pendingCost.toLocaleString("es-CL")}`,
+        `• Venta acumulada: $${(summary.totalPendingSale || 0).toLocaleString("es-CL")}`,
+        ``,
+        statusShipping
+      ].join("\n"),
+      priority: 3,
+      tags: ["package", "moneybag", "truck"]
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    const response = await fetch("https://ntfy.sh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(bodyData),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+    return response.ok;
+  } catch (err) {
+    console.warn("Error enviando alerta de total pendientes a ntfy:", err);
+    return null;
+  }
+}
+
 // Registro asíncrono con control de carga, chequeo de internet, guardado en Firebase y notificación a ntfy
 async function registerOrderAsync(payload) {
   if (!navigator.onLine) {
@@ -1242,6 +1307,13 @@ async function registerOrderAsync(payload) {
     await sendNtfyOrderNotification(payload, codigoVenta);
   } catch (ntfyErr) {
     console.warn("El pedido se guardó en Firebase pero la notificación tuvo una demora:", ntfyErr);
+  }
+
+  // 3. Notificación push del total acumulado de pedidos pendientes y meta envío gratis
+  try {
+    await sendNtfyPendingSummaryNotification();
+  } catch (ntfySummaryErr) {
+    console.warn("Aviso de total pendientes ntfy con demora:", ntfySummaryErr);
   }
 
   return {
@@ -1466,7 +1538,7 @@ function addButtonView(productId) {
     return { added: count > 0, html: count > 0 ? `Lo pedí (${count})` : "Lo pedí" };
   }
   const added = cart.some(item => item.id === productId);
-  return { added, html: added ? "Agregado" : '<span class="add-btn-plus">+</span> Agregar' };
+  return { added, html: added ? "Agregado" : "Agregar" };
 }
 
 function refreshAddButtons() {
