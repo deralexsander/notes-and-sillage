@@ -26,8 +26,11 @@ let modalMode = "new"; // "new" | "edit"
 let currentEditSaleId = null;
 let currentEditCode = null;
 
-let isSupplierGroupingEnabled = localStorage.getItem("notes_supplier_grouping") !== "false";
-try { localStorage.removeItem("notes_sales_summary_view"); } catch (e) {}
+const isSupplierGroupingEnabled = true;
+try {
+  localStorage.removeItem("notes_supplier_grouping");
+  localStorage.removeItem("notes_sales_summary_view");
+} catch (e) {}
 let isUnpaidViewActive = false;
 let currentBalancesConfig = { ...DEFAULT_BALANCES_CONFIG };
 let currentExpenses = [];
@@ -639,13 +642,6 @@ function renderTable(rows) {
       html += renderTableRow(r, idx--, false);
     });
     tableBody.innerHTML = html;
-    if (window.lucide) lucide.createIcons();
-    return;
-  }
-
-  // Si la separación por lotes está desactivada por el usuario
-  if (!isSupplierGroupingEnabled) {
-    tableBody.innerHTML = rows.map((row, index) => renderTableRow(row, rows.length - index, false)).join("");
     if (window.lucide) lucide.createIcons();
     return;
   }
@@ -1551,21 +1547,6 @@ document.addEventListener("click", event => {
     if (m) m.hidden = true;
   }
 });
-
-// Botón para activar/desactivar la separación por lotes en la tabla
-const btnToggleGrouping = document.getElementById("btnToggleSupplierGrouping");
-if (btnToggleGrouping) {
-  if (!isSupplierGroupingEnabled) {
-    btnToggleGrouping.classList.remove("btn-grouping-active");
-  }
-  btnToggleGrouping.addEventListener("click", () => {
-    isSupplierGroupingEnabled = !isSupplierGroupingEnabled;
-    localStorage.setItem("notes_supplier_grouping", isSupplierGroupingEnabled.toString());
-    btnToggleGrouping.classList.toggle("btn-grouping-active", isSupplierGroupingEnabled);
-    applyFilters();
-    showToast(isSupplierGroupingEnabled ? "Separación por lotes de proveedor activada" : "Vista corrida plana activada");
-  });
-}
 
 // Botón para activar/desactivar la vista de faltantes por pagar
 const btnToggleUnpaid = document.getElementById("btnToggleUnpaidView");

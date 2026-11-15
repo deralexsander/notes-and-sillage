@@ -1698,18 +1698,16 @@ body.auth-checking .container-fluid {
 
   .table-actions {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
     width: 100%;
-    justify-content: stretch;
   }
 
   .table-actions .btn-secondary {
-    flex: 1 1 calc(50% - 4px);
+    flex: 1 1 100%;
+    width: 100%;
     justify-content: center;
     text-align: center;
-    padding: 8px 10px;
-    font-size: 0.82rem;
+    padding: 9px 12px;
+    font-size: 0.85rem;
     white-space: nowrap;
   }
 
