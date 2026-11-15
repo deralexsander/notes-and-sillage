@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css?v=20261108_02">
+  <link rel="stylesheet" href="css/ventas.css?v=20261115_mobile_fix4">
   <script>
     (function() {
       try {
@@ -30,67 +30,27 @@
     <!-- Encabezado -->
     <header class="dashboard-header">
       <div class="brand-section">
-        <img src="img/logo-notes-and-sillage-hd.webp" alt="Notes & Sillage" class="brand-logo" onerror="this.src='favicon.ico'">
+        <a href="index.html" class="brand-logo-link" title="Ir al Catálogo de Perfumes">
+          <img src="img/logo-notes-and-sillage-hd.webp" alt="Notes & Sillage" class="brand-logo" onerror="this.src='favicon.ico'">
+        </a>
         <div class="brand-title">
           <h1>Planilla y Registro de Ventas</h1>
         </div>
       </div>
       <div class="header-actions">
-        <a href="index.html" class="btn-secondary">
-          <i data-lucide="arrow-left" aria-hidden="true"></i> Catálogo
-        </a>
-        <a href="pedidos.html" class="btn-secondary" title="Ver historial y agrupación de pedidos al proveedor">
-          <i data-lucide="package" aria-hidden="true"></i> Pedidos Proveedor
-        </a>
         <a href="gastos.html" class="btn-secondary" title="Control de gastos, retiros de ganancias y liquidación mensual">
-          <i data-lucide="wallet" aria-hidden="true"></i> Gastos y Balance
+          <i data-lucide="wallet" aria-hidden="true"></i> <span>Gastos y Balance</span>
         </a>
-        <div id="authVentasUserBar" class="auth-ventas-user-bar" hidden>
-          <button type="button" id="btnVentasLogout" class="btn-secondary btn-ventas-logout" title="Cerrar sesión">
-            <i data-lucide="log-out" aria-hidden="true"></i>
-            <span>Salir</span>
-          </button>
-        </div>
-        <button id="btnNewManualSale" class="btn-primary">
-          <i data-lucide="plus-circle" aria-hidden="true"></i> Nueva Venta
+        <a href="pedidos.html" class="btn-secondary btn-header-icon" title="Pedidos Proveedor">
+          <i data-lucide="package" aria-hidden="true"></i>
+        </a>
+        <button type="button" id="btnOpenSettingsModal" class="btn-secondary btn-header-icon" title="Ajustes, Configuración y Salir">
+          <i data-lucide="settings" aria-hidden="true"></i>
         </button>
       </div>
     </header>
 
-    <!-- Barra de Métricas Totales Compacta -->
-    <section class="summary-metrics-bar">
-      <div class="metric-item">
-        <span class="metric-label">Ventas Totales</span>
-        <span class="metric-value" id="kpiTotalVenta">$0</span>
-      </div>
-      <div class="metric-divider"></div>
-      <div class="metric-item">
-        <span class="metric-label">Ganancia Neta</span>
-        <span class="metric-value highlight-green" id="kpiTotalGanancia">$0</span>
-      </div>
-      <div class="metric-divider"></div>
-      <div class="metric-item">
-        <span class="metric-label">Costo Mercadería</span>
-        <span class="metric-value" id="kpiTotalCosto">$0</span>
-      </div>
-      <div class="metric-divider"></div>
-      <div class="metric-item">
-        <span class="metric-label">Perfumes Vendidos</span>
-        <span class="metric-value" id="kpiTotalUnidades">0</span>
-      </div>
-      <div class="metric-divider"></div>
-      <div class="metric-item">
-        <span class="metric-label">Margen Medio</span>
-        <span class="metric-value" id="kpiMargenMedio">50.0%</span>
-      </div>
-      <div class="metric-divider"></div>
-      <div class="metric-item">
-        <span class="metric-label">Filas Mostradas</span>
-        <span class="metric-value" id="kpiFilasMostradas">0</span>
-      </div>
-    </section>
-
-    <!-- Sección de Gráficos y Estadísticas -->
+    <!-- Sección de Métricas, Cálculo de Ventas y Rendimiento -->
     <section class="analytics-dashboard-section" id="analyticsSection">
       <div class="analytics-header">
         <div class="analytics-header-title">
@@ -100,86 +60,142 @@
             </span>
             <div>
               <h2 class="analytics-title">Métricas y Rendimiento</h2>
-              <p class="analytics-subtitle">Perfumes más vendidos, instituciones con más volumen y clientes más frecuentes</p>
+              <p class="analytics-subtitle">Cálculo de ventas, perfumes más vendidos, instituciones y clientes</p>
             </div>
           </div>
         </div>
         <div class="analytics-header-actions">
-          <button type="button" id="btnToggleAnalytics" class="btn-analytics-toggle" title="Mostrar u ocultar gráficos" aria-expanded="true">
+          <button type="button" id="btnToggleAnalytics" class="btn-analytics-toggle" title="Mostrar u ocultar métricas y análisis" aria-expanded="true">
             <span id="btnToggleAnalyticsText">Ocultar análisis</span>
             <i data-lucide="chevron-up" id="iconToggleAnalytics" aria-hidden="true"></i>
           </button>
         </div>
       </div>
 
-      <div class="analytics-grid" id="analyticsGrid">
-        <!-- Tarjeta 1: Perfumes Más Vendidos -->
-        <div class="analytics-card">
-          <div class="analytics-card-header">
-            <div class="analytics-card-title-group">
-              <span class="card-icon-pill icon-gold">
-                <i data-lucide="flame" aria-hidden="true"></i>
-              </span>
-              <div>
-                <h3 class="analytics-card-title">Más Vendidos</h3>
-                <span class="analytics-card-sub">Top fragancias por unidades</span>
-              </div>
-            </div>
-            <span class="card-stat-pill" id="badgeTotalPerfumes">0 fragancias</span>
+      <div class="analytics-body" id="analyticsBody">
+        <!-- Barra de Métricas Totales Compacta (Cálculo de Ventas) -->
+        <div class="summary-metrics-bar" id="summaryMetricsBar">
+          <div class="metric-item">
+            <span class="metric-label">Ventas Totales</span>
+            <span class="metric-value" id="kpiTotalVenta">$0</span>
           </div>
-          <div class="chart-wrapper">
-            <canvas id="chartTopProducts"></canvas>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">Ganancia Neta</span>
+            <span class="metric-value highlight-green" id="kpiTotalGanancia">$0</span>
           </div>
-          <div class="ranking-list" id="listTopProducts">
-            <!-- Ranking generado dinámicamente -->
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">Costo Mercadería</span>
+            <span class="metric-value" id="kpiTotalCosto">$0</span>
           </div>
-        </div>
-
-        <!-- Tarjeta 2: Instituciones con Más Ventas -->
-        <div class="analytics-card">
-          <div class="analytics-card-header">
-            <div class="analytics-card-title-group">
-              <span class="card-icon-pill icon-purple">
-                <i data-lucide="building-2" aria-hidden="true"></i>
-              </span>
-              <div>
-                <h3 class="analytics-card-title">Por Institución</h3>
-                <span class="analytics-card-sub">Distribución de compras</span>
-              </div>
-            </div>
-            <span class="card-stat-pill" id="badgeTotalInstituciones">0 sedes</span>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">Perfumes Vendidos</span>
+            <span class="metric-value" id="kpiTotalUnidades">0</span>
           </div>
-          <div class="chart-wrapper">
-            <canvas id="chartTopInstitutions"></canvas>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">Margen Medio</span>
+            <span class="metric-value" id="kpiMargenMedio">50.0%</span>
           </div>
-          <div class="ranking-list" id="listTopInstitutions">
-            <!-- Ranking generado dinámicamente -->
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">Filas Mostradas</span>
+            <span class="metric-value" id="kpiFilasMostradas">0</span>
           </div>
         </div>
 
-        <!-- Tarjeta 3: Clientes con Más Pedidos -->
-        <div class="analytics-card">
-          <div class="analytics-card-header">
-            <div class="analytics-card-title-group">
-              <span class="card-icon-pill icon-green">
-                <i data-lucide="users" aria-hidden="true"></i>
-              </span>
-              <div>
-                <h3 class="analytics-card-title">Top Clientes</h3>
-                <span class="analytics-card-sub">Clientes con más perfumes</span>
+        <div class="analytics-grid" id="analyticsGrid">
+          <!-- Tarjeta 1: Perfumes Más Vendidos -->
+          <div class="analytics-card">
+            <div class="analytics-card-header">
+              <div class="analytics-card-title-group">
+                <span class="card-icon-pill icon-gold">
+                  <i data-lucide="flame" aria-hidden="true"></i>
+                </span>
+                <div>
+                  <h3 class="analytics-card-title">Más Vendidos</h3>
+                  <span class="analytics-card-sub">Top fragancias por unidades</span>
+                </div>
               </div>
+              <span class="card-stat-pill" id="badgeTotalPerfumes">0 fragancias</span>
             </div>
-            <span class="card-stat-pill" id="badgeTotalClientes">0 clientes</span>
+            <div class="chart-wrapper">
+              <canvas id="chartTopProducts"></canvas>
+            </div>
+            <div class="ranking-list" id="listTopProducts">
+              <!-- Ranking generado dinámicamente -->
+            </div>
           </div>
-          <div class="chart-wrapper">
-            <canvas id="chartTopCustomers"></canvas>
+
+          <!-- Tarjeta 2: Instituciones con Más Ventas -->
+          <div class="analytics-card">
+            <div class="analytics-card-header">
+              <div class="analytics-card-title-group">
+                <span class="card-icon-pill icon-purple">
+                  <i data-lucide="building-2" aria-hidden="true"></i>
+                </span>
+                <div>
+                  <h3 class="analytics-card-title">Por Institución</h3>
+                  <span class="analytics-card-sub">Distribución de compras</span>
+                </div>
+              </div>
+              <span class="card-stat-pill" id="badgeTotalInstituciones">0 sedes</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="chartTopInstitutions"></canvas>
+            </div>
+            <div class="ranking-list" id="listTopInstitutions">
+              <!-- Ranking generado dinámicamente -->
+            </div>
           </div>
-          <div class="ranking-list" id="listTopCustomers">
-            <!-- Ranking generado dinámicamente -->
+
+          <!-- Tarjeta 3: Clientes con Más Pedidos -->
+          <div class="analytics-card">
+            <div class="analytics-card-header">
+              <div class="analytics-card-title-group">
+                <span class="card-icon-pill icon-green">
+                  <i data-lucide="users" aria-hidden="true"></i>
+                </span>
+                <div>
+                  <h3 class="analytics-card-title">Top Clientes</h3>
+                  <span class="analytics-card-sub">Clientes con más perfumes</span>
+                </div>
+              </div>
+              <span class="card-stat-pill" id="badgeTotalClientes">0 clientes</span>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="chartTopCustomers"></canvas>
+            </div>
+            <div class="ranking-list" id="listTopCustomers">
+              <!-- Ranking generado dinámicamente -->
+            </div>
           </div>
         </div>
       </div>
     </section>
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('notes_analytics_collapsed');
+          var isMobile = window.innerWidth <= 768;
+          var shouldCollapse = saved !== null ? (saved === 'true') : isMobile;
+          if (shouldCollapse) {
+            var body = document.getElementById('analyticsBody');
+            var sec = document.getElementById('analyticsSection');
+            var btn = document.getElementById('btnToggleAnalytics');
+            var txt = document.getElementById('btnToggleAnalyticsText');
+            var icon = document.getElementById('iconToggleAnalytics');
+            if (body) body.classList.add('is-collapsed');
+            if (sec) sec.classList.add('is-collapsed');
+            if (btn) btn.setAttribute('aria-expanded', 'false');
+            if (txt) txt.textContent = 'Mostrar análisis';
+            if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+          }
+        } catch(e) {}
+      })();
+    </script>
 
     <!-- Controles de Búsqueda -->
     <section class="table-controls">
@@ -210,15 +226,30 @@
             <th class="th-size">Formato</th>
             <th class="th-qty" title="Cantidad">Cant</th>
             <th class="th-client">Cliente</th>
-            <th class="th-phone">WhatsApp</th>
-            <th class="th-inst">Institución</th>
+            <th class="th-phone">
+              <span class="hide-mobile">WhatsApp</span>
+              <span class="show-mobile" title="WhatsApp"><i data-lucide="message-circle" style="width: 13px; height: 13px;"></i></span>
+            </th>
+            <th class="th-inst">
+              <span class="hide-mobile">Institución</span>
+              <span class="show-mobile">Inst</span>
+            </th>
             <th class="th-price">Venta</th>
             <th class="th-cost">Costo</th>
             <th class="th-profit">Ganancia</th>
             <th class="th-status">Estado</th>
-            <th class="th-paid" title="¿Pagado por el cliente?">Pagado</th>
-            <th class="th-confirmed" title="¿Pedido confirmado?">Conf.</th>
-            <th class="th-action" title="Editar venta o eliminar">Editar</th>
+            <th class="th-paid" title="¿Pagado por el cliente?">
+              <span class="hide-mobile">Pagado</span>
+              <span class="show-mobile">Pag</span>
+            </th>
+            <th class="th-confirmed" title="¿Pago interno realizado?">
+              <span class="hide-mobile">Pago Int.</span>
+              <span class="show-mobile">Int</span>
+            </th>
+            <th class="th-action" title="Editar venta o eliminar">
+              <span class="hide-mobile">Editar</span>
+              <span class="show-mobile"><i data-lucide="edit-3" style="width: 12px; height: 12px;"></i></span>
+            </th>
           </tr>
         </thead>
         <tbody id="salesTableBody">
@@ -352,7 +383,7 @@
             </div>
           </div>
 
-          <!-- Checks de Pagado y Confirmado -->
+          <!-- Checks de Pagado y Pago Interno -->
           <div class="modal-checks-bar">
             <label class="checkbox-label">
               <input type="checkbox" id="manualPaid" checked>
@@ -360,7 +391,7 @@
             </label>
             <label class="checkbox-label">
               <input type="checkbox" id="manualConfirmed" checked>
-              <span>¿Pedido Confirmado? (True)</span>
+              <span>¿Pago Interno? (True)</span>
             </label>
           </div>
 
@@ -468,28 +499,42 @@
     </div>
   </div>
 
-  <!-- Modal Gastos y Balances -->
+  <!-- Modal Ajustes y Configuración (Tuerca) -->
   <div id="modalBalances" class="modal-overlay" hidden>
-    <div class="modal-content" style="max-width: 680px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-content modal-settings-content">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
-          <span class="supplier-status-icon ordered-icon"><i data-lucide="wallet"></i></span>
-          <h3 style="margin: 0;">Gastos, Balances y Configuración</h3>
+          <span class="supplier-status-icon ordered-icon"><i data-lucide="settings"></i></span>
+          <h3 style="margin: 0; font-size: 1.05rem;">Ajustes y Configuración</h3>
         </div>
         <button type="button" class="modal-close" data-action="close-balances-modal">&times;</button>
       </div>
 
-      <div class="balances-modal-body" style="padding: 16px 0;">
+      <div class="balances-modal-body">
+        <!-- Barra de Sesión de Usuario con Botón de Salir -->
+        <div class="modal-settings-session-bar" id="authVentasUserBar">
+          <div class="modal-session-info">
+            <span class="supplier-status-icon session-icon">
+              <i data-lucide="user-check" style="width: 15px; height: 15px;"></i>
+            </span>
+            <div class="modal-session-text">
+              <strong>Sesión Administrador</strong>
+              <span id="authVentasEmailText">Administrador activo</span>
+            </div>
+          </div>
+          <button type="button" id="btnVentasLogout" class="btn-secondary btn-logout-action" title="Cerrar sesión de Notes & Sillage">
+            <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
+            <span>Salir</span>
+          </button>
+        </div>
+
         <!-- Pestañas internas -->
-        <div class="balances-tabs" style="display: flex; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+        <div class="balances-tabs">
           <button type="button" class="btn-balance-tab is-active" data-tab="tabBalancesConfig">
             <i data-lucide="settings" style="width: 14px; height: 14px;"></i> Configuración & Envíos
           </button>
           <button type="button" class="btn-balance-tab" data-tab="tabBalancesBank">
             <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i> Datos de Cobro
-          </button>
-          <button type="button" class="btn-balance-tab" data-tab="tabBalancesExpenses">
-            <i data-lucide="pie-chart" style="width: 14px; height: 14px;"></i> Gastos & Octubre
           </button>
         </div>
 
@@ -500,13 +545,13 @@
               <label for="cfgEnvioGratisMinimo" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">
                 Monto Mínimo de Pedido para Envío Gratis Proveedor ($ CLP):
               </label>
-              <input type="number" id="cfgEnvioGratisMinimo" class="form-control" value="120000" min="0" step="1000" required style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main); width: 100%;">
-              <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 4px;">
+              <input type="number" id="cfgEnvioGratisMinimo" class="form-control" value="120000" min="0" step="1000" required>
+              <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 5px; line-height: 1.4;">
                 Este valor se utiliza para calcular automáticamente cuánto falta para el envío gratis en los pedidos pendientes.
               </small>
             </div>
-            <div style="display: flex; justify-content: flex-end; gap: 8px;">
-              <button type="submit" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+            <div class="modal-form-actions">
+              <button type="submit" class="btn-primary">
                 <i data-lucide="save" style="width: 14px; height: 14px;"></i> Guardar Meta de Envío
               </button>
             </div>
@@ -516,7 +561,7 @@
         <!-- Tab 2: Datos de Cobro Transferencia -->
         <div id="tabBalancesBank" class="balance-tab-content" hidden>
           <form id="formBankConfig">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div class="bank-config-grid">
               <div class="form-group">
                 <label for="bankTitular" style="font-size: 0.82rem; font-weight: 600;">Nombre del Titular:</label>
                 <input type="text" id="bankTitular" class="form-control" value="Christian Eduardo Fuentealba Reyes" required>
@@ -542,102 +587,16 @@
                 <input type="email" id="bankEmail" class="form-control" value="christianfuentealba@gmail.com" required>
               </div>
             </div>
-            <div style="display: flex; justify-content: flex-end; gap: 8px;">
-              <button type="submit" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+            <div class="modal-form-actions">
+              <button type="submit" class="btn-primary">
                 <i data-lucide="save" style="width: 14px; height: 14px;"></i> Guardar Datos de Cuenta
               </button>
             </div>
           </form>
         </div>
-
-        <!-- Tab 3: Gastos & Octubre -->
-        <div id="tabBalancesExpenses" class="balance-tab-content" hidden>
-          <!-- Resumen Balance Octubre 2026 -->
-          <div style="background: var(--bg-hover); padding: 14px; border-radius: var(--radius-sm); margin-bottom: 16px; border: 1px solid var(--border-color);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <strong style="font-size: 0.9rem; color: var(--text-title); display: flex; align-items: center; gap: 6px;">
-                <i data-lucide="calendar" style="width: 15px; height: 15px;"></i> Balance Especial — Octubre 2026
-              </strong>
-              <span class="badge-supplier-tag" style="background: rgba(59, 130, 246, 0.15); color: #2563eb;">Capital deducible</span>
-            </div>
-            <div style="font-size: 0.84rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px;">
-              Capital generado en octubre: <strong style="color: #dc2626;">-$150.000</strong> (incorporado a los gastos y restado del total de ganancias de Octubre).
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; font-size: 0.82rem;">
-              <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 4px;">
-                <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Ventas Octubre:</span>
-                <strong id="balanceOctVentas" style="font-family: var(--font-mono);">$0</strong>
-              </div>
-              <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 4px;">
-                <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Costo Mercadería:</span>
-                <strong id="balanceOctCosto" style="font-family: var(--font-mono);">$0</strong>
-              </div>
-              <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 4px;">
-                <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Capital/Gastos Oct:</span>
-                <strong id="balanceOctGastos" style="font-family: var(--font-mono); color: #dc2626;">$150.000</strong>
-              </div>
-              <div style="background: var(--bg-secondary); padding: 8px 10px; border-radius: 4px;">
-                <span style="color: var(--text-muted); display: block; font-size: 0.75rem;">Ganancia Neta Oct:</span>
-                <strong id="balanceOctGananciaNeta" style="font-family: var(--font-mono); color: #16a34a;">$0</strong>
-              </div>
-            </div>
-          </div>
-
-          <!-- Formulario para Registrar Nuevo Gasto -->
-          <form id="formNewExpense" style="margin-bottom: 16px; border: 1px dashed var(--border-color); padding: 12px; border-radius: var(--radius-sm);">
-            <strong style="font-size: 0.84rem; display: block; margin-bottom: 8px;">Registrar Nuevo Gasto / Egreso:</strong>
-            <div style="display: grid; grid-template-columns: 130px 140px 1fr 120px auto; gap: 8px; align-items: flex-end;">
-              <div>
-                <label style="font-size: 0.72rem; display: block; color: var(--text-muted);">Fecha:</label>
-                <input type="date" id="expenseDate" class="form-control" required style="padding: 6px; font-size: 0.8rem;">
-              </div>
-              <div>
-                <label style="font-size: 0.72rem; display: block; color: var(--text-muted);">Categoría:</label>
-                <select id="expenseCategory" class="form-control" style="padding: 6px; font-size: 0.8rem;">
-                  <option value="Capital">Capital</option>
-                  <option value="Insumos">Insumos/Bolsas</option>
-                  <option value="Envíos">Fletes/Envíos</option>
-                  <option value="Operación">Operación</option>
-                  <option value="Otros">Otros</option>
-                </select>
-              </div>
-              <div>
-                <label style="font-size: 0.72rem; display: block; color: var(--text-muted);">Descripción:</label>
-                <input type="text" id="expenseDescription" placeholder="Ej. Bolsas Kraft o Membresía" class="form-control" required style="padding: 6px; font-size: 0.8rem;">
-              </div>
-              <div>
-                <label style="font-size: 0.72rem; display: block; color: var(--text-muted);">Monto ($):</label>
-                <input type="number" id="expenseAmount" placeholder="0" class="form-control" required min="1" step="100" style="padding: 6px; font-size: 0.8rem;">
-              </div>
-              <div>
-                <button type="submit" class="btn-primary" style="padding: 7px 12px; font-size: 0.8rem;">
-                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Agregar
-                </button>
-              </div>
-            </div>
-          </form>
-
-          <!-- Lista de Gastos Registrados -->
-          <div style="max-height: 200px; overflow-y: auto;">
-            <table class="spreadsheet-table" style="font-size: 0.8rem; width: 100%;">
-              <thead>
-                <tr>
-                  <th>Fecha</th>
-                  <th>Categoría</th>
-                  <th>Descripción</th>
-                  <th style="text-align: right;">Monto</th>
-                  <th style="text-align: center;">Acción</th>
-                </tr>
-              </thead>
-              <tbody id="expensesTableBody">
-                <!-- Filas de gastos dinámicas -->
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
 
-      <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 12px;">
+      <div class="modal-footer-close">
         <button type="button" class="btn-secondary" data-action="close-balances-modal">Cerrar</button>
       </div>
     </div>
@@ -647,6 +606,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
   <script type="module" src="js/firebase-config.js"></script>
-  <script type="module" src="js/ventas.js"></script>
+  <script type="module" src="js/ventas.js?v=20261115_mobile_fix4"></script>
 </body>
 </html>

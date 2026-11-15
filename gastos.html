@@ -33,7 +33,9 @@
     <!-- Encabezado Principal -->
     <header class="dashboard-header">
       <div class="brand-section">
-        <img src="img/logo-notes-and-sillage-hd.webp" alt="Notes & Sillage" class="brand-logo" onerror="this.src='favicon.ico'">
+        <a href="index.html" class="brand-logo-link" title="Volver al Catálogo de Perfumes">
+          <img src="img/logo-notes-and-sillage-hd.webp" alt="Notes & Sillage" class="brand-logo" onerror="this.src='favicon.ico'">
+        </a>
         <div class="brand-title">
           <h1 style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
             <span>Gastos, Retiros y Balances</span>
@@ -44,18 +46,15 @@
         </div>
       </div>
       <div class="header-actions">
-        <a href="index.html" class="btn-secondary" title="Volver al catálogo online">
-          <i data-lucide="shopping-bag" aria-hidden="true"></i> Catálogo
-        </a>
         <a href="ventas.html" class="btn-secondary" title="Ir a la planilla interactiva de ventas">
           <i data-lucide="table" aria-hidden="true"></i> Ventas
         </a>
-        <a href="pedidos.html" class="btn-secondary" title="Ver historial de pedidos al proveedor">
-          <i data-lucide="package" aria-hidden="true"></i> Pedidos Proveedor
+        <a href="pedidos.html" class="btn-secondary btn-header-icon" title="Pedidos Proveedor">
+          <i data-lucide="package" aria-hidden="true"></i>
         </a>
-        <button type="button" id="btnToggleTheme" class="btn-secondary" title="Cambiar tema claro / oscuro">
-          <i data-lucide="sun-moon" aria-hidden="true"></i>
-        </button>
+        <a href="ventas.html?config=settings" class="btn-secondary btn-header-icon" title="Ajustes, Configuración y Salir">
+          <i data-lucide="settings" aria-hidden="true"></i>
+        </a>
       </div>
     </header>
 

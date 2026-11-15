@@ -34,7 +34,26 @@ try {
 let isUnpaidViewActive = false;
 let currentBalancesConfig = { ...DEFAULT_BALANCES_CONFIG };
 let currentExpenses = [];
-const collapsedSupplierBatches = new Set();
+
+// Carga y guardado persistente de lotes colapsados en el navegador (localStorage)
+function getSavedCollapsedBatches() {
+  try {
+    const raw = localStorage.getItem("notes_collapsed_batches");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch (e) {}
+  return new Set();
+}
+
+function persistCollapsedBatches() {
+  try {
+    localStorage.setItem("notes_collapsed_batches", JSON.stringify([...collapsedSupplierBatches]));
+  } catch (e) {}
+}
+
+const collapsedSupplierBatches = getSavedCollapsedBatches();
 
 // Definición exacta de los 6 Pedidos Proveedor Históricos de PEDIDOS.TXT
 const HISTORICAL_SUPPLIER_BATCHES = [
@@ -109,7 +128,7 @@ function getSupplierBatchTitle(dateStr) {
 function resolveSupplierBatch(row) {
   const slug = getStatusSlug(row.estado);
   if (slug === "pendiente" || slug === "encarrito") {
-    return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES POR PEDIR AL PROVEEDOR" };
+    return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES" };
   }
 
   // Obtener fecha de la venta en formato YYYY-MM-DD
@@ -154,7 +173,7 @@ function resolveSupplierBatch(row) {
   }
 
   // Por defecto, si no tiene fecha ni lote y está pendiente
-  return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES POR PEDIR AL PROVEEDOR" };
+  return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES" };
 }
 
 // Elementos del DOM
@@ -214,16 +233,98 @@ function formatCLP(num) {
   return `$${Number(num || 0).toLocaleString("es-CL")}`;
 }
 
-function buildPaymentReminderText(row) {
+// Comprobar si dos filas de venta pertenecen exactamente al mismo cliente
+function isSameCustomer(r1, r2) {
+  if (!r1 || !r2) return false;
+  if (r1 === r2) return true;
+
+  const name1 = normalizeCustomerName(r1.clientName);
+  const name2 = normalizeCustomerName(r2.clientName);
+
+  // Si ambos tienen nombres válidos y no coinciden, NO son el mismo cliente
+  if (name1 && name2 && name1 !== "cliente" && name2 !== "cliente") {
+    if (name1 !== name2) {
+      return false;
+    }
+  }
+
+  // 1. Mismo saleId (pertenecen a la misma venta registrada en Firestore)
+  if (r1.saleId && r2.saleId && r1.saleId === r2.saleId) {
+    return true;
+  }
+
+  // 2. Coincidencia por teléfono (si ambos tienen dígitos válidos y no es el teléfono del vendedor)
+  const phone1 = (r1.clientPhone || "").replace(/[^0-9]/g, "");
+  const phone2 = (r2.clientPhone || "").replace(/[^0-9]/g, "");
+  const ownerTail = "68787862"; // Teléfono del dueño / vendedor por defecto de la tienda
+
+  if (phone1.length >= 8 && phone2.length >= 8) {
+    const tail1 = phone1.slice(-8);
+    const tail2 = phone2.slice(-8);
+
+    // Si el teléfono es el del vendedor, solo agrupar si el nombre coincide exactamente
+    if (tail1 === ownerTail || tail2 === ownerTail) {
+      return name1 && name2 && name1 === name2;
+    }
+
+    if (tail1 === tail2) {
+      return true;
+    }
+  }
+
+  // 3. Coincidencia por nombre normalizado
+  if (name1 && name2 && name1 !== "cliente" && name1.length >= 3) {
+    return name1 === name2;
+  }
+
+  return false;
+}
+
+// Obtener todas las líneas de pedidos entregados y sin pagar del mismo cliente
+function getCustomerUnpaidOrders(targetRow) {
+  if (!targetRow) return [];
+  const pool = Array.isArray(allSaleRows) && allSaleRows.length > 0 ? allSaleRows : [targetRow];
+
+  let matches = pool.filter(r => {
+    const isUnpaidDelivered = !r.pagado && (r.estado || "").toLowerCase().trim() === "entregado";
+    return isUnpaidDelivered && isSameCustomer(r, targetRow);
+  });
+
+  if (matches.length === 0 && !targetRow.pagado && (targetRow.estado || "").toLowerCase().trim() === "entregado") {
+    matches = [targetRow];
+  }
+
+  // Eliminar posibles referencias duplicadas
+  const seen = new Set();
+  const uniqueMatches = [];
+  matches.forEach(m => {
+    const key = `${m.saleId || ""}_${m.code || ""}_${m.fragrance || ""}_${m.size || ""}_${m.precioVenta || 0}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueMatches.push(m);
+    }
+  });
+
+  return uniqueMatches;
+}
+
+function buildPaymentReminderText(row, unpaidList) {
   const bank = currentBalancesConfig?.datosBancarios || DEFAULT_BALANCES_CONFIG.datosBancarios;
   const firstName = (row.clientName || "Estimado/a").trim().split(" ")[0];
-  const totalStr = formatCLP(row.precioVenta || 0);
-  const perfumeInfo = row.fragrance ? `[${row.code || ""}] ${row.fragrance} (${row.size || ""}) x${row.qty || 1}` : "tu pedido de perfume";
+  const unpaidOrders = (unpaidList && unpaidList.length > 0) ? unpaidList : getCustomerUnpaidOrders(row);
 
-  return `¡Hola ${firstName}! 👋🌸 Te saludamos de Notes & Sillage.
+  if (unpaidOrders.length <= 1) {
+    const target = unpaidOrders[0] || row;
+    const totalStr = formatCLP(target.precioVenta || 0);
+    const codeStr = (target.code && target.code !== "-") ? `[${target.code}] ` : "";
+    const sizeStr = target.size ? ` (${target.size})` : "";
+    const qtyStr = (target.qty && target.qty > 1) ? ` x${target.qty}` : "";
+    const perfumeInfo = target.fragrance ? `• ${codeStr}${target.fragrance}${sizeStr}${qtyStr}` : "• Tu pedido de perfume";
+
+    return `¡Hola ${firstName}! 👋🌸 Te saludamos de Notes & Sillage.
 
 Te escribimos con mucho agrado respecto a tu pedido entregado:
-• ${perfumeInfo}
+${perfumeInfo}
 
 El total pendiente de transferencia es: ${totalStr}
 
@@ -236,6 +337,41 @@ Puedes transferir directamente a los siguientes datos de cuenta:
 📧 Correo: ${bank.email}
 
 Una vez realizada la transferencia, por favor envíanos el comprobante por este medio. ¡Muchas gracias por tu preferencia y que disfrutes muchísimo tu perfume! ✨`;
+  }
+
+  // Si hay 2 o más pedidos sin pagar: resumen agrupado y total acumulado
+  const grandTotal = unpaidOrders.reduce((sum, item) => sum + (Number(item.precioVenta) || 0), 0);
+  const totalUnits = unpaidOrders.reduce((sum, item) => sum + (Number(item.qty) || 1), 0);
+  const totalStr = formatCLP(grandTotal);
+
+  const linesList = unpaidOrders.map(item => {
+    const codeStr = (item.code && item.code !== "-") ? `[${item.code}] ` : "";
+    const sizeStr = item.size ? ` (${item.size})` : "";
+    const qtyStr = (item.qty && item.qty > 1) ? ` x${item.qty}` : "";
+    const priceStr = formatCLP(item.precioVenta || 0);
+    return `• ${codeStr}${item.fragrance}${sizeStr}${qtyStr} — ${priceStr}`;
+  }).join("\n");
+
+  const countLabel = totalUnits > unpaidOrders.length
+    ? `${unpaidOrders.length} pedidos (${totalUnits} perfumes)`
+    : `${unpaidOrders.length} pedidos`;
+
+  return `¡Hola ${firstName}! 👋🌸 Te saludamos de Notes & Sillage.
+
+Te escribimos con mucho agrado respecto a tus pedidos entregados pendientes de pago (${countLabel}):
+${linesList}
+
+El total acumulado a transferir es: ${totalStr}
+
+Puedes transferir directamente a los siguientes datos de cuenta:
+🏦 Banco / Billetera: ${bank.banco}
+📋 Tipo de cuenta: ${bank.tipoCuenta}
+🔢 N° de cuenta: ${bank.numeroCuenta}
+👤 Titular: ${bank.titular}
+🆔 RUT: ${bank.rut}
+📧 Correo: ${bank.email}
+
+Una vez realizada la transferencia, por favor envíanos el comprobante por este medio. ¡Muchas gracias por tu preferencia y que disfrutes muchísimo tus perfumes! ✨`;
 }
 
 function renderPhoneCell(phone, row) {
@@ -251,12 +387,19 @@ function renderPhoneCell(phone, row) {
   const isDeliveredAndUnpaid = row && !row.pagado && (row.estado || "").toLowerCase().trim() === "entregado";
 
   if (isDeliveredAndUnpaid) {
-    const reminderText = buildPaymentReminderText(row);
+    const unpaidOrders = getCustomerUnpaidOrders(row);
+    const reminderText = buildPaymentReminderText(row, unpaidOrders);
     const waUrl = `https://wa.me/${cleanDigits}?text=${encodeURIComponent(reminderText)}`;
+
+    let btnTitle = `Cobrar por WhatsApp: faltante de pago entregado (${shortDisplay})`;
+    if (unpaidOrders.length >= 2) {
+      const grandTotal = unpaidOrders.reduce((sum, item) => sum + (Number(item.precioVenta) || 0), 0);
+      btnTitle = `Cobrar por WhatsApp: resumen de ${unpaidOrders.length} pedidos entregados sin pagar (${formatCLP(grandTotal)})`;
+    }
+
     return `
-      <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-wa-reminder" title="Cobrar pedido entregado con mensaje amable y datos bancarios">
+      <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-wa-reminder" title="${btnTitle}">
         <i data-lucide="message-circle" aria-hidden="true" style="width: 14px; height: 14px;"></i>
-        <span>Cobrar: ${shortDisplay}</span>
       </a>
     `;
   }
@@ -400,7 +543,9 @@ async function initCatalog() {
 // 2. Cargar historial y desglosar cada venta individual (fila por perfume)
 async function loadSales() {
   try {
-    tableBody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding:35px; color:var(--text-muted);"><i data-lucide="loader" class="spin"></i> Sincronizando ventas desde Firestore...</td></tr>`;
+    const isMobile = window.innerWidth <= 768;
+    const initialColspan = isMobile ? 7 : 16;
+    tableBody.innerHTML = `<tr><td colspan="${initialColspan}" style="text-align:center; padding:35px; color:var(--text-muted);"><i data-lucide="loader" class="spin"></i> Sincronizando ventas desde Firestore...</td></tr>`;
     if (window.lucide) lucide.createIcons();
 
     const [sales, balancesCfg, expensesList] = await Promise.all([
@@ -496,7 +641,8 @@ async function loadSales() {
     } catch (e) {}
   } catch (err) {
     console.error("Error al cargar ventas:", err);
-    tableBody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding:30px; color:#ef4444;">Error al consultar Firestore: ${err.message}</td></tr>`;
+    const errColspan = (window.innerWidth <= 768) ? 7 : 16;
+    tableBody.innerHTML = `<tr><td colspan="${errColspan}" style="text-align:center; padding:30px; color:#ef4444;">Error al consultar Firestore: ${err.message}</td></tr>`;
   }
 }
 
@@ -586,11 +732,11 @@ function renderTableRow(row, rowNum, isPending) {
           </select>
         </div>
       </td>
-      <td class="cell-check">
+      <td class="cell-check td-paid">
         <input type="checkbox" class="table-checkbox" data-action="toggle-paid" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.pagado ? "checked" : ""} title="${row.pagado ? "Pagado (True)" : "Pendiente de pago (False)"}">
       </td>
-      <td class="cell-check">
-        <input type="checkbox" class="table-checkbox check-confirmed" data-action="toggle-confirmed" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.confirmado ? "checked" : ""} title="${row.confirmado ? "Pedido Confirmado (True)" : "Sin confirmar (False)"}">
+      <td class="cell-check td-confirmed">
+        <input type="checkbox" class="table-checkbox check-confirmed" data-action="toggle-confirmed" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.confirmado ? "checked" : ""} title="${row.confirmado ? "Pago Interno (True)" : "Sin pago interno (False)"}">
       </td>
       <td class="td-action" style="text-align: center; white-space: nowrap;">
         ${isUnpaidViewActive ? `
@@ -617,12 +763,15 @@ function renderTable(rows) {
 
   emptyState.hidden = true;
 
+  const isMobileScreen = window.innerWidth <= 768;
+  const headerColspan = isMobileScreen ? 7 : 16;
+
   // Si estamos en la vista de Faltantes por Pagar
   if (isUnpaidViewActive) {
     const totalUnpaidAmount = rows.reduce((sum, r) => sum + r.precioVenta, 0);
     let html = `
       <tr class="tr-supplier-header" style="background: rgba(239, 68, 68, 0.12); border-left: 4px solid #ef4444;">
-        <td colspan="16">
+        <td colspan="${headerColspan}">
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="color: #ef4444; display: inline-flex;"><i data-lucide="receipt"></i></span>
@@ -680,28 +829,51 @@ function renderTable(rows) {
     const minShipping = Number(currentBalancesConfig?.envioGratisMinimo) || 120000;
     const diffShipping = Math.max(0, minShipping - pendingCost);
     const progressShipping = Math.min(100, Math.round((pendingCost / minShipping) * 100));
+    const isPendingCollapsed = collapsedSupplierBatches.has("PENDIENTE");
     const shippingTag = diffShipping > 0
       ? `<span class="badge-supplier-tag tag-shipping-pending" title="Meta para envío gratis: ${formatCLP(minShipping)} (modificable en Gastos y Balances)">
            <i data-lucide="truck" style="width: 13px; height: 13px;"></i>
-           Falta para envío gratis: <strong>${formatCLP(diffShipping)}</strong> (${progressShipping}%)
+           <span class="hide-mobile">Falta para envío gratis: </span>
+           <span class="show-mobile">Falta envío: </span>
+           <strong>${formatCLP(diffShipping)}</strong> (${progressShipping}%)
          </span>`
       : `<span class="badge-supplier-tag tag-shipping-reached" title="¡Meta de envío gratis superada!">
            <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
-           ¡Envío gratis alcanzado! 🎉 (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})
+           <span class="hide-mobile">¡Envío gratis alcanzado! 🎉 (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})</span>
+           <span class="show-mobile">¡Envío gratis! 🎉</span>
          </span>`;
 
     html += `
-      <tr class="tr-supplier-header group-pending">
-        <td colspan="16">
+      <tr class="tr-supplier-header group-pending" data-batch-key="PENDIENTE">
+        <td colspan="${headerColspan}">
           <div class="supplier-header-content">
-            <div class="supplier-header-title">
-              <span class="supplier-status-icon pending-icon">
-                <i data-lucide="clock" style="width: 16px; height: 16px;"></i>
-              </span>
-              <strong style="color: #b45309; font-size: 0.92rem;">PENDIENTES POR PEDIR AL PROVEEDOR</strong>
-              <span class="badge-supplier-tag" style="background: rgba(245, 158, 11, 0.2); color: #b45309;">
-                ${pendingUnits} perfumes (${pendingRows.length} líneas)
-              </span>
+            <div class="supplier-header-top">
+              <div class="supplier-header-title">
+                <span class="supplier-status-icon pending-icon">
+                  <i data-lucide="clock" style="width: 15px; height: 15px;"></i>
+                </span>
+                <strong style="color: #b45309; font-size: 0.90rem;">PENDIENTES</strong>
+                <span class="badge-supplier-tag badge-units" style="background: rgba(245, 158, 11, 0.2); color: #b45309;">
+                  <span class="hide-mobile">${pendingUnits} perfumes (${pendingRows.length} líneas)</span>
+                  <span class="show-mobile">${pendingUnits} perfumes</span>
+                </span>
+              </div>
+              <div class="supplier-header-actions">
+                <label class="select-all-pending-label hide-mobile">
+                  <input type="checkbox" id="checkSelectAllPending" title="Seleccionar todos los pendientes">
+                  <span>Seleccionar todos</span>
+                </label>
+                <button type="button" class="btn-create-supplier-batch hide-mobile" id="btnOpenBatchModal" title="Marcar los perfumes seleccionados como Pedido Proveedor">
+                  <i data-lucide="package-plus" style="width: 14px; height: 14px;"></i>
+                  <span>Pasar a Pedido Proveedor</span>
+                </button>
+                <button type="button" class="btn-toggle-batch" data-action="toggle-batch-collapse" data-batch-key="PENDIENTE" title="Contraer o desplegar perfumes pendientes">
+                  <i data-lucide="${isPendingCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
+                  <span>${isPendingCollapsed ? 'Desplegar' : 'Contraer'}</span>
+                </button>
+              </div>
+            </div>
+            <div class="supplier-header-badges">
               <span class="badge-supplier-tag tag-cost" title="Costo estimado a pagar al proveedor">
                 Costo: ${formatCLP(pendingCost)}
               </span>
@@ -709,19 +881,11 @@ function renderTable(rows) {
                 Venta: ${formatCLP(pendingSale)}
               </span>
               <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Costo)">
-                Ganancia Real: ${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}
+                <span class="hide-mobile">Ganancia Real: </span>
+                <span class="show-mobile">Gan: </span>
+                ${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}
               </span>
               ${shippingTag}
-            </div>
-            <div class="supplier-header-actions">
-              <label class="select-all-pending-label">
-                <input type="checkbox" id="checkSelectAllPending" title="Seleccionar todos los pendientes">
-                <span>Seleccionar todos</span>
-              </label>
-              <button type="button" class="btn-create-supplier-batch" id="btnOpenBatchModal" title="Marcar los perfumes seleccionados como Pedido Proveedor">
-                <i data-lucide="package-plus" style="width: 14px; height: 14px;"></i>
-                <span>Pasar a Pedido Proveedor</span>
-              </button>
             </div>
           </div>
         </td>
@@ -729,7 +893,13 @@ function renderTable(rows) {
     `;
 
     pendingRows.forEach(r => {
-      html += renderTableRow(r, overallIndex--, true);
+      let rHtml = renderTableRow(r, overallIndex--, true);
+      if (isPendingCollapsed) {
+        rHtml = rHtml.replace('<tr ', '<tr data-batch-row="PENDIENTE" class="batch-collapsed-row" ');
+      } else {
+        rHtml = rHtml.replace('<tr ', '<tr data-batch-row="PENDIENTE" ');
+      }
+      html += rHtml;
     });
   }
 
@@ -748,16 +918,32 @@ function renderTable(rows) {
 
     html += `
       <tr class="tr-supplier-header group-ordered" data-batch-key="${batchKey}">
-        <td colspan="16">
+        <td colspan="${headerColspan}">
           <div class="supplier-header-content">
-            <div class="supplier-header-title">
-              <span class="supplier-status-icon ordered-icon">
-                <i data-lucide="package-check" style="width: 16px; height: 16px;"></i>
-              </span>
-              <strong style="color: var(--text-title); font-size: 0.92rem;">${bTitle}</strong>
-              <span class="badge-supplier-tag">
-                ${bUnits} perfumes (${bRows.length} líneas)
-              </span>
+            <div class="supplier-header-top">
+              <div class="supplier-header-title">
+                <span class="supplier-status-icon ordered-icon">
+                  <i data-lucide="package-check" style="width: 15px; height: 15px;"></i>
+                </span>
+                <strong style="color: var(--text-title); font-size: 0.90rem;">${bTitle}</strong>
+                <span class="badge-supplier-tag badge-units">
+                  <span class="hide-mobile">${bUnits} perfumes (${bRows.length} líneas)</span>
+                  <span class="show-mobile">${bUnits} perfumes</span>
+                </span>
+              </div>
+              <div class="supplier-header-actions">
+                <span class="badge-supplier-tag tag-locked">
+                  <i data-lucide="lock" style="width: 12px; height: 12px;"></i>
+                  <span class="hide-mobile">Pedido Cerrado</span>
+                  <span class="show-mobile">Cerrado</span>
+                </span>
+                <button type="button" class="btn-toggle-batch" data-action="toggle-batch-collapse" data-batch-key="${batchKey}">
+                  <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
+                  <span>${isCollapsed ? 'Desplegar' : 'Contraer'}</span>
+                </button>
+              </div>
+            </div>
+            <div class="supplier-header-badges">
               <span class="badge-supplier-tag tag-cost">
                 Costo: ${formatCLP(bCost)}
               </span>
@@ -765,20 +951,15 @@ function renderTable(rows) {
                 Venta: ${formatCLP(bSale)}
               </span>
               <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Costo)">
-                Ganancia Real: ${bProfit > 0 ? '+' : ''}${formatCLP(bProfit)}
-              </span>
-              <span class="badge-supplier-tag tag-locked">
-                <i data-lucide="lock" style="width: 12px; height: 12px;"></i> Pedido Cerrado
+                <span class="hide-mobile">Ganancia Real: </span>
+                <span class="show-mobile">Gan: </span>
+                ${bProfit > 0 ? '+' : ''}${formatCLP(bProfit)}
               </span>
               <a href="pedidos.html" class="badge-supplier-tag" style="text-decoration: none; color: var(--gold-primary); display: inline-flex; align-items: center; gap: 4px;" title="Ver detalle completo del comprobante en Historial de Pedidos">
-                <i data-lucide="external-link" style="width: 12px; height: 12px;"></i> Ver en Historial
+                <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+                <span class="hide-mobile">Ver en Historial</span>
+                <span class="show-mobile">Historial</span>
               </a>
-            </div>
-            <div class="supplier-header-actions">
-              <button type="button" class="btn-toggle-batch" data-action="toggle-batch-collapse" data-batch-key="${batchKey}">
-                <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
-                <span>${isCollapsed ? 'Desplegar' : 'Contraer'}</span>
-              </button>
             </div>
           </div>
         </td>
@@ -1277,36 +1458,57 @@ function renderTopCustomersAnalytics(rows, theme) {
 // 4. Control de colapso y sincronización del dashboard
 function initAnalyticsControls() {
   const btnToggleAnalytics = document.getElementById("btnToggleAnalytics");
+  const analyticsSection = document.getElementById("analyticsSection");
+  const analyticsBody = document.getElementById("analyticsBody");
   const analyticsGrid = document.getElementById("analyticsGrid");
   const btnToggleAnalyticsText = document.getElementById("btnToggleAnalyticsText");
   const iconToggleAnalytics = document.getElementById("iconToggleAnalytics");
 
-  if (btnToggleAnalytics && analyticsGrid) {
-    const savedState = localStorage.getItem("notes_analytics_visible");
-    if (savedState === "hidden") {
-      analyticsGrid.classList.add("is-collapsed");
-      btnToggleAnalytics.setAttribute("aria-expanded", "false");
-      if (btnToggleAnalyticsText) btnToggleAnalyticsText.textContent = "Mostrar análisis";
-      if (iconToggleAnalytics) iconToggleAnalytics.setAttribute("data-lucide", "chevron-down");
+  if (btnToggleAnalytics && (analyticsBody || analyticsGrid)) {
+    const isMobile = window.innerWidth <= 768;
+    const savedState = localStorage.getItem("notes_analytics_collapsed");
+    let isCollapsedInitially;
+
+    if (savedState !== null) {
+      // Si el usuario ya eligió contraer o desplegar, respetamos su elección guardada en el navegador
+      isCollapsedInitially = savedState === "true";
+    } else {
+      // Si nunca ha interactuado, en celular inicia minimizado y en computadora abierto
+      isCollapsedInitially = isMobile;
     }
 
-    btnToggleAnalytics.addEventListener("click", () => {
-      const isCollapsed = analyticsGrid.classList.toggle("is-collapsed");
-      btnToggleAnalytics.setAttribute("aria-expanded", isCollapsed ? "false" : "true");
+    const applyCollapseState = (collapsed) => {
+      if (analyticsBody) analyticsBody.classList.toggle("is-collapsed", collapsed);
+      if (analyticsGrid) analyticsGrid.classList.toggle("is-collapsed", collapsed);
+      if (analyticsSection) analyticsSection.classList.toggle("is-collapsed", collapsed);
+      btnToggleAnalytics.setAttribute("aria-expanded", collapsed ? "false" : "true");
       if (btnToggleAnalyticsText) {
-        btnToggleAnalyticsText.textContent = isCollapsed ? "Mostrar análisis" : "Ocultar análisis";
+        btnToggleAnalyticsText.textContent = collapsed ? "Mostrar análisis" : "Ocultar análisis";
       }
       if (iconToggleAnalytics) {
-        iconToggleAnalytics.setAttribute("data-lucide", isCollapsed ? "chevron-down" : "chevron-up");
+        iconToggleAnalytics.setAttribute("data-lucide", collapsed ? "chevron-down" : "chevron-up");
       }
-      localStorage.setItem("notes_analytics_visible", isCollapsed ? "hidden" : "visible");
       if (window.lucide) lucide.createIcons();
-      if (!isCollapsed) {
+    };
+
+    applyCollapseState(isCollapsedInitially);
+
+    btnToggleAnalytics.addEventListener("click", () => {
+      const isCurrentlyCollapsed = analyticsBody
+        ? analyticsBody.classList.contains("is-collapsed")
+        : analyticsGrid.classList.contains("is-collapsed");
+      const nextCollapsed = !isCurrentlyCollapsed;
+      applyCollapseState(nextCollapsed);
+
+      // Guardar permanentemente la preferencia de contraer en el navegador
+      localStorage.setItem("notes_analytics_collapsed", nextCollapsed ? "true" : "false");
+
+      if (!nextCollapsed) {
         setTimeout(() => {
           if (chartTopProductsInstance) chartTopProductsInstance.resize();
           if (chartTopInstitutionsInstance) chartTopInstitutionsInstance.resize();
           if (chartTopCustomersInstance) chartTopCustomersInstance.resize();
-        }, 60);
+        }, 80);
       }
     });
   }
@@ -1384,6 +1586,7 @@ tableBody.addEventListener("change", async event => {
     try {
       await updateSaleRow(saleId, code, { pagado: isPaid });
       showToast(isPaid ? "Marcado como Pagado (True) ✓" : "Marcado como Por Cobrar (False)");
+      applyFilters();
     } catch (err) {
       alert("Error al actualizar pago en Firestore: " + err.message);
       target.checked = !isPaid;
@@ -1399,9 +1602,9 @@ tableBody.addEventListener("change", async event => {
 
     try {
       await updateSaleRow(saleId, code, { confirmado: isConfirmed });
-      showToast(isConfirmed ? "Pedido Confirmado (True) ✓" : "Pedido desmarcado (False)");
+      showToast(isConfirmed ? "Pago Interno marcado (True) ✓" : "Pago Interno desmarcado (False)");
     } catch (err) {
-      alert("Error al actualizar confirmación en Firestore: " + err.message);
+      alert("Error al actualizar pago interno en Firestore: " + err.message);
       target.checked = !isConfirmed;
     }
   } else if (action === "mark-paid-direct") {
@@ -1449,10 +1652,15 @@ document.addEventListener("click", event => {
   const selectedItems = [];
   let totalCost = 0;
   let totalQty = 0;
+  const seenKeys = new Set();
 
   selectedCbs.forEach(cb => {
     const saleId = cb.dataset.saleId;
     const code = cb.dataset.code;
+    const key = `${saleId}_${code}`;
+    if (seenKeys.has(key)) return;
+    seenKeys.add(key);
+
     const row = allSaleRows.find(r => r.saleId === saleId && r.code === code);
     if (row) {
       selectedItems.push(row);
@@ -1504,9 +1712,13 @@ if (btnConfirmBatch) {
 
     try {
       const updatePromises = [];
+      const seenConfirmKeys = new Set();
       selectedCbs.forEach(cb => {
         const saleId = cb.dataset.saleId;
         const code = cb.dataset.code;
+        const key = `${saleId}_${code}`;
+        if (seenConfirmKeys.has(key)) return;
+        seenConfirmKeys.add(key);
 
         // Actualizar en memoria local
         allSaleRows.forEach(r => {
@@ -1560,26 +1772,45 @@ if (btnToggleUnpaid) {
 }
 
 // ==========================================================================
-// 7.2 GESTIÓN DE GASTOS, BALANCES Y CONFIGURACIÓN
+// 7.2 GESTIÓN DE GASTOS, BALANCES Y CONFIGURACIÓN (AJUSTES)
 // ==========================================================================
 const modalBalances = document.getElementById("modalBalances");
 const btnOpenBalances = document.getElementById("btnOpenBalancesModal");
+const btnOpenSettingsModal = document.getElementById("btnOpenSettingsModal");
 
-if (btnOpenBalances && modalBalances) {
-  btnOpenBalances.addEventListener("click", () => {
-    modalBalances.hidden = false;
-    syncBalancesModalInputs();
-    updateOctoberBalances();
-    renderExpensesTable();
-    if (window.lucide) lucide.createIcons();
-  });
+function openSettingsModal() {
+  if (!modalBalances) return;
+  modalBalances.hidden = false;
+  syncBalancesModalInputs();
+  updateOctoberBalances();
+  renderExpensesTable();
+  if (window.lucide) lucide.createIcons();
 }
+
+if (btnOpenBalances) btnOpenBalances.addEventListener("click", openSettingsModal);
+if (btnOpenSettingsModal) btnOpenSettingsModal.addEventListener("click", openSettingsModal);
 
 document.addEventListener("click", event => {
   if (event.target.closest('[data-action="close-balances-modal"]')) {
     if (modalBalances) modalBalances.hidden = true;
+  } else if (event.target === modalBalances) {
+    modalBalances.hidden = true;
   }
 });
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && modalBalances && !modalBalances.hidden) {
+    modalBalances.hidden = true;
+  }
+});
+
+// Abrir modal automáticamente si viene con parámetro de configuración en la URL
+try {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get("config") || urlParams.get("settings")) {
+    setTimeout(openSettingsModal, 200);
+  }
+} catch (e) {}
 
 // Pestañas internas de Gastos y Balances
 document.addEventListener("click", event => {
@@ -1774,6 +2005,7 @@ document.addEventListener("click", event => {
   } else {
     collapsedSupplierBatches.add(batchKey);
   }
+  persistCollapsedBatches();
 
   const isNowCollapsed = collapsedSupplierBatches.has(batchKey);
   const rows = document.querySelectorAll(`tr[data-batch-row="${batchKey}"]`);
@@ -1801,7 +2033,7 @@ function exportToCSV() {
     return;
   }
 
-  const headers = ["Fecha", "Código", "Fragancia", "Formato", "Cantidad", "Cliente", "Teléfono", "Institución", "Precio Venta", "Costo", "Ganancia", "Estado", "Pagado", "Pedido Confirmado"];
+  const headers = ["Fecha", "Código", "Fragancia", "Formato", "Cantidad", "Cliente", "Teléfono", "Institución", "Precio Venta", "Costo", "Ganancia", "Estado", "Pagado", "Pago Interno"];
   const csvRows = [headers.join(";")];
 
   filtered.forEach(r => {
@@ -2123,7 +2355,9 @@ function openEditSaleModal(saleId, code) {
   if (window.lucide) lucide.createIcons();
 }
 
-btnNewManualSale.addEventListener("click", openNewSaleModal);
+if (btnNewManualSale) {
+  btnNewManualSale.addEventListener("click", openNewSaleModal);
+}
 
 manualProductSelect.addEventListener("change", () => {
   const prodVal = manualProductSelect.value;

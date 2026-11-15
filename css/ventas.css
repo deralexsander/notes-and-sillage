@@ -132,6 +132,19 @@ body.auth-checking .container-fluid {
   gap: 12px;
 }
 
+.brand-logo-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.brand-logo-link:hover {
+  transform: scale(1.06);
+  opacity: 0.9;
+}
+
 .brand-logo {
   width: 40px;
   height: 40px;
@@ -262,6 +275,18 @@ body.auth-checking .container-fluid {
   background-color: var(--bg-hover);
   color: var(--text-title);
   border-color: var(--gold-primary);
+}
+
+.btn-header-icon,
+.btn-settings-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0 !important;
+  flex-shrink: 0;
 }
 
 .btn-primary {
@@ -712,9 +737,16 @@ body.auth-checking .container-fluid {
   pointer-events: none;
 }
 
-.th-paid, .th-confirmed, .cell-check {
+.th-paid, .cell-check.td-paid {
   width: 44px;
   min-width: 42px;
+  text-align: center;
+  padding: 5px 2px;
+}
+
+.th-confirmed, .cell-check.td-confirmed {
+  width: 58px;
+  min-width: 54px;
   text-align: center;
   padding: 5px 2px;
 }
@@ -1032,6 +1064,8 @@ body.auth-checking .container-fluid {
   justify-content: center;
   z-index: 1000;
   padding: 16px;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 
 .modal-content {
@@ -1042,6 +1076,8 @@ body.auth-checking .container-fluid {
   max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
   box-shadow: var(--shadow-modal);
   padding: 20px;
 }
@@ -1398,6 +1434,25 @@ body.auth-checking .container-fluid {
   transition: transform 0.25s ease;
 }
 
+.analytics-body {
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+}
+
+.analytics-body.is-collapsed {
+  display: none !important;
+}
+
+.analytics-dashboard-section.is-collapsed {
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+
+.analytics-dashboard-section.is-collapsed .analytics-header {
+  margin-bottom: 0;
+}
+
 .analytics-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1633,7 +1688,9 @@ body.auth-checking .container-fluid {
 
 @media (max-width: 768px) {
   body.sales-table-view {
-    padding: 12px 12px 30px;
+    padding: 10px 8px 30px;
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
   }
 
   .analytics-grid {
@@ -1641,15 +1698,26 @@ body.auth-checking .container-fluid {
   }
 
   .analytics-header {
-    flex-direction: column;
-    align-items: flex-start;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     gap: 10px;
   }
 
   .analytics-header-actions {
-    width: 100%;
+    width: auto;
     display: flex;
     justify-content: flex-end;
+    flex-shrink: 0;
+  }
+
+  .analytics-subtitle {
+    display: none;
+  }
+
+  .analytics-title {
+    font-size: 0.95rem;
   }
 
   .dashboard-header {
@@ -1672,6 +1740,15 @@ body.auth-checking .container-fluid {
     font-size: 0.75rem;
     padding: 6px 10px;
     justify-content: center;
+  }
+
+  .header-actions .btn-header-icon,
+  .header-actions .btn-settings-icon {
+    flex: 0 0 34px !important;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    padding: 0 !important;
   }
 
   .summary-metrics-bar {
@@ -1719,6 +1796,13 @@ body.auth-checking .container-fluid {
 /* ==========================================================================
    SEPARADORES DE LOTES / PEDIDOS AL PROVEEDOR EN LA TABLA DE VENTAS
    ========================================================================== */
+.hide-mobile {
+  display: inline;
+}
+.show-mobile {
+  display: none;
+}
+
 .tr-supplier-header td {
   padding: 0 !important;
   background: transparent !important;
@@ -1727,10 +1811,31 @@ body.auth-checking .container-fluid {
 
 .supplier-header-content {
   display: flex;
+  flex-direction: column;
+  padding: 6px 12px;
+  gap: 5px;
+}
+
+.supplier-header-top {
+  display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.supplier-header-title {
+  display: flex;
+  align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+}
+
+.supplier-header-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -1898,6 +2003,298 @@ body.auth-checking .container-fluid {
   border-color: var(--gold-primary) !important;
 }
 
+@media (max-width: 768px) {
+  /* Ocultar en modo celular: #, Fecha, Cód., Fragancia, Formato, Cantidad, Venta, Costo y Ganancia */
+  .spreadsheet-table .th-num,
+  .spreadsheet-table .td-num,
+  .spreadsheet-table .th-date,
+  .spreadsheet-table .td-date,
+  .spreadsheet-table .th-code,
+  .spreadsheet-table .td-code,
+  .spreadsheet-table .th-name,
+  .spreadsheet-table .td-name,
+  .spreadsheet-table .th-size,
+  .spreadsheet-table .td-size,
+  .spreadsheet-table .th-qty,
+  .spreadsheet-table .qty-val,
+  .spreadsheet-table .th-price,
+  .spreadsheet-table .price-cell,
+  .spreadsheet-table .th-cost,
+  .spreadsheet-table .cost-cell,
+  .spreadsheet-table .th-profit,
+  .spreadsheet-table .profit-cell {
+    display: none !important;
+  }
+
+  /* Tabla 100% fija al ancho de pantalla del celular sin scroll horizontal */
+  .spreadsheet-container {
+    overflow-x: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: var(--radius-sm);
+    box-sizing: border-box !important;
+  }
+
+  .spreadsheet-table {
+    table-layout: fixed !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  .spreadsheet-table th {
+    padding: 6px 2px !important;
+    font-size: 0.67rem !important;
+    font-weight: 700 !important;
+    box-sizing: border-box !important;
+    text-align: center;
+  }
+
+  .spreadsheet-table td {
+    padding: 6px 2px !important;
+    font-size: 0.72rem !important;
+    box-sizing: border-box !important;
+    vertical-align: middle !important;
+  }
+
+  .spreadsheet-table tr.tr-supplier-header td {
+    padding: 0 !important;
+    border-right: none !important;
+    background: transparent !important;
+  }
+
+  /* Columna 1: Cliente (toma el espacio flexible disponible) */
+  .spreadsheet-table .th-client,
+  .spreadsheet-table .td-client {
+    width: auto !important;
+    max-width: none !important;
+    min-width: 80px !important;
+    padding-left: 6px !important;
+    text-align: left !important;
+  }
+
+  .spreadsheet-table .client-name {
+    font-size: 0.74rem !important;
+    font-weight: 600 !important;
+    color: var(--text-title) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: block !important;
+  }
+
+  /* Columna 2: WhatsApp (solo icono 💬) */
+  .spreadsheet-table .th-phone,
+  .spreadsheet-table .td-phone {
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
+    text-align: center !important;
+    padding: 2px 1px !important;
+  }
+
+  .spreadsheet-table .phone-link span,
+  .spreadsheet-table .btn-wa-reminder span {
+    display: none !important;
+  }
+
+  .spreadsheet-table .phone-link,
+  .spreadsheet-table .btn-wa-reminder {
+    padding: 0 !important;
+    justify-content: center !important;
+    min-width: 26px !important;
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: var(--radius-sm) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+    margin: 0 auto !important;
+  }
+
+  .spreadsheet-table .btn-wa-reminder {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+  }
+
+  .spreadsheet-table .phone-link i,
+  .spreadsheet-table .btn-wa-reminder i {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  /* Columna 3: Institución */
+  .spreadsheet-table .th-inst,
+  .spreadsheet-table .td-inst {
+    width: 58px !important;
+    min-width: 58px !important;
+    max-width: 58px !important;
+    text-align: left !important;
+    padding: 2px 4px !important;
+  }
+
+  .spreadsheet-table .inst-name {
+    font-size: 0.68rem !important;
+    color: var(--text-muted) !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: block !important;
+  }
+
+  /* Columna 4: Estado */
+  .spreadsheet-table .th-status,
+  .spreadsheet-table .td-status {
+    width: 78px !important;
+    min-width: 78px !important;
+    max-width: 78px !important;
+    text-align: center !important;
+    padding: 2px 1px !important;
+  }
+
+  .spreadsheet-table .status-select-wrap {
+    width: 100% !important;
+  }
+
+  .spreadsheet-table .status-dropdown {
+    font-size: 0.64rem !important;
+    padding: 2px 4px 2px 12px !important;
+    height: 23px !important;
+    background-size: 6px !important;
+    background-position: right 2px center !important;
+    width: 100% !important;
+  }
+
+  .spreadsheet-table .status-dot {
+    left: 3px !important;
+    width: 5px !important;
+    height: 5px !important;
+  }
+
+  /* Columnas 5 & 6: Pagado y Pago Interno */
+  .spreadsheet-table .th-paid,
+  .spreadsheet-table .td-paid,
+  .spreadsheet-table .th-confirmed,
+  .spreadsheet-table .td-confirmed {
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
+    text-align: center !important;
+    padding: 2px 1px !important;
+  }
+
+  .spreadsheet-table .table-checkbox {
+    width: 14px !important;
+    height: 14px !important;
+    margin: 0 auto !important;
+    display: block !important;
+  }
+
+  /* Columna 7: Editar */
+  .spreadsheet-table .th-action,
+  .spreadsheet-table .td-action {
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
+    text-align: center !important;
+    padding: 2px 1px !important;
+  }
+
+  .spreadsheet-table .btn-edit-row {
+    width: 24px !important;
+    height: 24px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+  }
+
+  .hide-mobile {
+    display: none !important;
+  }
+  .show-mobile {
+    display: inline !important;
+  }
+
+  .supplier-header-content {
+    padding: 6px 6px !important;
+    gap: 4px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+
+  .supplier-header-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    flex-wrap: nowrap !important;
+    gap: 4px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .supplier-header-title {
+    gap: 4px !important;
+    font-size: 0.76rem !important;
+    flex-wrap: nowrap !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .supplier-header-title strong {
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .supplier-status-icon {
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .supplier-header-actions {
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+
+  .select-all-pending-label,
+  .btn-create-supplier-batch {
+    display: none !important;
+  }
+
+  .btn-toggle-batch {
+    padding: 3px 6px !important;
+    font-size: 0.70rem !important;
+  }
+
+  .supplier-header-badges {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 3px !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .badge-supplier-tag {
+    font-size: 0.67rem !important;
+    padding: 2px 4px !important;
+    white-space: nowrap !important;
+  }
+
+  .tag-shipping-pending,
+  .tag-shipping-reached {
+    white-space: normal !important;
+    font-size: 0.67rem !important;
+    line-height: 1.25 !important;
+  }
+}
+
 /* ==========================================================================
    ESTILOS PARA FALTANTES POR PAGAR Y GASTOS / BALANCES
    ========================================================================== */
@@ -1949,19 +2346,25 @@ body.auth-checking .container-fluid {
 .btn-wa-reminder {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  background: #25d366;
+  background: #ef4444; /* Rojo para faltante de pago */
   color: #ffffff !important;
-  padding: 5px 9px;
+  padding: 5px 8px;
   border-radius: var(--radius-sm);
   font-size: 0.76rem;
   font-weight: 600;
   text-decoration: none;
-  transition: opacity 0.2s, transform 0.1s;
+  min-width: 28px;
+  height: 26px;
+  box-sizing: border-box;
+  transition: opacity 0.2s, transform 0.1s, background-color 0.2s;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.35);
 }
 
 .btn-wa-reminder:hover {
-  opacity: 0.9;
+  background: #dc2626;
+  opacity: 0.95;
   transform: translateY(-1px);
 }
 
@@ -2018,4 +2421,161 @@ body.auth-checking .container-fluid {
 
 .btn-balance-tab:hover {
   color: var(--text-title);
+}
+
+/* ==========================================================================
+   MODAL DE AJUSTES Y CONFIGURACIÓN (TUERCA)
+   ========================================================================== */
+#modalBalances {
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+#modalBalances .modal-settings-content {
+  max-width: 520px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 90vh;
+}
+
+.modal-settings-session-bar {
+  background: var(--bg-hover);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--border-color);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-session-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.modal-session-info .session-icon {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--green-main);
+  flex-shrink: 0;
+}
+
+.modal-session-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.modal-session-text strong {
+  font-size: 0.86rem;
+  color: var(--text-title);
+  display: block;
+  white-space: nowrap;
+}
+
+#authVentasEmailText {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.btn-logout-action {
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  font-weight: 700;
+  padding: 7px 14px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-logout-action:hover {
+  background: rgba(239, 68, 68, 0.1) !important;
+  border-color: #ef4444 !important;
+}
+
+.balances-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.balances-tabs .btn-balance-tab {
+  flex: 1 1 0;
+  justify-content: center;
+  text-align: center;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.bank-config-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.modal-footer-close {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border-color);
+  padding-top: 12px;
+  margin-top: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 580px) {
+  #modalBalances .modal-settings-content {
+    padding: 16px 14px;
+    max-width: 100%;
+  }
+
+  .bank-config-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .balances-tabs {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .balances-tabs .btn-balance-tab {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  #authVentasEmailText {
+    max-width: 150px;
+  }
 }
