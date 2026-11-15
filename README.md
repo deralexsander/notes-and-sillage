@@ -112,32 +112,47 @@ Cuando un cliente confirma un pedido desde el catálogo digital, se activan dos 
 
 ## 📸 4. Guía Visual del Catálogo (Docs e Imágenes)
 
-A continuación se presentan las capturas oficiales del funcionamiento del catálogo.
+A continuación se presentan capturas recientes de la experiencia en un viewport móvil de 390 × 844 px. Muestran el catálogo público y sus flujos principales. Los datos visibles en los formularios son de ejemplo; no se envió ningún pedido.
 
-| Portada y Catálogo Inicial | Búsqueda por Código |
+| Catálogo y tendencias | Búsqueda por código |
 | :---: | :---: |
-| <img src="docs/img/01-catalogo-inicio.png" alt="Portada del catálogo" width="220"> | <img src="docs/img/02-busqueda-por-codigo.png" alt="Búsqueda por código" width="220"> |
-| *Buscador, categorías por pestañas y tarjetas con formato y precio.* | *Resultado inmediato al escribir códigos como `H-13` o `F-57`.* |
+| <img src="docs/img/01-catalogo-inicio.webp" alt="Catálogo móvil con tendencias, tamaños y precios" width="220"> <br> *Tendencias, categorías, tarjetas, tamaños y precios.* | <img src="docs/img/02-busqueda-por-codigo.webp" alt="Resultado de buscar la fragancia H-13" width="220"> <br> *Búsqueda por código, nombre o aroma.* |
 
-| Sugerencia "¿Quisiste decir...?" | Notas Olfativas y Familia |
-| :---: | :---: |
-| <img src="docs/img/09-sugerencia-busqueda.png" alt="Sugerencia de corrección" width="220"> | <img src="docs/img/10-notas-olfativas.png" alt="Notas olfativas" width="220"> |
-| *Corrección ortográfica inteligente contra el catálogo en vivo.* | *Distintivo cromático y familia olfativa por cada fragancia.* |
+| Catálogo de fragancias femeninas |
+| :---: |
+| <img src="docs/img/05-catalogo-mujer.webp" alt="Catálogo móvil de perfumería fina femenina" width="220"> <br> *Tarjetas con imagen, familia aromática, tamaños y precios.* |
 
-| Mapa Olfativo Femenino | Mapa Olfativo Masculino |
+| Mapa olfativo femenino | Mapa olfativo masculino |
 | :---: | :---: |
-| <img src="docs/img/03-mapa-olfativo-mujer.png" alt="Mapa Olfativo Mujer" width="220"> | <img src="docs/img/04-mapa-olfativo-hombre.png" alt="Mapa Olfativo Hombre" width="220"> |
-| *Fragancias femeninas ordenadas por intensidad y familias.* | *Distribución olfativa para fragancias masculinas.* |
+| <img src="docs/img/03-mapa-olfativo-mujer.webp" alt="Mapa olfativo femenino por intensidad y familia" width="220"> <br> *Familias aromáticas, colores e intensidad.* | <img src="docs/img/04-mapa-olfativo-hombre.webp" alt="Mapa olfativo masculino por intensidad y familia" width="220"> <br> *Exploración de fragancias masculinas.* |
 
-| Carrito Flotante y Resumen | Confirmación antes de Enviar |
+| Búsqueda y sugerencias | Aroma y tema oscuro |
 | :---: | :---: |
-| <img src="docs/img/07-resumen-del-pedido.png" alt="Resumen del pedido" width="220"> | <img src="docs/img/12-confirmar-pedido.png" alt="Confirmar pedido" width="220"> |
-| *Edición de cantidades, datos del cliente y subtotal.* | *Paso de verificación previa al despacho del pedido.* |
+| <img src="docs/img/08-buscador-placeholder.webp" alt="Buscador del catálogo en móvil" width="220"> <br> *Acceso rápido al buscador desde el celular.* | <img src="docs/img/09-sugerencia-busqueda.webp" alt="Sugerencia de búsqueda para corregir un error tipográfico" width="220"> <br> *Corrección inteligente de errores al buscar.* |
 
-| Modo Cambio en Catálogo | Decisión Unidad por Unidad |
+| Notas y familias olfativas | Modo oscuro |
 | :---: | :---: |
-| <img src="docs/img/13-modo-cambio-catalogo.png" alt="Modo cambio" width="220"> | <img src="docs/img/14-cambio-por-unidad.png" alt="Cambio por unidad" width="220"> |
-| *Barra fija de edición de pedido existente.* | *Decisión individual: mantener, cambiar por otro aroma o cancelar.* |
+| <img src="docs/img/10-notas-olfativas.webp" alt="Tarjetas de fragancias con notas aromáticas" width="220"> <br> *Familia y presentación visual de cada perfume.* | <img src="docs/img/18-modo-oscuro.webp" alt="Catálogo móvil con tema oscuro activo" width="220"> <br> *Alternancia entre tema claro y oscuro.* |
+
+| Carrito flotante | Revisión del pedido |
+| :---: | :---: |
+| <img src="docs/img/06-barra-de-carrito.webp" alt="Barra fija del carrito con cantidad y total" width="220"> <br> *Resumen persistente de productos y total.* | <img src="docs/img/07-resumen-del-pedido.webp" alt="Carrito con productos y controles de cantidad" width="220"> <br> *Edición de unidades y datos de contacto.* |
+
+| Datos del pedido | Privacidad de datos |
+| :---: | :---: |
+| <img src="docs/img/12-confirmar-pedido.webp" alt="Formulario móvil de datos de contacto y revisión del pedido" width="220"> <br> *Formulario de contacto y opción para recordar datos.* | <img src="docs/img/17-privacidad-de-datos.webp" alt="Explicación de uso y almacenamiento de datos del cliente" width="220"> <br> *Información transparente sobre el uso de datos.* |
+
+| Ayuda para cambios | Selección de pedido a modificar |
+| :---: | :---: |
+| <img src="docs/img/11-globo-ayuda.webp" alt="Ayuda flotante para cambios y cancelaciones" width="220"> <br> *Acceso guiado a cambios y cancelaciones.* | <img src="docs/img/13-modo-cambio-catalogo.webp" alt="Catálogo móvil en modo de cambio o cancelación" width="220"> <br> *Selección de los perfumes incluidos en el pedido.* |
+
+| Decisión por unidad | Revisión del cambio |
+| :---: | :---: |
+| <img src="docs/img/14-cambio-por-unidad.webp" alt="Opciones para mantener, cambiar o cancelar una unidad" width="220"> <br> *Mantener, reemplazar o cancelar cada unidad.* | <img src="docs/img/15-resumen-cambio.webp" alt="Resumen de la decisión y perfume de reemplazo" width="220"> <br> *Revisión de la fragancia elegida como reemplazo.* |
+
+| Solicitud de cambio lista para enviar |
+| :---: |
+| <img src="docs/img/16-confirmar-cambio.webp" alt="Resumen final de cambio y formulario de nombre" width="220"> <br> *Resumen final antes de enviar la solicitud por WhatsApp.* |
 
 ---
 
@@ -146,25 +161,24 @@ A continuación se presentan las capturas oficiales del funcionamiento del catá
 Para preservar este repositorio en el tiempo y permitir que un nuevo cliente o reclutador actualice las capturas de pantalla de la carpeta [`docs/img/`](docs/img/), sigue esta guía técnica:
 
 ### Especificaciones técnicas requeridas
-* **Formato:** PNG optimizado o WebP sin pérdida.
-* **Resolución recomendada para capturas móviles:** 1080 × 2400 px o proporción 9:19.5 (pantalla completa de smartphone moderno sin recortes de bordes).
-* **Peso por archivo:** Mantener cada captura por debajo de los 250 KB mediante herramientas de compresión como `tinypng.com` o el comando `sips` en macOS.
+* **Formato:** WebP de alta calidad (recomendado) o PNG optimizado.
+* **Viewport móvil de referencia:** 390 × 844 px; mantener la proporción aproximada 9:19.5.
+* **Peso por archivo:** Mantener cada captura por debajo de los 250 KB.
 * **Convención de nombres:**
-  * `01-catalogo-inicio.png`: Portada principal del catálogo con barra de búsqueda visible.
-  * `02-busqueda-por-codigo.png`: Resultado de escribir un código en el buscador.
-  * `03-mapa-olfativo-mujer.png` / `04-mapa-olfativo-hombre.png`: Vistas de las brújulas olfativas.
-  * `05-catalogo-mujer.png`: Listado de perfumería fina con tarjetas de fragancia.
-  * `06-barra-de-carrito.png` / `07-resumen-del-pedido.png`: Carrito flotante y modal abierto.
-  * `08-buscador-placeholder.png` / `09-sugerencia-busqueda.png`: Estados del buscador.
-  * `10-notas-olfativas.png`: Detalle de una tarjeta mostrando puntos de color y notas.
-  * `11-globo-ayuda.png`: Botón flotante inferior de cambios y cancelaciones.
-  * `12-confirmar-pedido.png`: Modal "¿Ya terminaste tu pedido?".
-  * `13-modo-cambio-catalogo.png` a `16-confirmar-cambio.png`: Flujo completo de modificación de pedido.
+  * `01-catalogo-inicio.webp` / `02-busqueda-por-codigo.webp`: Inicio y búsqueda de fragancias.
+  * `03-mapa-olfativo-mujer.webp` / `04-mapa-olfativo-hombre.webp`: Mapas por familias e intensidad.
+  * `05-catalogo-mujer.webp`: Tarjetas de perfumería fina.
+  * `06-barra-de-carrito.webp` / `07-resumen-del-pedido.webp`: Carrito y edición de cantidades.
+  * `08-buscador-placeholder.webp` / `09-sugerencia-busqueda.webp`: Buscador y corrección de términos.
+  * `10-notas-olfativas.webp` / `11-globo-ayuda.webp`: Aromas y acceso al asistente de cambios.
+  * `12-confirmar-pedido.webp`: Formulario de datos antes de enviar el pedido.
+  * `13-modo-cambio-catalogo.webp` a `16-confirmar-cambio.webp`: Flujo de cambios y cancelaciones.
+  * `17-privacidad-de-datos.webp` / `18-modo-oscuro.webp`: Privacidad del cliente y tema oscuro.
 
 ### Actualización rápida con terminal en macOS
 ```bash
-# Redimensionar y optimizar una imagen nueva manteniendo la proporción
-sips -Z 800 docs/img/01-catalogo-inicio.png
+# Convertir una captura PNG a WebP de alta calidad
+cwebp -q 95 captura-nueva.png -o docs/img/01-catalogo-inicio.webp
 ```
 
 ---
