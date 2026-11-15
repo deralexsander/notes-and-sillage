@@ -517,7 +517,7 @@ function applyFilters() {
 
   btnClearSearch.hidden = !query;
 
-  const unpaidRows = allSaleRows.filter(r => !r.pagado);
+  const unpaidRows = allSaleRows.filter(r => !r.pagado && (r.estado || "").toLowerCase().trim() === "entregado");
   const badgeUnpaidCount = document.getElementById("badgeUnpaidCount");
   if (badgeUnpaidCount) badgeUnpaidCount.textContent = unpaidRows.length;
 
@@ -636,7 +636,7 @@ function renderTable(rows) {
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="color: #ef4444; display: inline-flex;"><i data-lucide="receipt"></i></span>
-              <strong style="color: #ef4444; font-size: 0.92rem;">FALTANTES POR PAGAR (${rows.length} pedidos sin pagar)</strong>
+              <strong style="color: #ef4444; font-size: 0.92rem;">FALTANTES POR PAGAR (${rows.length} pedidos entregados sin pagar)</strong>
             </div>
             <div>
               <span class="badge-supplier-tag" style="background: rgba(239, 68, 68, 0.2); color: #dc2626; font-weight: 700;">
@@ -1603,7 +1603,7 @@ if (btnToggleUnpaid) {
     isUnpaidViewActive = !isUnpaidViewActive;
     btnToggleUnpaid.classList.toggle("is-active-filter", isUnpaidViewActive);
     applyFilters();
-    showToast(isUnpaidViewActive ? "Mostrando solo clientes con pagos pendientes" : "Mostrando todas las ventas");
+    showToast(isUnpaidViewActive ? "Mostrando solo pedidos entregados pendientes de pago" : "Mostrando todas las ventas");
   });
 }
 

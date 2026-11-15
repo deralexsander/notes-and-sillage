@@ -83,7 +83,7 @@ El proyecto fue desarrollado bajo una arquitectura **Serverless Jamstack**, sin 
 | ⚡ **Sincronización en Vivo (Firestore)** | Lectura y escritura asíncrona en la colección `ventas` con estados dinámicos (`Pendiente`, `Pedido`, `Recepcionado`, `Entregado`, `Cancelado`). |
 | 📦 **Agrupación por Lotes de Proveedor** | Clasifica automáticamente los perfumes en compras históricas cerradas o compras pendientes. Permite seleccionar pendientes y sellar un nuevo lote de pedido con fecha. |
 | 🚚 **Monitoreo de Envío Gratis ($120.000)** | Barra e indicador en tiempo real en la cabecera de pendientes que calcula cuánto dinero en compras al proveedor falta para obtener **envío gratis** (leído dinámicamente de Firestore y editable). |
-| 💰 **Módulo "Faltantes por Pagar"** | Vista filtrada exclusiva que reúne a todos los clientes con pedidos entregados o activos que aún no han pagado (`pagado === false`), con monto total por cobrar. |
+| 💰 **Módulo "Faltantes por Pagar"** | Vista filtrada exclusiva que reúne a todos los clientes con pedidos entregados que aún no han pagado (`estado === "Entregado"` y `pagado === false`), con monto total por cobrar. |
 | 📲 **Cobro Amable por WhatsApp en 1 Clic** | Botón directo de cobro que abre una conversación con mensaje preescrito amable, detallando el pedido, el total a transferir y los **datos de cuenta bancaria del vendedor** (Mercado Pago / Christian Fuentealba). |
 | ✅ **Baja Inmediata al Marcar Pagado** | Botón directo "Marcar Pagado" que actualiza Firestore a `pagado: true`, emite una alerta flotante y **remueve al cliente de la tabla de faltantes en tiempo real**. |
 | 📊 **Métricas y Rendimiento Financiero** | Tablero con tarjetas KPI (Venta Total, Ganancia Neta, Costo de Mercadería, Perfumes Vendidos, Margen Medio %) y gráficos interactivos con **Chart.js** (Top Fragancias, Top Instituciones y Top Clientes). |
@@ -116,43 +116,43 @@ A continuación se presentan capturas recientes de la experiencia en un viewport
 
 | Catálogo y tendencias | Búsqueda por código |
 | :---: | :---: |
-| <img src="docs/img/01-catalogo-inicio.webp" alt="Catálogo móvil con tendencias, tamaños y precios" width="220"> <br> *Tendencias, categorías, tarjetas, tamaños y precios.* | <img src="docs/img/02-busqueda-por-codigo.webp" alt="Resultado de buscar la fragancia H-13" width="220"> <br> *Búsqueda por código, nombre o aroma.* |
+| <img src="docs/img/01-catalogo-inicio.png" alt="Catálogo móvil con tendencias, tamaños y precios" width="220"> <br> *Tendencias, categorías, tarjetas, tamaños y precios.* | <img src="docs/img/02-busqueda-por-codigo.png" alt="Resultado de buscar la fragancia H-13" width="220"> <br> *Búsqueda por código, nombre o aroma.* |
 
 | Catálogo de fragancias femeninas |
 | :---: |
-| <img src="docs/img/05-catalogo-mujer.webp" alt="Catálogo móvil de perfumería fina femenina" width="220"> <br> *Tarjetas con imagen, familia aromática, tamaños y precios.* |
+| <img src="docs/img/05-catalogo-mujer.png" alt="Catálogo móvil de perfumería fina femenina" width="220"> <br> *Tarjetas con imagen, familia aromática, tamaños y precios.* |
 
 | Mapa olfativo femenino | Mapa olfativo masculino |
 | :---: | :---: |
-| <img src="docs/img/03-mapa-olfativo-mujer.webp" alt="Mapa olfativo femenino por intensidad y familia" width="220"> <br> *Familias aromáticas, colores e intensidad.* | <img src="docs/img/04-mapa-olfativo-hombre.webp" alt="Mapa olfativo masculino por intensidad y familia" width="220"> <br> *Exploración de fragancias masculinas.* |
+| <img src="docs/img/03-mapa-olfativo-mujer.png" alt="Mapa olfativo femenino por intensidad y familia" width="220"> <br> *Familias aromáticas, colores e intensidad.* | <img src="docs/img/04-mapa-olfativo-hombre.png" alt="Mapa olfativo masculino por intensidad y familia" width="220"> <br> *Exploración de fragancias masculinas.* |
 
 | Búsqueda y sugerencias | Aroma y tema oscuro |
 | :---: | :---: |
-| <img src="docs/img/08-buscador-placeholder.webp" alt="Buscador del catálogo en móvil" width="220"> <br> *Acceso rápido al buscador desde el celular.* | <img src="docs/img/09-sugerencia-busqueda.webp" alt="Sugerencia de búsqueda para corregir un error tipográfico" width="220"> <br> *Corrección inteligente de errores al buscar.* |
+| <img src="docs/img/08-buscador-placeholder.png" alt="Buscador del catálogo en móvil" width="220"> <br> *Acceso rápido al buscador desde el celular.* | <img src="docs/img/09-sugerencia-busqueda.png" alt="Sugerencia de búsqueda para corregir un error tipográfico" width="220"> <br> *Corrección inteligente de errores al buscar.* |
 
 | Notas y familias olfativas | Modo oscuro |
 | :---: | :---: |
-| <img src="docs/img/10-notas-olfativas.webp" alt="Tarjetas de fragancias con notas aromáticas" width="220"> <br> *Familia y presentación visual de cada perfume.* | <img src="docs/img/18-modo-oscuro.webp" alt="Catálogo móvil con tema oscuro activo" width="220"> <br> *Alternancia entre tema claro y oscuro.* |
+| <img src="docs/img/10-notas-olfativas.png" alt="Tarjetas de fragancias con notas aromáticas" width="220"> <br> *Familia y presentación visual de cada perfume.* | <img src="docs/img/18-modo-oscuro.png" alt="Catálogo móvil con tema oscuro activo" width="220"> <br> *Alternancia entre tema claro y oscuro.* |
 
 | Carrito flotante | Revisión del pedido |
 | :---: | :---: |
-| <img src="docs/img/06-barra-de-carrito.webp" alt="Barra fija del carrito con cantidad y total" width="220"> <br> *Resumen persistente de productos y total.* | <img src="docs/img/07-resumen-del-pedido.webp" alt="Carrito con productos y controles de cantidad" width="220"> <br> *Edición de unidades y datos de contacto.* |
+| <img src="docs/img/06-barra-de-carrito.png" alt="Barra fija del carrito con cantidad y total" width="220"> <br> *Resumen persistente de productos y total.* | <img src="docs/img/07-resumen-del-pedido.png" alt="Carrito con productos y controles de cantidad" width="220"> <br> *Edición de unidades y datos de contacto.* |
 
 | Datos del pedido | Privacidad de datos |
 | :---: | :---: |
-| <img src="docs/img/12-confirmar-pedido.webp" alt="Formulario móvil de datos de contacto y revisión del pedido" width="220"> <br> *Formulario de contacto y opción para recordar datos.* | <img src="docs/img/17-privacidad-de-datos.webp" alt="Explicación de uso y almacenamiento de datos del cliente" width="220"> <br> *Información transparente sobre el uso de datos.* |
+| <img src="docs/img/12-confirmar-pedido.png" alt="Formulario móvil de datos de contacto y revisión del pedido" width="220"> <br> *Formulario de contacto y opción para recordar datos.* | <img src="docs/img/17-privacidad-de-datos.png" alt="Explicación de uso y almacenamiento de datos del cliente" width="220"> <br> *Información transparente sobre el uso de datos.* |
 
 | Ayuda para cambios | Selección de pedido a modificar |
 | :---: | :---: |
-| <img src="docs/img/11-globo-ayuda.webp" alt="Ayuda flotante para cambios y cancelaciones" width="220"> <br> *Acceso guiado a cambios y cancelaciones.* | <img src="docs/img/13-modo-cambio-catalogo.webp" alt="Catálogo móvil en modo de cambio o cancelación" width="220"> <br> *Selección de los perfumes incluidos en el pedido.* |
+| <img src="docs/img/11-globo-ayuda.png" alt="Ayuda flotante para cambios y cancelaciones" width="220"> <br> *Acceso guiado a cambios y cancelaciones.* | <img src="docs/img/13-modo-cambio-catalogo.png" alt="Catálogo móvil en modo de cambio o cancelación" width="220"> <br> *Selección de los perfumes incluidos en el pedido.* |
 
 | Decisión por unidad | Revisión del cambio |
 | :---: | :---: |
-| <img src="docs/img/14-cambio-por-unidad.webp" alt="Opciones para mantener, cambiar o cancelar una unidad" width="220"> <br> *Mantener, reemplazar o cancelar cada unidad.* | <img src="docs/img/15-resumen-cambio.webp" alt="Resumen de la decisión y perfume de reemplazo" width="220"> <br> *Revisión de la fragancia elegida como reemplazo.* |
+| <img src="docs/img/14-cambio-por-unidad.png" alt="Opciones para mantener, cambiar o cancelar una unidad" width="220"> <br> *Mantener, reemplazar o cancelar cada unidad.* | <img src="docs/img/15-resumen-cambio.png" alt="Resumen de la decisión y perfume de reemplazo" width="220"> <br> *Revisión de la fragancia elegida como reemplazo.* |
 
 | Solicitud de cambio lista para enviar |
 | :---: |
-| <img src="docs/img/16-confirmar-cambio.webp" alt="Resumen final de cambio y formulario de nombre" width="220"> <br> *Resumen final antes de enviar la solicitud por WhatsApp.* |
+| <img src="docs/img/16-confirmar-cambio.png" alt="Resumen final de cambio y formulario de nombre" width="220"> <br> *Resumen final antes de enviar la solicitud por WhatsApp.* |
 
 ---
 
@@ -161,24 +161,23 @@ A continuación se presentan capturas recientes de la experiencia en un viewport
 Para preservar este repositorio en el tiempo y permitir que un nuevo cliente o reclutador actualice las capturas de pantalla de la carpeta [`docs/img/`](docs/img/), sigue esta guía técnica:
 
 ### Especificaciones técnicas requeridas
-* **Formato:** WebP de alta calidad (recomendado) o PNG optimizado.
-* **Viewport móvil de referencia:** 390 × 844 px; mantener la proporción aproximada 9:19.5.
-* **Peso por archivo:** Mantener cada captura por debajo de los 250 KB.
+* **Formato:** PNG optimizado o WebP de alta calidad.
+* **Viewport móvil de referencia:** Viewport móvil estándar (p. ej. 390 × 844 px o Retina 672 × 1456 px sin bordes ni márgenes DevTools).
 * **Convención de nombres:**
-  * `01-catalogo-inicio.webp` / `02-busqueda-por-codigo.webp`: Inicio y búsqueda de fragancias.
-  * `03-mapa-olfativo-mujer.webp` / `04-mapa-olfativo-hombre.webp`: Mapas por familias e intensidad.
-  * `05-catalogo-mujer.webp`: Tarjetas de perfumería fina.
-  * `06-barra-de-carrito.webp` / `07-resumen-del-pedido.webp`: Carrito y edición de cantidades.
-  * `08-buscador-placeholder.webp` / `09-sugerencia-busqueda.webp`: Buscador y corrección de términos.
-  * `10-notas-olfativas.webp` / `11-globo-ayuda.webp`: Aromas y acceso al asistente de cambios.
-  * `12-confirmar-pedido.webp`: Formulario de datos antes de enviar el pedido.
-  * `13-modo-cambio-catalogo.webp` a `16-confirmar-cambio.webp`: Flujo de cambios y cancelaciones.
-  * `17-privacidad-de-datos.webp` / `18-modo-oscuro.webp`: Privacidad del cliente y tema oscuro.
+  * `01-catalogo-inicio.png` / `02-busqueda-por-codigo.png`: Inicio y búsqueda de fragancias.
+  * `03-mapa-olfativo-mujer.png` / `04-mapa-olfativo-hombre.png`: Mapas por familias e intensidad.
+  * `05-catalogo-mujer.png`: Tarjetas de perfumería fina.
+  * `06-barra-de-carrito.png` / `07-resumen-del-pedido.png`: Carrito y edición de cantidades.
+  * `08-buscador-placeholder.png` / `09-sugerencia-busqueda.png`: Buscador y corrección de términos.
+  * `10-notas-olfativas.png` / `11-globo-ayuda.png`: Aromas y acceso al asistente de cambios.
+  * `12-confirmar-pedido.png`: Formulario de datos antes de enviar el pedido.
+  * `13-modo-cambio-catalogo.png` a `16-confirmar-cambio.png`: Flujo de cambios y cancelaciones.
+  * `17-privacidad-de-datos.png` / `18-modo-oscuro.png`: Privacidad del cliente y tema oscuro.
 
 ### Actualización rápida con terminal en macOS
 ```bash
-# Convertir una captura PNG a WebP de alta calidad
-cwebp -q 95 captura-nueva.png -o docs/img/01-catalogo-inicio.webp
+# Recortar márgenes de DevTools si se captura desde el emulador (672x1456):
+sips -c 1456 672 --cropOffset 0.1 0.1 captura.png --out docs/img/01-catalogo-inicio.png
 ```
 
 ---
