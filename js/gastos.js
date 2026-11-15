@@ -27,6 +27,17 @@ const STORAGE_KEY_MONTHLY = "notes_gastos_monthly_settings_v1";
 // Movimientos iniciales de ejemplo requeridos por el usuario
 const INITIAL_MOVEMENTS = [
   {
+    id: "mov-capital-oct-2026",
+    fecha: "2026-10-31",
+    mes: "2026-10",
+    tipo: "gasto",
+    concepto: "Capital generado en Octubre",
+    persona: "Socios",
+    monto: 150000,
+    notas: "Capital de $150.000 restado del total de octubre e incorporado a gastos de octubre",
+    createdAt: new Date("2026-10-31T23:59:59").toISOString()
+  },
+  {
     id: "mov-chanchis-nov-2026",
     fecha: "2026-11-10",
     mes: "2026-11",
@@ -54,8 +65,8 @@ const INITIAL_MOVEMENTS = [
 const INITIAL_MONTHLY_SETTINGS = {
   "2026-10": {
     mode: "manual",
-    manualProfit: 904750,
-    notes: "Ganancia calculada inicial de pedidos históricos #1 al #5 de Octubre"
+    manualProfit: 754750,
+    notes: "Ganancia calculada inicial de pedidos históricos #1 al #5 de Octubre ($904.750) menos $150.000 de capital de Octubre"
   },
   "2026-11": {
     mode: "auto",

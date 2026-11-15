@@ -11,7 +11,13 @@ import {
   loginWithEmail,
   logoutUser,
   onAuthStatusChange,
-  getCurrentUser
+  getCurrentUser,
+  getBalancesConfig,
+  saveBalancesConfig,
+  getGastos,
+  saveGasto,
+  deleteGasto,
+  DEFAULT_BALANCES_CONFIG
 } from "./firebase-config.js";
 
 let allSaleRows = [];
@@ -22,6 +28,9 @@ let currentEditCode = null;
 
 let isSupplierGroupingEnabled = localStorage.getItem("notes_supplier_grouping") !== "false";
 let isSummaryViewEnabled = localStorage.getItem("notes_sales_summary_view") === "true";
+let isUnpaidViewActive = false;
+let currentBalancesConfig = { ...DEFAULT_BALANCES_CONFIG };
+let currentExpenses = [];
 const collapsedSupplierBatches = new Set();
 
 // Definición exacta de los 6 Pedidos Proveedor Históricos de PEDIDOS.TXT
@@ -203,22 +212,60 @@ function formatCLP(num) {
   return `$${Number(num || 0).toLocaleString("es-CL")}`;
 }
 
-function renderPhoneCell(phone) {
+function buildPaymentReminderText(row) {
+  const bank = currentBalancesConfig?.datosBancarios || DEFAULT_BALANCES_CONFIG.datosBancarios;
+  const firstName = (row.clientName || "Estimado/a").trim().split(" ")[0];
+  const totalStr = formatCLP(row.precioVenta || 0);
+  const perfumeInfo = row.fragrance ? `[${row.code || ""}] ${row.fragrance} (${row.size || ""}) x${row.qty || 1}` : "tu pedido de perfume";
+
+  return `¡Hola ${firstName}! 👋🌸 Te saludamos de Notes & Sillage.
+
+Te escribimos con mucho agrado respecto a tu pedido entregado:
+• ${perfumeInfo}
+
+El total pendiente de transferencia es: ${totalStr}
+
+Puedes transferir directamente a los siguientes datos de cuenta:
+🏦 Banco / Billetera: ${bank.banco}
+📋 Tipo de cuenta: ${bank.tipoCuenta}
+🔢 N° de cuenta: ${bank.numeroCuenta}
+👤 Titular: ${bank.titular}
+🆔 RUT: ${bank.rut}
+📧 Correo: ${bank.email}
+
+Una vez realizada la transferencia, por favor envíanos el comprobante por este medio. ¡Muchas gracias por tu preferencia y que disfrutes muchísimo tu perfume! ✨`;
+}
+
+function renderPhoneCell(phone, row) {
   if (!phone || !phone.trim()) {
     return `<span class="phone-empty">-</span>`;
   }
   const cleanDigits = phone.replace(/[^0-9]/g, "");
-  const waUrl = cleanDigits.length >= 8 ? `https://wa.me/${cleanDigits}` : null;
   const shortDisplay = phone.replace(/^\+56\s*/, "");
-  if (waUrl) {
+  if (!cleanDigits || cleanDigits.length < 8) {
+    return `<span class="phone-text">${shortDisplay}</span>`;
+  }
+
+  const isDeliveredAndUnpaid = row && !row.pagado && (row.estado || "").toLowerCase().trim() === "entregado";
+
+  if (isDeliveredAndUnpaid) {
+    const reminderText = buildPaymentReminderText(row);
+    const waUrl = `https://wa.me/${cleanDigits}?text=${encodeURIComponent(reminderText)}`;
     return `
-      <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="phone-link" title="Abrir WhatsApp con ${phone}">
-        <i data-lucide="message-circle" aria-hidden="true"></i>
-        <span>${shortDisplay}</span>
+      <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-wa-reminder" title="Cobrar pedido entregado con mensaje amable y datos bancarios">
+        <i data-lucide="message-circle" aria-hidden="true" style="width: 14px; height: 14px;"></i>
+        <span>Cobrar: ${shortDisplay}</span>
       </a>
     `;
   }
-  return `<span class="phone-text">${shortDisplay}</span>`;
+
+  const waUrl = `https://wa.me/${cleanDigits}`;
+  return `
+    <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="phone-link" title="Abrir WhatsApp con ${phone}">
+      <i data-lucide="message-circle" aria-hidden="true"></i>
+      <span>${shortDisplay}</span>
+    </a>
+  `;
 }
 
 // ==========================================================================
@@ -354,7 +401,19 @@ async function loadSales() {
     tableBody.innerHTML = `<tr><td colspan="16" style="text-align:center; padding:35px; color:var(--text-muted);"><i data-lucide="loader" class="spin"></i> Sincronizando ventas desde Firestore...</td></tr>`;
     if (window.lucide) lucide.createIcons();
 
-    const sales = await getSalesHistory();
+    const [sales, balancesCfg, expensesList] = await Promise.all([
+      getSalesHistory(),
+      getBalancesConfig(),
+      getGastos()
+    ]);
+
+    if (balancesCfg) currentBalancesConfig = balancesCfg;
+    if (expensesList) currentExpenses = expensesList;
+
+    syncBalancesModalInputs();
+    updateOctoberBalances();
+    renderExpensesTable();
+
     const rows = [];
 
     sales.forEach(sale => {
@@ -458,7 +517,13 @@ function applyFilters() {
 
   btnClearSearch.hidden = !query;
 
-  const filtered = allSaleRows.filter(row => {
+  const unpaidRows = allSaleRows.filter(r => !r.pagado);
+  const badgeUnpaidCount = document.getElementById("badgeUnpaidCount");
+  if (badgeUnpaidCount) badgeUnpaidCount.textContent = unpaidRows.length;
+
+  const baseRows = isUnpaidViewActive ? unpaidRows : allSaleRows;
+
+  const filtered = baseRows.filter(row => {
     // Filtro Texto
     if (!query) return true;
     const matchTarget = `${row.clientName} ${row.fragrance} ${row.code} ${row.institution} ${row.clientPhone} ${row.codigoVenta}`.toLowerCase();
@@ -467,6 +532,7 @@ function applyFilters() {
 
   renderTable(filtered);
   updateMetrics(filtered);
+  updateOctoberBalances();
 }
 
 // Helper para renderizar una fila individual
@@ -496,7 +562,7 @@ function renderTableRow(row, rowNum, isPending) {
         <span class="client-name" title="${row.clientName}">${row.clientName}</span>
       </td>
       <td class="td-phone col-hide-summary">
-        ${renderPhoneCell(row.clientPhone)}
+        ${renderPhoneCell(row.clientPhone, row)}
       </td>
       <td class="td-inst col-hide-summary">
         <span class="inst-name" title="${row.institution || "-"}">${row.institution || "-"}</span>
@@ -524,10 +590,16 @@ function renderTableRow(row, rowNum, isPending) {
       <td class="cell-check">
         <input type="checkbox" class="table-checkbox check-confirmed" data-action="toggle-confirmed" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.confirmado ? "checked" : ""} title="${row.confirmado ? "Pedido Confirmado (True)" : "Sin confirmar (False)"}">
       </td>
-      <td class="td-action" style="text-align: center;">
-        <button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" title="Editar venta o eliminar">
-          <i data-lucide="pencil" aria-hidden="true"></i>
-        </button>
+      <td class="td-action" style="text-align: center; white-space: nowrap;">
+        ${isUnpaidViewActive ? `
+          <button type="button" class="btn-mark-paid-direct" data-action="mark-paid-direct" data-sale-id="${row.saleId}" data-code="${row.code}" title="Marcar como pagado y retirar de faltantes">
+            <i data-lucide="check" style="width: 12px; height: 12px;"></i> Pagado
+          </button>
+        ` : `
+          <button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" title="Editar venta o eliminar">
+            <i data-lucide="pencil" aria-hidden="true"></i>
+          </button>
+        `}
       </td>
     </tr>
   `;
@@ -554,6 +626,36 @@ function renderTable(rows) {
   }
 
   emptyState.hidden = true;
+
+  // Si estamos en la vista de Faltantes por Pagar
+  if (isUnpaidViewActive) {
+    const totalUnpaidAmount = rows.reduce((sum, r) => sum + r.precioVenta, 0);
+    let html = `
+      <tr class="tr-supplier-header" style="background: rgba(239, 68, 68, 0.12); border-left: 4px solid #ef4444;">
+        <td colspan="16">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="color: #ef4444; display: inline-flex;"><i data-lucide="receipt"></i></span>
+              <strong style="color: #ef4444; font-size: 0.92rem;">FALTANTES POR PAGAR (${rows.length} pedidos sin pagar)</strong>
+            </div>
+            <div>
+              <span class="badge-supplier-tag" style="background: rgba(239, 68, 68, 0.2); color: #dc2626; font-weight: 700;">
+                Total a Cobrar: ${formatCLP(totalUnpaidAmount)}
+              </span>
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
+    let idx = rows.length;
+    rows.forEach(r => {
+      html += renderTableRow(r, idx--, false);
+    });
+    tableBody.innerHTML = html;
+    updateSummaryViewUI();
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
 
   // Si la separación por lotes está desactivada por el usuario
   if (!isSupplierGroupingEnabled) {
@@ -594,6 +696,19 @@ function renderTable(rows) {
     const pendingSale = pendingRows.reduce((sum, r) => sum + r.precioVenta, 0);
     const pendingProfit = pendingSale - pendingCost;
 
+    const minShipping = Number(currentBalancesConfig?.envioGratisMinimo) || 120000;
+    const diffShipping = Math.max(0, minShipping - pendingCost);
+    const progressShipping = Math.min(100, Math.round((pendingCost / minShipping) * 100));
+    const shippingTag = diffShipping > 0
+      ? `<span class="badge-supplier-tag tag-shipping-pending" title="Meta para envío gratis: ${formatCLP(minShipping)} (modificable en Gastos y Balances)">
+           <i data-lucide="truck" style="width: 13px; height: 13px;"></i>
+           Falta para envío gratis: <strong>${formatCLP(diffShipping)}</strong> (${progressShipping}%)
+         </span>`
+      : `<span class="badge-supplier-tag tag-shipping-reached" title="¡Meta de envío gratis superada!">
+           <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
+           ¡Envío gratis alcanzado! 🎉 (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})
+         </span>`;
+
     html += `
       <tr class="tr-supplier-header group-pending">
         <td colspan="16">
@@ -615,6 +730,7 @@ function renderTable(rows) {
               <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Costo)">
                 Ganancia Real: ${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}
               </span>
+              ${shippingTag}
             </div>
             <div class="supplier-header-actions">
               <label class="select-all-pending-label">
@@ -1308,6 +1424,20 @@ tableBody.addEventListener("change", async event => {
       alert("Error al actualizar confirmación en Firestore: " + err.message);
       target.checked = !isConfirmed;
     }
+  } else if (action === "mark-paid-direct") {
+    allSaleRows.forEach(r => {
+      if (r.saleId === saleId && r.code === code) {
+        r.pagado = true;
+      }
+    });
+
+    try {
+      await updateSaleRow(saleId, code, { pagado: true });
+      showToast("¡Venta marcada como Pagada! Eliminada de la lista de faltantes ✓");
+      applyFilters();
+    } catch (err) {
+      alert("Error al actualizar pago en Firestore: " + err.message);
+    }
   }
 });
 
@@ -1465,6 +1595,219 @@ if (btnToggleSummary) {
     if (window.lucide) lucide.createIcons();
   });
 }
+
+// Botón para activar/desactivar la vista de faltantes por pagar
+const btnToggleUnpaid = document.getElementById("btnToggleUnpaidView");
+if (btnToggleUnpaid) {
+  btnToggleUnpaid.addEventListener("click", () => {
+    isUnpaidViewActive = !isUnpaidViewActive;
+    btnToggleUnpaid.classList.toggle("is-active-filter", isUnpaidViewActive);
+    applyFilters();
+    showToast(isUnpaidViewActive ? "Mostrando solo clientes con pagos pendientes" : "Mostrando todas las ventas");
+  });
+}
+
+// ==========================================================================
+// 7.2 GESTIÓN DE GASTOS, BALANCES Y CONFIGURACIÓN
+// ==========================================================================
+const modalBalances = document.getElementById("modalBalances");
+const btnOpenBalances = document.getElementById("btnOpenBalancesModal");
+
+if (btnOpenBalances && modalBalances) {
+  btnOpenBalances.addEventListener("click", () => {
+    modalBalances.hidden = false;
+    syncBalancesModalInputs();
+    updateOctoberBalances();
+    renderExpensesTable();
+    if (window.lucide) lucide.createIcons();
+  });
+}
+
+document.addEventListener("click", event => {
+  if (event.target.closest('[data-action="close-balances-modal"]')) {
+    if (modalBalances) modalBalances.hidden = true;
+  }
+});
+
+// Pestañas internas de Gastos y Balances
+document.addEventListener("click", event => {
+  const tabBtn = event.target.closest(".btn-balance-tab");
+  if (!tabBtn) return;
+  const targetId = tabBtn.dataset.tab;
+  document.querySelectorAll(".btn-balance-tab").forEach(b => b.classList.toggle("is-active", b === tabBtn));
+  document.querySelectorAll(".balance-tab-content").forEach(content => {
+    content.hidden = (content.id !== targetId);
+  });
+});
+
+function syncBalancesModalInputs() {
+  const cfg = currentBalancesConfig || DEFAULT_BALANCES_CONFIG;
+  const inputShipping = document.getElementById("cfgEnvioGratisMinimo");
+  if (inputShipping) inputShipping.value = cfg.envioGratisMinimo || 120000;
+
+  const bank = cfg.datosBancarios || DEFAULT_BALANCES_CONFIG.datosBancarios;
+  const bankTitular = document.getElementById("bankTitular");
+  const bankRut = document.getElementById("bankRut");
+  const bankBanco = document.getElementById("bankBanco");
+  const bankTipoCuenta = document.getElementById("bankTipoCuenta");
+  const bankNumeroCuenta = document.getElementById("bankNumeroCuenta");
+  const bankEmail = document.getElementById("bankEmail");
+
+  if (bankTitular) bankTitular.value = bank.titular || "";
+  if (bankRut) bankRut.value = bank.rut || "";
+  if (bankBanco) bankBanco.value = bank.banco || "";
+  if (bankTipoCuenta) bankTipoCuenta.value = bank.tipoCuenta || "";
+  if (bankNumeroCuenta) bankNumeroCuenta.value = bank.numeroCuenta || "";
+  if (bankEmail) bankEmail.value = bank.email || "";
+
+  const expenseDateInput = document.getElementById("expenseDate");
+  if (expenseDateInput && !expenseDateInput.value) {
+    expenseDateInput.value = new Date().toISOString().split("T")[0];
+  }
+}
+
+function updateOctoberBalances() {
+  const octRows = allSaleRows.filter(r => (r.fecha || "").startsWith("2026-10"));
+  const octVentas = octRows.reduce((sum, r) => sum + r.precioVenta, 0);
+  const octCostos = octRows.reduce((sum, r) => sum + r.costo, 0);
+
+  // Capital de 150.000 generado en octubre que se resta del total y se agrega a gastos
+  const capitalOctubre = Number(currentBalancesConfig?.capitalOctubre) || 150000;
+
+  const otherOctExpenses = currentExpenses
+    .filter(g => (g.fecha || "").startsWith("2026-10"))
+    .reduce((sum, g) => sum + (Number(g.monto) || 0), 0);
+
+  const totalGastosOctubre = capitalOctubre + otherOctExpenses;
+  const gananciaNetaOctubre = (octVentas - octCostos) - totalGastosOctubre;
+
+  const elVentas = document.getElementById("balanceOctVentas");
+  const elCosto = document.getElementById("balanceOctCosto");
+  const elGastos = document.getElementById("balanceOctGastos");
+  const elGanancia = document.getElementById("balanceOctGananciaNeta");
+
+  if (elVentas) elVentas.textContent = formatCLP(octVentas);
+  if (elCosto) elCosto.textContent = formatCLP(octCostos);
+  if (elGastos) elGastos.textContent = formatCLP(totalGastosOctubre);
+  if (elGanancia) {
+    elGanancia.textContent = formatCLP(gananciaNetaOctubre);
+    elGanancia.style.color = gananciaNetaOctubre >= 0 ? "#16a34a" : "#dc2626";
+  }
+}
+
+function renderExpensesTable() {
+  const tbody = document.getElementById("expensesTableBody");
+  if (!tbody) return;
+
+  if (currentExpenses.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:12px;">No hay gastos adicionales registrados</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = currentExpenses.map(g => `
+    <tr>
+      <td>${g.fecha || "-"}</td>
+      <td><span class="code-chip">${g.categoria || "Gasto"}</span></td>
+      <td>${g.descripcion || "-"}</td>
+      <td style="text-align: right; font-family: var(--font-mono); font-weight: 700; color: #dc2626;">-${formatCLP(g.monto)}</td>
+      <td style="text-align: center;">
+        <button type="button" class="btn-edit-row" data-action="delete-expense" data-expense-id="${g.id}" title="Eliminar gasto" style="color: #ef4444;">
+          <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+        </button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+// Guardar configuración de envío gratis
+const formShippingConfig = document.getElementById("formShippingConfig");
+if (formShippingConfig) {
+  formShippingConfig.addEventListener("submit", async e => {
+    e.preventDefault();
+    const val = Number(document.getElementById("cfgEnvioGratisMinimo").value) || 120000;
+    try {
+      await saveBalancesConfig({ envioGratisMinimo: val });
+      currentBalancesConfig.envioGratisMinimo = val;
+      showToast("Meta de envío gratis guardada en Firestore ✓");
+      applyFilters();
+    } catch (err) {
+      alert("Error al guardar meta de envío: " + err.message);
+    }
+  });
+}
+
+// Guardar datos bancarios
+const formBankConfig = document.getElementById("formBankConfig");
+if (formBankConfig) {
+  formBankConfig.addEventListener("submit", async e => {
+    e.preventDefault();
+    const titular = document.getElementById("bankTitular").value.trim();
+    const rut = document.getElementById("bankRut").value.trim();
+    const banco = document.getElementById("bankBanco").value.trim();
+    const tipoCuenta = document.getElementById("bankTipoCuenta").value.trim();
+    const numeroCuenta = document.getElementById("bankNumeroCuenta").value.trim();
+    const email = document.getElementById("bankEmail").value.trim();
+
+    const datosBancarios = { titular, rut, banco, tipoCuenta, numeroCuenta, email };
+    try {
+      await saveBalancesConfig({ datosBancarios });
+      currentBalancesConfig.datosBancarios = datosBancarios;
+      showToast("Datos de cuenta bancaria guardados ✓");
+      applyFilters();
+    } catch (err) {
+      alert("Error al guardar datos de cuenta: " + err.message);
+    }
+  });
+}
+
+// Agregar nuevo gasto
+const formNewExpense = document.getElementById("formNewExpense");
+if (formNewExpense) {
+  formNewExpense.addEventListener("submit", async e => {
+    e.preventDefault();
+    const fecha = document.getElementById("expenseDate").value;
+    const categoria = document.getElementById("expenseCategory").value;
+    const descripcion = document.getElementById("expenseDescription").value.trim();
+    const monto = Number(document.getElementById("expenseAmount").value) || 0;
+
+    if (!fecha || !descripcion || monto <= 0) {
+      alert("Por favor completa los campos del gasto correctamente.");
+      return;
+    }
+
+    try {
+      const res = await saveGasto({ fecha, categoria, descripcion, monto });
+      currentExpenses.unshift({ id: res.id, fecha, categoria, descripcion, monto });
+      document.getElementById("expenseDescription").value = "";
+      document.getElementById("expenseAmount").value = "";
+      renderExpensesTable();
+      updateOctoberBalances();
+      showToast("Gasto registrado exitosamente ✓");
+      if (window.lucide) lucide.createIcons();
+    } catch (err) {
+      alert("Error al registrar gasto: " + err.message);
+    }
+  });
+}
+
+// Eliminar gasto
+document.addEventListener("click", async event => {
+  const btn = event.target.closest('[data-action="delete-expense"]');
+  if (!btn) return;
+  const expenseId = btn.dataset.expenseId;
+  if (!confirm("¿Seguro que deseas eliminar este gasto registrado?")) return;
+
+  try {
+    await deleteGasto(expenseId);
+    currentExpenses = currentExpenses.filter(g => g.id !== expenseId);
+    renderExpensesTable();
+    updateOctoberBalances();
+    showToast("Gasto eliminado ✓");
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    alert("Error al eliminar gasto: " + err.message);
+  }
+});
 
 // Botón de colapsar / desplegar un lote cerrado
 document.addEventListener("click", event => {
