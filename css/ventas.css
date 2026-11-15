@@ -737,9 +737,16 @@ body.auth-checking .container-fluid {
   pointer-events: none;
 }
 
-.th-paid, .th-confirmed, .cell-check {
+.th-paid, .cell-check.td-paid {
   width: 44px;
   min-width: 42px;
+  text-align: center;
+  padding: 5px 2px;
+}
+
+.th-confirmed, .cell-check.td-confirmed {
+  width: 58px;
+  min-width: 54px;
   text-align: center;
   padding: 5px 2px;
 }
@@ -2164,7 +2171,7 @@ body.auth-checking .container-fluid {
     height: 5px !important;
   }
 
-  /* Columnas 5 & 6: Pagado y Confirmado */
+  /* Columnas 5 & 6: Pagado y Pago Interno */
   .spreadsheet-table .th-paid,
   .spreadsheet-table .td-paid,
   .spreadsheet-table .th-confirmed,

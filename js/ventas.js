@@ -736,7 +736,7 @@ function renderTableRow(row, rowNum, isPending) {
         <input type="checkbox" class="table-checkbox" data-action="toggle-paid" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.pagado ? "checked" : ""} title="${row.pagado ? "Pagado (True)" : "Pendiente de pago (False)"}">
       </td>
       <td class="cell-check td-confirmed">
-        <input type="checkbox" class="table-checkbox check-confirmed" data-action="toggle-confirmed" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.confirmado ? "checked" : ""} title="${row.confirmado ? "Pedido Confirmado (True)" : "Sin confirmar (False)"}">
+        <input type="checkbox" class="table-checkbox check-confirmed" data-action="toggle-confirmed" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.confirmado ? "checked" : ""} title="${row.confirmado ? "Pago Interno (True)" : "Sin pago interno (False)"}">
       </td>
       <td class="td-action" style="text-align: center; white-space: nowrap;">
         ${isUnpaidViewActive ? `
@@ -1602,9 +1602,9 @@ tableBody.addEventListener("change", async event => {
 
     try {
       await updateSaleRow(saleId, code, { confirmado: isConfirmed });
-      showToast(isConfirmed ? "Pedido Confirmado (True) ✓" : "Pedido desmarcado (False)");
+      showToast(isConfirmed ? "Pago Interno marcado (True) ✓" : "Pago Interno desmarcado (False)");
     } catch (err) {
-      alert("Error al actualizar confirmación en Firestore: " + err.message);
+      alert("Error al actualizar pago interno en Firestore: " + err.message);
       target.checked = !isConfirmed;
     }
   } else if (action === "mark-paid-direct") {
@@ -2033,7 +2033,7 @@ function exportToCSV() {
     return;
   }
 
-  const headers = ["Fecha", "Código", "Fragancia", "Formato", "Cantidad", "Cliente", "Teléfono", "Institución", "Precio Venta", "Costo", "Ganancia", "Estado", "Pagado", "Pedido Confirmado"];
+  const headers = ["Fecha", "Código", "Fragancia", "Formato", "Cantidad", "Cliente", "Teléfono", "Institución", "Precio Venta", "Costo", "Ganancia", "Estado", "Pagado", "Pago Interno"];
   const csvRows = [headers.join(";")];
 
   filtered.forEach(r => {
