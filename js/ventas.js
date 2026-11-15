@@ -27,7 +27,7 @@ let currentEditSaleId = null;
 let currentEditCode = null;
 
 let isSupplierGroupingEnabled = localStorage.getItem("notes_supplier_grouping") !== "false";
-let isSummaryViewEnabled = localStorage.getItem("notes_sales_summary_view") === "true";
+try { localStorage.removeItem("notes_sales_summary_view"); } catch (e) {}
 let isUnpaidViewActive = false;
 let currentBalancesConfig = { ...DEFAULT_BALANCES_CONFIG };
 let currentExpenses = [];
@@ -159,7 +159,6 @@ const tableBody = document.getElementById("salesTableBody");
 const emptyState = document.getElementById("tableEmptyState");
 const searchInput = document.getElementById("searchInput");
 const btnClearSearch = document.getElementById("btnClearSearch");
-const btnRefresh = document.getElementById("btnRefresh");
 const btnExportCSV = document.getElementById("btnExportCSV");
 const toastNotification = document.getElementById("toastNotification");
 const toastMessage = document.getElementById("toastMessage");
@@ -547,29 +546,29 @@ function renderTableRow(row, rowNum, isPending) {
           <span>${rowNum}</span>
         </div>
       </td>
-      <td class="td-date col-hide-summary">${row.fecha || "-"}</td>
+      <td class="td-date">${row.fecha || "-"}</td>
       <td class="td-code">
         <span class="code-chip">${row.code}</span>
       </td>
-      <td class="td-name col-hide-summary">
+      <td class="td-name">
         <div class="fragrance-name" title="${row.fragrance}">${row.fragrance}</div>
       </td>
       <td class="td-size">
         <span class="size-tag">${row.size}</span>
       </td>
       <td class="qty-val">${row.qty}</td>
-      <td class="td-client col-hide-summary">
+      <td class="td-client">
         <span class="client-name" title="${row.clientName}">${row.clientName}</span>
       </td>
-      <td class="td-phone col-hide-summary">
+      <td class="td-phone">
         ${renderPhoneCell(row.clientPhone, row)}
       </td>
-      <td class="td-inst col-hide-summary">
+      <td class="td-inst">
         <span class="inst-name" title="${row.institution || "-"}">${row.institution || "-"}</span>
       </td>
-      <td class="price-cell col-hide-summary">${formatCLP(row.precioVenta)}</td>
-      <td class="cost-cell col-hide-summary">${formatCLP(row.costo)}</td>
-      <td class="profit-cell col-hide-summary ${row.ganancia === 0 ? 'profit-zero' : ''}">${row.ganancia > 0 ? '+' : ''}${formatCLP(row.ganancia)}</td>
+      <td class="price-cell">${formatCLP(row.precioVenta)}</td>
+      <td class="cost-cell">${formatCLP(row.costo)}</td>
+      <td class="profit-cell ${row.ganancia === 0 ? 'profit-zero' : ''}">${row.ganancia > 0 ? '+' : ''}${formatCLP(row.ganancia)}</td>
       <td class="td-status">
         <div class="status-select-wrap">
           <span class="status-dot dot-${statusSlug}"></span>
@@ -603,18 +602,6 @@ function renderTableRow(row, rowNum, isPending) {
       </td>
     </tr>
   `;
-}
-
-// Control visual de la vista resumida (solo códigos, cant, formato, estado, checkboxes)
-function updateSummaryViewUI() {
-  const salesTable = document.getElementById("salesSpreadsheet");
-  const btnToggleSummary = document.getElementById("btnToggleSummaryView");
-  if (salesTable) {
-    salesTable.classList.toggle("is-summary-view", isSummaryViewEnabled);
-  }
-  if (btnToggleSummary) {
-    btnToggleSummary.classList.toggle("btn-grouping-active", isSummaryViewEnabled);
-  }
 }
 
 // 5. Renderizar filas en la tabla con controles interactivos y agrupación por lotes proveedor
@@ -652,7 +639,6 @@ function renderTable(rows) {
       html += renderTableRow(r, idx--, false);
     });
     tableBody.innerHTML = html;
-    updateSummaryViewUI();
     if (window.lucide) lucide.createIcons();
     return;
   }
@@ -660,7 +646,6 @@ function renderTable(rows) {
   // Si la separación por lotes está desactivada por el usuario
   if (!isSupplierGroupingEnabled) {
     tableBody.innerHTML = rows.map((row, index) => renderTableRow(row, rows.length - index, false)).join("");
-    updateSummaryViewUI();
     if (window.lucide) lucide.createIcons();
     return;
   }
@@ -816,7 +801,6 @@ function renderTable(rows) {
   });
 
   tableBody.innerHTML = html;
-  updateSummaryViewUI();
   if (window.lucide) lucide.createIcons();
 }
 
@@ -1580,19 +1564,6 @@ if (btnToggleGrouping) {
     btnToggleGrouping.classList.toggle("btn-grouping-active", isSupplierGroupingEnabled);
     applyFilters();
     showToast(isSupplierGroupingEnabled ? "Separación por lotes de proveedor activada" : "Vista corrida plana activada");
-  });
-}
-
-// Botón para alternar la vista resumida (solo códigos, cant, formato, estado y checkboxes)
-const btnToggleSummary = document.getElementById("btnToggleSummaryView");
-if (btnToggleSummary) {
-  updateSummaryViewUI();
-  btnToggleSummary.addEventListener("click", () => {
-    isSummaryViewEnabled = !isSummaryViewEnabled;
-    localStorage.setItem("notes_sales_summary_view", isSummaryViewEnabled.toString());
-    updateSummaryViewUI();
-    showToast(isSummaryViewEnabled ? "Vista resumida activada (solo códigos, cant, formato y estado)" : "Vista completa restaurada");
-    if (window.lucide) lucide.createIcons();
   });
 }
 
@@ -2403,7 +2374,6 @@ btnClearSearch.addEventListener("click", () => {
   searchInput.value = "";
   applyFilters();
 });
-btnRefresh.addEventListener("click", loadSales);
 if (btnExportCSV) btnExportCSV.addEventListener("click", exportToCSV);
 
 // Cerrar modal al hacer clic en fondo o botones

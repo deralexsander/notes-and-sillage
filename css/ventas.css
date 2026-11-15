@@ -1688,14 +1688,29 @@ body.auth-checking .container-fluid {
   .table-controls {
     flex-direction: column;
     align-items: stretch;
+    gap: 8px;
   }
 
   .search-field {
     max-width: 100%;
+    width: 100%;
   }
 
   .table-actions {
-    justify-content: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .table-actions .btn-secondary {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+    text-align: center;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+    white-space: nowrap;
   }
 
   .modal-calc-preview {
@@ -1883,39 +1898,6 @@ body.auth-checking .container-fluid {
   background: var(--gold-muted) !important;
   color: var(--gold-primary) !important;
   border-color: var(--gold-primary) !important;
-}
-
-/* ==========================================================================
-   VISTA RESUMIDA DE LA TABLA (SOLO CÓDIGO, CANT, FORMATO, ESTADO, CHECKBOXES)
-   ========================================================================== */
-.spreadsheet-table.is-summary-view .col-hide-summary {
-  display: none !important;
-}
-
-.spreadsheet-table.is-summary-view .th-code,
-.spreadsheet-table.is-summary-view .td-code {
-  min-width: 65px;
-}
-
-.spreadsheet-table.is-summary-view .th-size,
-.spreadsheet-table.is-summary-view .td-size {
-  min-width: 65px;
-}
-
-.spreadsheet-table.is-summary-view .th-qty,
-.spreadsheet-table.is-summary-view .qty-val {
-  min-width: 48px;
-}
-
-.spreadsheet-table.is-summary-view .th-status,
-.spreadsheet-table.is-summary-view .td-status {
-  min-width: 130px;
-}
-
-.spreadsheet-table.is-summary-view .th-paid,
-.spreadsheet-table.is-summary-view .th-confirmed,
-.spreadsheet-table.is-summary-view .cell-check {
-  min-width: 55px;
 }
 
 /* ==========================================================================
