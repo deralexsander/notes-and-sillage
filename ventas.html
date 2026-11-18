@@ -22,9 +22,12 @@
           document.documentElement.removeAttribute('data-theme');
         }
 
-        var savedFontSize = localStorage.getItem('notes_font_size');
-        if (savedFontSize) {
-          document.documentElement.style.fontSize = savedFontSize;
+        var isMobile = window.innerWidth <= 768;
+        if (!isMobile) {
+          var savedFontSize = localStorage.getItem('notes_font_size');
+          if (savedFontSize) {
+            document.documentElement.style.fontSize = savedFontSize;
+          }
         }
       } catch(e) {}
     })();

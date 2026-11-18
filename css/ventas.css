@@ -4246,3 +4246,18 @@ body.view-unpaid-active .spreadsheet-table .td-action {
   border-radius: 4px;
   transition: opacity 0.3s ease;
 }
+
+/* ==========================================================================
+   OCULTAR AJUSTE DE TAMAÑO DE LETRA EN CELULARES (<= 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  html {
+    font-size: 16px !important;
+  }
+
+  .btn-balance-tab[data-tab="tabBalancesFontSize"],
+  #tabBalancesFontSize,
+  .font-size-settings-box {
+    display: none !important;
+  }
+}

@@ -25,7 +25,13 @@ function getScaleDescription(scale) {
 export function applyAppFontSize(scale, showFeedback = false) {
   scale = Math.min(150, Math.max(85, Math.round(Number(scale) || 100)));
   const percentageStr = `${scale}%`;
-  document.documentElement.style.fontSize = percentageStr;
+
+  const isMobile = window.innerWidth <= 768;
+  if (!isMobile) {
+    document.documentElement.style.fontSize = percentageStr;
+  } else {
+    document.documentElement.style.fontSize = "";
+  }
 
   try {
     localStorage.setItem(FONT_SIZE_STORAGE_KEY, percentageStr);
@@ -328,10 +334,21 @@ export function openSettingsModal() {
   }
   if (!modal) return;
 
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    const tabFont = document.getElementById("tabBalancesFontSize");
+    if (tabFont) tabFont.hidden = true;
+    const tabConfig = document.getElementById("tabBalancesConfig");
+    if (tabConfig) tabConfig.hidden = false;
+    document.querySelectorAll(".btn-balance-tab").forEach(b => {
+      b.classList.toggle("is-active", b.dataset.tab === "tabBalancesConfig");
+    });
+  }
+
   modal.hidden = false;
   syncBalancesModalInputs();
 
-  // Sincronizar escala actual en los controles
+  // Sincronizar escala actual en los controles si está en desktop
   let savedScale = 100;
   try {
     const raw = localStorage.getItem(FONT_SCALE_STORAGE_KEY);
