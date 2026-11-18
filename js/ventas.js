@@ -1304,11 +1304,9 @@ function renderTable(rows) {
     const shippingTag = diffShipping > 0
       ? `<span class="badge-supplier-tag tag-shipping-pending" title="Meta para envío gratis: ${formatCLP(minShipping)} (Falta: ${formatCLP(diffShipping)} - ${progressShipping}%. Flete: ${formatCLP(shippingFeeAmt)})" data-action="show-shipping-info" data-shipping-info="🚚 Falta ${formatCLP(diffShipping)} para envío gratis (Meta: ${formatCLP(minShipping)}). Flete: ${formatCLP(shippingFeeAmt)}" style="cursor: pointer;">
            <i data-lucide="truck" style="width: 13px; height: 13px;"></i>
-           <span class="hide-mobile">Falta para envío gratis: <strong>${formatCLP(diffShipping)}</strong> (${progressShipping}%)</span>
          </span>`
       : `<span class="badge-supplier-tag tag-shipping-reached" title="¡Meta de envío gratis superada! (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})" data-action="show-shipping-info" data-shipping-info="🎉 ¡Envío gratis alcanzado! (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})" style="cursor: pointer;">
            <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
-           <span class="hide-mobile">¡Envío gratis alcanzado! 🎉 (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})</span>
          </span>`;
 
     html += `
@@ -1335,16 +1333,14 @@ function renderTable(rows) {
                 </span>
                 <strong style="color: #b45309; font-size: 0.90rem;">PENDIENTES</strong>
                 <span class="badge-supplier-tag badge-units" style="background: rgba(245, 158, 11, 0.2); color: #b45309;">
-                  <span class="hide-mobile">${pendingUnits} perfumes (${fusedPendingRows.length} ${fusedPendingRows.length === 1 ? 'pedido' : 'pedidos'})</span>
-                  <span class="show-mobile">${pendingUnits} un.</span>
+                  ${pendingUnits} un.
                 </span>
               </div>
               <div class="supplier-header-actions">
                 ${shippingTag}
                 <button type="button" class="btn-create-supplier-batch" id="btnOpenBatchModal" title="Abrir resumen y preparar pedido al proveedor">
                   <i data-lucide="package-plus" style="width: 14px; height: 14px;"></i>
-                  <span class="hide-mobile">Pasar a Pedido Proveedor</span>
-                  <span class="show-mobile">Pasar a Pedido</span>
+                  <span>Pasar a Pedido</span>
                 </button>
                 <button type="button" class="btn-toggle-batch" data-action="toggle-batch-collapse" data-batch-key="PENDIENTE" title="Contraer o desplegar perfumes pendientes">
                   <i data-lucide="${isPendingCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
@@ -1353,34 +1349,20 @@ function renderTable(rows) {
               </div>
             </div>
 
-            <!-- Vista Móvil: Mini tarjeta de 3 columnas limpias -->
-            <div class="batch-mobile-summary-grid show-mobile">
+            <!-- Resumen Financiero: Tarjeta limpia de 3 columnas -->
+            <div class="batch-summary-grid">
               <div class="batch-mobile-stat">
                 <span class="stat-label">Venta</span>
                 <span class="stat-value">${formatCLP(pendingSale)}</span>
               </div>
-              <div class="batch-mobile-stat">
+              <div class="batch-mobile-stat" title="Costo estimado a pagar al proveedor">
                 <span class="stat-label">Costo Est.</span>
                 <span class="stat-value val-cost">${formatCLP(pendingCost)}</span>
               </div>
-              <div class="batch-mobile-stat stat-highlight">
+              <div class="batch-mobile-stat stat-highlight" title="Ganancia Real (Venta - Costo)">
                 <span class="stat-label">Ganancia</span>
                 <span class="stat-value val-profit">${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}</span>
               </div>
-            </div>
-
-            <!-- Vista Desktop: Fila horizontal de insignias -->
-            <div class="supplier-header-badges hide-mobile">
-              <span class="badge-supplier-tag tag-cost" title="Costo estimado a pagar al proveedor">
-                Costo: ${formatCLP(pendingCost)}
-              </span>
-              <span class="badge-supplier-tag" style="color: var(--text-title);" title="Total ventas a cobrar">
-                Venta: ${formatCLP(pendingSale)}
-              </span>
-              <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Costo)">
-                Ganancia Real: ${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}
-              </span>
-              ${shippingTag}
             </div>
           </div>
         </td>
@@ -1447,19 +1429,16 @@ function renderTable(rows) {
           <div class="supplier-header-content">
             <div class="supplier-header-top">
               <div class="supplier-header-title">
-                <span class="supplier-status-icon ordered-icon">
+                <span class="supplier-status-icon ordered-icon" title="${escapeAttr(bTitle)}">
                   <i data-lucide="package-check" style="width: 15px; height: 15px;"></i>
                 </span>
-                <strong class="hide-mobile" style="color: var(--text-title); font-size: 0.90rem;">${bTitle}</strong>
                 <span class="badge-supplier-tag badge-units">
-                  <span class="hide-mobile">${bUnits} perfumes (${bFusedRows.length} ${bFusedRows.length === 1 ? 'pedido' : 'pedidos'})</span>
-                  <span class="show-mobile">${bUnits} un.</span>
+                  ${bUnits} un.
                 </span>
               </div>
               <div class="supplier-header-actions">
                 <a href="pedidos.html?batch=${batchKey}" class="badge-supplier-tag" style="text-decoration: none; color: var(--gold-primary); display: inline-flex; align-items: center; gap: 3px;" title="Ver en Historial de Pedidos">
                   <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
-                  <span class="hide-mobile">Historial</span>
                 </a>
                 <span class="badge-supplier-tag tag-locked" title="Pedido Cerrado">
                   <i data-lucide="lock" style="width: 13px; height: 13px;"></i>
@@ -1471,58 +1450,20 @@ function renderTable(rows) {
               </div>
             </div>
 
-            <!-- Vista Móvil: Mini tarjeta de 3 columnas limpias -->
-            <div class="batch-mobile-summary-grid show-mobile">
+            <!-- Resumen Financiero: Tarjeta limpia de 3 columnas -->
+            <div class="batch-summary-grid">
               <div class="batch-mobile-stat">
                 <span class="stat-label">Venta</span>
                 <span class="stat-value">${formatCLP(bSale)}</span>
               </div>
-              <div class="batch-mobile-stat">
+              <div class="batch-mobile-stat" title="Total a pagar al proveedor (${isTuesdayDiscountActive ? `Desc Martes: -${formatCLP(discountAmt)}. ` : ''}${shippingFee > 0 ? `Flete: +${formatCLP(shippingFee)}. ` : (hasFreeShipping ? 'Envío Gratis. ' : '')}Costo base: ${formatCLP(bCost)})">
                 <span class="stat-label">Total Prov</span>
                 <span class="stat-value val-cost">${formatCLP(totalCostoFinal)}</span>
               </div>
-              <div class="batch-mobile-stat stat-highlight">
+              <div class="batch-mobile-stat stat-highlight" title="Ganancia Real (Venta - Total Proveedor)">
                 <span class="stat-label">Ganancia</span>
                 <span class="stat-value val-profit">${bProfit > 0 ? '+' : ''}${formatCLP(bProfit)}</span>
               </div>
-            </div>
-
-            <!-- Vista Desktop: Barra horizontal completa -->
-            <div class="supplier-header-badges hide-mobile">
-              <span class="badge-supplier-tag tag-cost" title="Costo base de los perfumes según catálogo">
-                Costo Prod: ${formatCLP(bCost)}
-              </span>
-              ${isTuesdayDiscountActive ? `
-                <span class="badge-supplier-tag" style="color: #9333ea; background: rgba(147, 51, 234, 0.12); border-color: rgba(147, 51, 234, 0.35);" title="Descuento del ${discountPct}% aplicado al costo de proveedor por pedido en martes">
-                  Desc. Martes: -${formatCLP(discountAmt)} (-${discountPct}%)
-                </span>
-              ` : ''}
-              ${bCost > 0 ? (hasFreeShipping ? `
-                <span class="badge-supplier-tag tag-shipping-reached" title="Meta de envío gratis superada (${formatCLP(costAfterDiscount)} >= ${formatCLP(minShipping)})">
-                  <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i>
-                  Envío Gratis ✓
-                </span>
-              ` : `
-                <span class="badge-supplier-tag" style="color: #dc2626; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35);" title="Costo de envío por no alcanzar la meta de ${formatCLP(minShipping)} (Faltaron ${formatCLP(minShipping - costAfterDiscount)})">
-                  <i data-lucide="truck" style="width: 12px; height: 12px;"></i>
-                  Flete: +${formatCLP(shippingFee)}
-                </span>
-              `) : ''}
-              ${(isTuesdayDiscountActive || shippingFee > 0) ? `
-                <span class="badge-supplier-tag tag-cost" style="font-weight: 800; border-color: var(--gold-primary);" title="Costo total final a pagar al proveedor (Productos con descuento + Flete si aplica)">
-                  Total Prov: ${formatCLP(totalCostoFinal)}
-                </span>
-              ` : ''}
-              <span class="badge-supplier-tag" style="color: var(--text-title);">
-                Venta: ${formatCLP(bSale)}
-              </span>
-              <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Total Proveedor)">
-                Ganancia Real: ${bProfit > 0 ? '+' : ''}${formatCLP(bProfit)}
-              </span>
-              <a href="pedidos.html?batch=${batchKey}" class="badge-supplier-tag" style="text-decoration: none; color: var(--gold-primary); display: inline-flex; align-items: center; gap: 4px;" title="Ver detalle completo del comprobante en Historial de Pedidos">
-                <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
-                Ver en Historial
-              </a>
             </div>
           </div>
         </td>

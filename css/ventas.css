@@ -2226,10 +2226,65 @@ body.auth-checking .container-fluid {
   transition: background-color 0.15s ease;
 }
 
-/* Componentes del resumen financiero estructurado en móvil */
+/* Componentes del resumen financiero estructurado (Desktop y Móvil) */
+.batch-summary-grid,
 .batch-mobile-summary-grid {
-  display: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 4px 0 2px 0;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.24);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+  box-sizing: border-box;
+  max-width: 440px;
 }
+
+[data-theme="light"] .batch-summary-grid,
+[data-theme="light"] .batch-mobile-summary-grid {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.08);
+}
+
+.batch-mobile-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0;
+}
+
+.batch-mobile-stat .stat-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+
+.batch-mobile-stat .stat-value {
+  font-size: 0.88rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-title);
+  line-height: 1.1;
+}
+
+.batch-mobile-stat .stat-value.val-cost {
+  color: var(--text-title);
+}
+
+.batch-mobile-stat .stat-value.val-profit {
+  color: #16a34a;
+}
+
+[data-theme="dark"] .batch-mobile-stat .stat-value.val-profit {
+  color: #4ade80;
+}
+
 .supplier-header-breakdown-row {
   display: none;
 }
@@ -2547,6 +2602,7 @@ body.auth-checking .container-fluid {
   }
 
   /* Grid financiero móvil estructurado de 3 columnas */
+  .batch-summary-grid,
   .batch-mobile-summary-grid.show-mobile {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
@@ -2558,8 +2614,10 @@ body.auth-checking .container-fluid {
     border: 1px solid rgba(255, 255, 255, 0.06) !important;
     text-align: center !important;
     box-sizing: border-box !important;
+    max-width: 100% !important;
   }
 
+  [data-theme="light"] .batch-summary-grid,
   [data-theme="light"] .batch-mobile-summary-grid.show-mobile {
     background: rgba(0, 0, 0, 0.04) !important;
     border-color: rgba(0, 0, 0, 0.08) !important;
@@ -3184,6 +3242,7 @@ body.auth-checking .container-fluid {
   }
 
   /* Grid financiero móvil estructurado de 3 columnas */
+  .batch-summary-grid,
   .batch-mobile-summary-grid.show-mobile {
     display: grid !important;
     grid-template-columns: repeat(3, 1fr) !important;
@@ -3195,8 +3254,10 @@ body.auth-checking .container-fluid {
     border: 1px solid rgba(255, 255, 255, 0.06) !important;
     text-align: center !important;
     box-sizing: border-box !important;
+    max-width: 100% !important;
   }
 
+  [data-theme="light"] .batch-summary-grid,
   [data-theme="light"] .batch-mobile-summary-grid.show-mobile {
     background: rgba(0, 0, 0, 0.04) !important;
     border-color: rgba(0, 0, 0, 0.08) !important;

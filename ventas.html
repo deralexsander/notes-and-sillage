@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css?v=20261118_hide_edit_unpaid">
+  <link rel="stylesheet" href="css/ventas.css?v=20261118_desktop_mobile_parity">
   <script>
     (function() {
       try {
@@ -229,26 +229,14 @@
             <th class="th-size">Formato</th>
             <th class="th-qty" title="Cantidad">Cant</th>
             <th class="th-client">Cliente</th>
-            <th class="th-phone">
-              <span class="hide-mobile">WhatsApp</span>
-              <span class="show-mobile" title="WhatsApp"><i data-lucide="message-circle" style="width: 13px; height: 13px;"></i></span>
-            </th>
-            <th class="th-inst">
-              <span class="hide-mobile">Institución</span>
-              <span class="show-mobile">Inst</span>
-            </th>
+            <th class="th-phone" title="WhatsApp"><i data-lucide="message-circle" style="width: 13px; height: 13px;"></i></th>
+            <th class="th-inst" title="Institución">Inst</th>
             <th class="th-price">Venta</th>
             <th class="th-cost">Costo</th>
             <th class="th-profit">Ganancia</th>
             <th class="th-status">Estado</th>
-            <th class="th-paid" title="¿Pagado por el cliente?">
-              <span class="hide-mobile">Pagado</span>
-              <span class="show-mobile">Pag</span>
-            </th>
-            <th class="th-action" title="Editar venta o eliminar">
-              <span class="hide-mobile">Editar</span>
-              <span class="show-mobile"><i data-lucide="edit-3" style="width: 12px; height: 12px;"></i></span>
-            </th>
+            <th class="th-paid" title="¿Pagado por el cliente?">Pag</th>
+            <th class="th-action" title="Editar venta o eliminar"><i data-lucide="edit-3" style="width: 12px; height: 12px;"></i></th>
           </tr>
         </thead>
         <tbody id="salesTableBody">
@@ -779,6 +767,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
   <script type="module" src="js/firebase-config.js?v=20261118_fuzzy_search"></script>
-  <script type="module" src="js/ventas.js?v=20261118_clean_client_cell"></script>
+  <script type="module" src="js/ventas.js?v=20261118_desktop_mobile_parity"></script>
 </body>
 </html>
