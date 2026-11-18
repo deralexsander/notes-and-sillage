@@ -300,6 +300,10 @@
 }
 
 /* Contenido del acordeón */
+.order-accordion-card:not(.is-expanded) .order-card-body {
+  display: none !important;
+}
+
 .order-card-body {
   border-top: 1px solid var(--border-color);
   padding: 16px 20px;
@@ -484,6 +488,108 @@
   color: var(--text-muted);
 }
 
+/* Barra de Desglose Financiero del Pedido */
+.order-financial-breakdown-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.order-breakdown-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-breakdown-item.breakdown-item-total {
+  text-align: right;
+  border-left: 1px solid var(--border-color);
+  padding-left: 14px;
+}
+
+.breakdown-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.breakdown-val {
+  font-family: var(--font-mono);
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.breakdown-val.breakdown-discount {
+  color: var(--text-muted);
+}
+
+.breakdown-val.breakdown-discount.has-discount {
+  color: #9333ea;
+  font-weight: 800;
+}
+
+.breakdown-val.breakdown-shipping {
+  color: #d97706;
+}
+
+.breakdown-val.breakdown-free-shipping {
+  color: #16a34a;
+  font-weight: 700;
+}
+
+.breakdown-val.breakdown-total-val {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--gold-primary);
+}
+
+.breakdown-tuesday-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Editor Check Descuento Martes 10% */
+.check-tuesday-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #9333ea;
+  background: rgba(147, 51, 234, 0.10);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.check-tuesday-label:hover {
+  background: rgba(147, 51, 234, 0.18);
+  border-color: #9333ea;
+}
+
+.check-tuesday-label input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #9333ea;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .pedidos-toolbar {
@@ -504,5 +610,23 @@
   }
   .order-price-val {
     font-size: 1.1rem;
+  }
+  .order-financial-breakdown-bar {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 10px 12px;
+  }
+  .order-breakdown-item.breakdown-item-total {
+    border-left: none;
+    padding-left: 0;
+    text-align: left;
+    grid-column: span 2;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 8px;
+    margin-top: 4px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
   }
 }

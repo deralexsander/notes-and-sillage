@@ -12,7 +12,8 @@ import {
   addDoc,
   deleteDoc,
   updateDoc,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from "https://www.gstatic.com/firebasejs/11.0.2/firebase-firestore.js";
 import {
   getAuth,
@@ -355,6 +356,34 @@ export async function getSalesHistory() {
   } catch (err) {
     console.error("Error al consultar historial de ventas:", err);
     return [];
+  }
+}
+
+// 4.1 Suscripción en tiempo real a la colección de ventas
+export function subscribeToSales(callback) {
+  try {
+    const ventasRef = collection(db, "ventas");
+    return onSnapshot(ventasRef, (snap) => {
+      const sales = [];
+      snap.forEach(docSnap => {
+        const d = docSnap.data();
+        const date = d.createdAt?.toDate ? d.createdAt.toDate() : (d.fechaISO ? new Date(d.fechaISO) : new Date());
+        sales.push({
+          id: docSnap.id,
+          ...d,
+          createdAtDate: date
+        });
+      });
+      sales.sort((a, b) => b.createdAtDate - a.createdAtDate);
+      if (typeof callback === "function") {
+        callback(sales);
+      }
+    }, (err) => {
+      console.warn("Error en suscripción en vivo a ventas:", err);
+    });
+  } catch (err) {
+    console.error("Error al suscribir listener de ventas:", err);
+    return () => {};
   }
 }
 
@@ -907,6 +936,7 @@ export const saveOrderToFirestore = recordSale;
 window.saveOrderToFirestore = recordSale;
 window.recordSaleInFirestore = recordSale;
 window.getSalesHistory = getSalesHistory;
+window.subscribeToSales = subscribeToSales;
 window.getSalesSummary = getSalesSummary;
 window.updateSaleRow = updateSaleRow;
 window.updateMultipleSaleRows = updateMultipleSaleRows;

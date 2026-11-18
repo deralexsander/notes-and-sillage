@@ -1992,6 +1992,121 @@ body.auth-checking .container-fluid {
   border-top-color: #332615;
 }
 
+/* ==========================================================================
+   SEPARADORES DE SECCIÓN: PENDIENTES VS PEDIDOS EN VENTAS
+   ========================================================================== */
+.tr-batches-section-divider td {
+  padding: 24px 6px 12px 6px !important;
+  background: transparent !important;
+  border-right: none !important;
+  border-bottom: none !important;
+}
+
+.tr-batches-section-divider.section-pending td {
+  padding: 14px 6px 8px 6px !important;
+}
+
+.batches-section-divider-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.batches-divider-line {
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(180, 83, 9, 0.35) 50%, transparent);
+  border-radius: 2px;
+}
+
+.batches-divider-line.line-pending {
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.45) 50%, transparent);
+}
+
+.batches-divider-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1.5px solid rgba(180, 83, 9, 0.35);
+  color: var(--gold-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.batches-divider-badge.badge-pending {
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #d97706;
+}
+
+.batches-divider-badge i {
+  color: var(--gold-primary);
+}
+
+.batches-divider-badge.badge-pending i {
+  color: #d97706;
+}
+
+.batches-count-pill {
+  background: var(--gold-muted);
+  color: var(--gold-primary);
+  font-size: 0.70rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-weight: 800;
+  border: 1px solid rgba(180, 83, 9, 0.2);
+}
+
+.batches-count-pill.pill-pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+/* Modo oscuro */
+[data-theme="dark"] .batches-divider-line {
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3) 50%, transparent);
+}
+[data-theme="dark"] .batches-divider-line.line-pending {
+  background: linear-gradient(90deg, transparent, rgba(245, 158, 11, 0.35) 50%, transparent);
+}
+[data-theme="dark"] .batches-divider-badge {
+  background: var(--bg-card);
+  border-color: rgba(212, 175, 55, 0.35);
+}
+[data-theme="dark"] .batches-divider-badge.badge-pending {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+/* Indicador lateral para filas pendientes */
+.row-pending-item td:first-child {
+  border-left: 3px solid #f59e0b !important;
+}
+
+@media (max-width: 768px) {
+  .tr-batches-section-divider td {
+    padding: 18px 2px 8px 2px !important;
+  }
+  .tr-batches-section-divider.section-pending td {
+    padding: 8px 2px 4px 2px !important;
+  }
+  .batches-divider-badge {
+    padding: 4px 12px;
+    font-size: 0.70rem;
+    gap: 6px;
+  }
+}
+
 .supplier-header-title {
   display: flex;
   align-items: center;
@@ -2109,6 +2224,14 @@ body.auth-checking .container-fluid {
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.15s ease;
+}
+
+/* Componentes del resumen financiero estructurado en móvil */
+.batch-mobile-summary-grid {
+  display: none;
+}
+.supplier-header-breakdown-row {
+  display: none;
 }
 
 .btn-toggle-batch:hover {
@@ -2344,16 +2467,26 @@ body.auth-checking .container-fluid {
     display: none !important;
   }
   .show-mobile {
-    display: inline !important;
+    display: inline-flex !important;
+  }
+
+  /* Tarjetas redondeadas e independientes para cada lote en móvil */
+  .spreadsheet-table tr.tr-supplier-header td {
+    padding: 3px 3px !important;
+    border-right: none !important;
+    background: transparent !important;
   }
 
   .supplier-header-content {
-    padding: 6px 6px !important;
-    gap: 4px !important;
+    padding: 8px 8px !important;
+    gap: 5px !important;
     box-sizing: border-box !important;
     width: 100% !important;
     max-width: 100% !important;
     overflow-x: hidden !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
   }
 
   .supplier-header-top {
@@ -2367,8 +2500,8 @@ body.auth-checking .container-fluid {
   }
 
   .supplier-header-title {
-    gap: 4px !important;
-    font-size: 0.76rem !important;
+    gap: 5px !important;
+    font-size: 0.78rem !important;
     flex-wrap: nowrap !important;
     min-width: 0 !important;
     overflow: hidden !important;
@@ -2398,22 +2531,89 @@ body.auth-checking .container-fluid {
   }
 
   .btn-toggle-batch {
-    padding: 3px 6px !important;
-    font-size: 0.70rem !important;
+    padding: 3px 8px !important;
+    min-height: 28px !important;
+    border-radius: 14px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
   }
 
-  .supplier-header-badges {
-    display: flex !important;
-    flex-wrap: wrap !important;
+  .check-tuesday-label {
+    padding: 3px 7px !important;
+    min-height: 28px !important;
+    border-radius: 14px !important;
+    font-size: 0.70rem !important;
     gap: 3px !important;
+  }
+
+  /* Grid financiero móvil estructurado de 3 columnas */
+  .batch-mobile-summary-grid.show-mobile {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
+    margin: 6px 0 3px 0 !important;
+    padding: 6px 4px !important;
+    background: rgba(0, 0, 0, 0.26) !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    text-align: center !important;
     box-sizing: border-box !important;
-    width: 100% !important;
-    max-width: 100% !important;
+  }
+
+  [data-theme="light"] .batch-mobile-summary-grid.show-mobile {
+    background: rgba(0, 0, 0, 0.04) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .batch-mobile-stat {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1px 0 !important;
+  }
+
+  .batch-mobile-stat .stat-label {
+    font-size: 0.62rem !important;
+    font-weight: 700 !important;
+    color: var(--text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+    margin-bottom: 2px !important;
+  }
+
+  .batch-mobile-stat .stat-value {
+    font-size: 0.84rem !important;
+    font-weight: 800 !important;
+    font-family: var(--font-mono) !important;
+    color: var(--text-title) !important;
+    line-height: 1.1 !important;
+  }
+
+  .batch-mobile-stat .stat-value.val-cost {
+    color: var(--text-title) !important;
+  }
+
+  .batch-mobile-stat .stat-value.val-profit {
+    color: #16a34a !important;
+  }
+
+  [data-theme="dark"] .batch-mobile-stat .stat-value.val-profit {
+    color: #4ade80 !important;
+  }
+
+  .supplier-header-breakdown-row.show-mobile {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+    margin-top: 3px !important;
+    box-sizing: border-box !important;
   }
 
   .badge-supplier-tag {
     font-size: 0.67rem !important;
-    padding: 2px 4px !important;
+    padding: 2px 5px !important;
     white-space: nowrap !important;
   }
 
@@ -2422,6 +2622,11 @@ body.auth-checking .container-fluid {
     white-space: normal !important;
     font-size: 0.67rem !important;
     line-height: 1.25 !important;
+  }
+
+  /* Safe Area para barra de navegación Safari en iPhone */
+  .spreadsheet-container {
+    padding-bottom: 85px !important;
   }
 }
 
@@ -2899,16 +3104,26 @@ body.auth-checking .container-fluid {
     display: none !important;
   }
   .show-mobile {
-    display: inline !important;
+    display: inline-flex !important;
+  }
+
+  /* Tarjetas redondeadas e independientes para cada lote en móvil */
+  .spreadsheet-table tr.tr-supplier-header td {
+    padding: 3px 3px !important;
+    border-right: none !important;
+    background: transparent !important;
   }
 
   .supplier-header-content {
-    padding: 6px 6px !important;
-    gap: 4px !important;
+    padding: 8px 8px !important;
+    gap: 5px !important;
     box-sizing: border-box !important;
     width: 100% !important;
     max-width: 100% !important;
     overflow-x: hidden !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
   }
 
   .supplier-header-top {
@@ -2922,8 +3137,8 @@ body.auth-checking .container-fluid {
   }
 
   .supplier-header-title {
-    gap: 4px !important;
-    font-size: 0.76rem !important;
+    gap: 5px !important;
+    font-size: 0.78rem !important;
     flex-wrap: nowrap !important;
     min-width: 0 !important;
     overflow: hidden !important;
@@ -2953,22 +3168,89 @@ body.auth-checking .container-fluid {
   }
 
   .btn-toggle-batch {
-    padding: 3px 6px !important;
-    font-size: 0.70rem !important;
+    padding: 3px 8px !important;
+    min-height: 28px !important;
+    border-radius: 14px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
   }
 
-  .supplier-header-badges {
-    display: flex !important;
-    flex-wrap: wrap !important;
+  .check-tuesday-label {
+    padding: 3px 7px !important;
+    min-height: 28px !important;
+    border-radius: 14px !important;
+    font-size: 0.70rem !important;
     gap: 3px !important;
+  }
+
+  /* Grid financiero móvil estructurado de 3 columnas */
+  .batch-mobile-summary-grid.show-mobile {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 4px !important;
+    margin: 6px 0 3px 0 !important;
+    padding: 6px 4px !important;
+    background: rgba(0, 0, 0, 0.26) !important;
+    border-radius: var(--radius-sm) !important;
+    border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    text-align: center !important;
     box-sizing: border-box !important;
-    width: 100% !important;
-    max-width: 100% !important;
+  }
+
+  [data-theme="light"] .batch-mobile-summary-grid.show-mobile {
+    background: rgba(0, 0, 0, 0.04) !important;
+    border-color: rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .batch-mobile-stat {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1px 0 !important;
+  }
+
+  .batch-mobile-stat .stat-label {
+    font-size: 0.62rem !important;
+    font-weight: 700 !important;
+    color: var(--text-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+    margin-bottom: 2px !important;
+  }
+
+  .batch-mobile-stat .stat-value {
+    font-size: 0.84rem !important;
+    font-weight: 800 !important;
+    font-family: var(--font-mono) !important;
+    color: var(--text-title) !important;
+    line-height: 1.1 !important;
+  }
+
+  .batch-mobile-stat .stat-value.val-cost {
+    color: var(--text-title) !important;
+  }
+
+  .batch-mobile-stat .stat-value.val-profit {
+    color: #16a34a !important;
+  }
+
+  [data-theme="dark"] .batch-mobile-stat .stat-value.val-profit {
+    color: #4ade80 !important;
+  }
+
+  .supplier-header-breakdown-row.show-mobile {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-wrap: wrap !important;
+    margin-top: 3px !important;
+    box-sizing: border-box !important;
   }
 
   .badge-supplier-tag {
     font-size: 0.67rem !important;
-    padding: 2px 4px !important;
+    padding: 2px 5px !important;
     white-space: nowrap !important;
   }
 
@@ -2977,6 +3259,11 @@ body.auth-checking .container-fluid {
     white-space: normal !important;
     font-size: 0.67rem !important;
     line-height: 1.25 !important;
+  }
+
+  /* Safe Area para barra de navegación Safari en iPhone */
+  .spreadsheet-container {
+    padding-bottom: 85px !important;
   }
 }
 

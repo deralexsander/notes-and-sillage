@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css?v=20261117_batch_modal">
+  <link rel="stylesheet" href="css/ventas.css?v=20261118_section_dividers">
   <script>
     (function() {
       try {
@@ -245,10 +245,6 @@
               <span class="hide-mobile">Pagado</span>
               <span class="show-mobile">Pag</span>
             </th>
-            <th class="th-confirmed" title="¿Pago interno realizado?">
-              <span class="hide-mobile">Pago Int.</span>
-              <span class="show-mobile">Int</span>
-            </th>
             <th class="th-action" title="Editar venta o eliminar">
               <span class="hide-mobile">Editar</span>
               <span class="show-mobile"><i data-lucide="edit-3" style="width: 12px; height: 12px;"></i></span>
@@ -426,15 +422,11 @@
             </div>
           </div>
 
-          <!-- Checks de Pagado y Pago Interno -->
+          <!-- Check de Pagado -->
           <div class="modal-checks-bar">
             <label class="checkbox-label">
               <input type="checkbox" id="manualPaid" checked>
-              <span>¿Pagado? (True)</span>
-            </label>
-            <label class="checkbox-label">
-              <input type="checkbox" id="manualConfirmed" checked>
-              <span>¿Pago Interno? (True)</span>
+              <span>¿Pagado por cliente? (True)</span>
             </label>
           </div>
 
@@ -710,6 +702,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
   <script type="module" src="js/firebase-config.js?v=20261118_fuzzy_search"></script>
-  <script type="module" src="js/ventas.js?v=20261118_fuzzy_search"></script>
+  <script type="module" src="js/ventas.js?v=20261118_section_dividers"></script>
 </body>
 </html>

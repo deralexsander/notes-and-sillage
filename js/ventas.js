@@ -574,7 +574,7 @@ async function initCatalog() {
 async function loadSales() {
   try {
     const isMobile = window.innerWidth <= 768;
-    const initialColspan = isMobile ? 7 : 16;
+    const initialColspan = isMobile ? 6 : 15;
     tableBody.innerHTML = `<tr><td colspan="${initialColspan}" style="text-align:center; padding:35px; color:var(--text-muted);"><i data-lucide="loader" class="spin"></i> Sincronizando ventas desde Firestore...</td></tr>`;
     if (window.lucide) lucide.createIcons();
 
@@ -671,7 +671,7 @@ async function loadSales() {
     } catch (e) {}
   } catch (err) {
     console.error("Error al cargar ventas:", err);
-    const errColspan = (window.innerWidth <= 768) ? 7 : 16;
+    const errColspan = (window.innerWidth <= 768) ? 6 : 15;
     tableBody.innerHTML = `<tr><td colspan="${errColspan}" style="text-align:center; padding:30px; color:#ef4444;">Error al consultar Firestore: ${err.message}</td></tr>`;
   }
 }
@@ -1004,9 +1004,6 @@ function renderTableRow(row, rowNum, isPending) {
       <td class="cell-check td-paid">
         <input type="checkbox" class="table-checkbox" data-action="toggle-paid" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.pagado ? "checked" : ""} title="${row.pagado ? "Pagado (True)" : "Pendiente de pago (False)"}">
       </td>
-      <td class="cell-check td-confirmed">
-        <input type="checkbox" class="table-checkbox check-confirmed" data-action="toggle-confirmed" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.confirmado ? "checked" : ""} title="${row.confirmado ? "Pago Interno (True)" : "Sin pago interno (False)"}">
-      </td>
       <td class="td-action" style="text-align: center; white-space: nowrap;">
         ${isUnpaidViewActive ? `
           <button type="button" class="btn-mark-paid-direct" data-action="mark-paid-direct" data-sale-id="${row.saleId}" data-code="${row.code}" title="Marcar como pagado y retirar de faltantes">
@@ -1033,7 +1030,7 @@ function renderTable(rows) {
   emptyState.hidden = true;
 
   const isMobileScreen = window.innerWidth <= 768;
-  const headerColspan = isMobileScreen ? 7 : 16;
+  const headerColspan = isMobileScreen ? 6 : 15;
 
   // Si estamos en la vista de Faltantes por Pagar
   if (isUnpaidViewActive) {
@@ -1101,20 +1098,29 @@ function renderTable(rows) {
     const progressShipping = Math.min(100, Math.round((pendingCost / minShipping) * 100));
     const isPendingCollapsed = collapsedSupplierBatches.has("PENDIENTE");
     const shippingTag = diffShipping > 0
-      ? `<span class="badge-supplier-tag tag-shipping-pending" title="Meta para envío gratis: ${formatCLP(minShipping)} (Si no se alcanza, costo de envío: ${formatCLP(shippingFeeAmt)})">
+      ? `<span class="badge-supplier-tag tag-shipping-pending" title="Meta para envío gratis: ${formatCLP(minShipping)} (Falta: ${formatCLP(diffShipping)} - ${progressShipping}%. Flete: ${formatCLP(shippingFeeAmt)})" data-action="show-shipping-info" data-shipping-info="🚚 Falta ${formatCLP(diffShipping)} para envío gratis (Meta: ${formatCLP(minShipping)}). Flete: ${formatCLP(shippingFeeAmt)}" style="cursor: pointer;">
            <i data-lucide="truck" style="width: 13px; height: 13px;"></i>
-           <span class="hide-mobile">Falta para envío gratis: </span>
-           <span class="show-mobile">Falta envío: </span>
-           <strong>${formatCLP(diffShipping)}</strong> (${progressShipping}%)
-           <span style="opacity: 0.85; margin-left: 3px;">(Flete: ${formatCLP(shippingFeeAmt)})</span>
+           <span class="hide-mobile">Falta para envío gratis: <strong>${formatCLP(diffShipping)}</strong> (${progressShipping}%)</span>
          </span>`
-      : `<span class="badge-supplier-tag tag-shipping-reached" title="¡Meta de envío gratis superada!">
+      : `<span class="badge-supplier-tag tag-shipping-reached" title="¡Meta de envío gratis superada! (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})" data-action="show-shipping-info" data-shipping-info="🎉 ¡Envío gratis alcanzado! (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})" style="cursor: pointer;">
            <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
            <span class="hide-mobile">¡Envío gratis alcanzado! 🎉 (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})</span>
-           <span class="show-mobile">¡Envío gratis! 🎉</span>
          </span>`;
 
     html += `
+      <tr class="tr-batches-section-divider section-pending">
+        <td colspan="${headerColspan}">
+          <div class="batches-section-divider-content">
+            <span class="batches-divider-line line-pending"></span>
+            <div class="batches-divider-badge badge-pending">
+              <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+              <span>Por Pedir al Proveedor</span>
+              <span class="batches-count-pill pill-pending">${pendingUnits} un.</span>
+            </div>
+            <span class="batches-divider-line line-pending"></span>
+          </div>
+        </td>
+      </tr>
       <tr class="tr-supplier-header group-pending" data-batch-key="PENDIENTE">
         <td colspan="${headerColspan}">
           <div class="supplier-header-content">
@@ -1126,10 +1132,11 @@ function renderTable(rows) {
                 <strong style="color: #b45309; font-size: 0.90rem;">PENDIENTES</strong>
                 <span class="badge-supplier-tag badge-units" style="background: rgba(245, 158, 11, 0.2); color: #b45309;">
                   <span class="hide-mobile">${pendingUnits} perfumes (${pendingRows.length} líneas)</span>
-                  <span class="show-mobile">${pendingUnits} perfumes</span>
+                  <span class="show-mobile">${pendingUnits} un.</span>
                 </span>
               </div>
               <div class="supplier-header-actions">
+                ${shippingTag}
                 <button type="button" class="btn-create-supplier-batch" id="btnOpenBatchModal" title="Abrir resumen y preparar pedido al proveedor">
                   <i data-lucide="package-plus" style="width: 14px; height: 14px;"></i>
                   <span class="hide-mobile">Pasar a Pedido Proveedor</span>
@@ -1141,7 +1148,25 @@ function renderTable(rows) {
                 </button>
               </div>
             </div>
-            <div class="supplier-header-badges">
+
+            <!-- Vista Móvil: Mini tarjeta de 3 columnas limpias -->
+            <div class="batch-mobile-summary-grid show-mobile">
+              <div class="batch-mobile-stat">
+                <span class="stat-label">Venta</span>
+                <span class="stat-value">${formatCLP(pendingSale)}</span>
+              </div>
+              <div class="batch-mobile-stat">
+                <span class="stat-label">Costo Est.</span>
+                <span class="stat-value val-cost">${formatCLP(pendingCost)}</span>
+              </div>
+              <div class="batch-mobile-stat stat-highlight">
+                <span class="stat-label">Ganancia</span>
+                <span class="stat-value val-profit">${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}</span>
+              </div>
+            </div>
+
+            <!-- Vista Desktop: Fila horizontal de insignias -->
+            <div class="supplier-header-badges hide-mobile">
               <span class="badge-supplier-tag tag-cost" title="Costo estimado a pagar al proveedor">
                 Costo: ${formatCLP(pendingCost)}
               </span>
@@ -1149,9 +1174,7 @@ function renderTable(rows) {
                 Venta: ${formatCLP(pendingSale)}
               </span>
               <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Costo)">
-                <span class="hide-mobile">Ganancia Real: </span>
-                <span class="show-mobile">Gan: </span>
-                ${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}
+                Ganancia Real: ${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}
               </span>
               ${shippingTag}
             </div>
@@ -1163,9 +1186,9 @@ function renderTable(rows) {
     pendingRows.forEach(r => {
       let rHtml = renderTableRow(r, overallIndex--, true);
       if (isPendingCollapsed) {
-        rHtml = rHtml.replace('<tr ', '<tr data-batch-row="PENDIENTE" class="batch-collapsed-row" ');
+        rHtml = rHtml.replace('<tr ', '<tr data-batch-row="PENDIENTE" class="batch-collapsed-row row-pending-item" ');
       } else {
-        rHtml = rHtml.replace('<tr ', '<tr data-batch-row="PENDIENTE" ');
+        rHtml = rHtml.replace('<tr ', '<tr data-batch-row="PENDIENTE" class="row-pending-item" ');
       }
       html += rHtml;
     });
@@ -1173,6 +1196,25 @@ function renderTable(rows) {
 
   // 2. Grupos de Lotes de Pedidos Proveedor (Ordenados por fecha descendente)
   const sortedBatchKeys = Object.keys(orderedBatches).sort((a, b) => b.localeCompare(a));
+
+  // Separador de sección entre Pendientes y Pedidos Realizados
+  if (sortedBatchKeys.length > 0) {
+    html += `
+      <tr class="tr-batches-section-divider">
+        <td colspan="${headerColspan}">
+          <div class="batches-section-divider-content">
+            <span class="batches-divider-line"></span>
+            <div class="batches-divider-badge">
+              <i data-lucide="package-check" style="width: 15px; height: 15px;"></i>
+              <span>Pedidos al Proveedor</span>
+              <span class="batches-count-pill">${sortedBatchKeys.length} lotes</span>
+            </div>
+            <span class="batches-divider-line"></span>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
 
   sortedBatchKeys.forEach(batchKey => {
     const batchObj = orderedBatches[batchKey];
@@ -1206,21 +1248,19 @@ function renderTable(rows) {
                 <span class="supplier-status-icon ordered-icon">
                   <i data-lucide="package-check" style="width: 15px; height: 15px;"></i>
                 </span>
-                <strong style="color: var(--text-title); font-size: 0.90rem;">${bTitle}</strong>
+                <strong class="hide-mobile" style="color: var(--text-title); font-size: 0.90rem;">${bTitle}</strong>
                 <span class="badge-supplier-tag badge-units">
                   <span class="hide-mobile">${bUnits} perfumes (${bRows.length} líneas)</span>
-                  <span class="show-mobile">${bUnits} perfumes</span>
+                  <span class="show-mobile">${bUnits} un.</span>
                 </span>
               </div>
               <div class="supplier-header-actions">
-                <label class="check-tuesday-label" title="Activar/desactivar descuento del ${discountPct}% para compras realizadas en día martes">
-                  <input type="checkbox" class="check-tuesday-toggle" data-batch-key="${batchKey}" ${isTuesdayDiscountActive ? "checked" : ""}>
-                  <span>Martes (-${discountPct}%)</span>
-                </label>
-                <span class="badge-supplier-tag tag-locked">
-                  <i data-lucide="lock" style="width: 12px; height: 12px;"></i>
-                  <span class="hide-mobile">Pedido Cerrado</span>
-                  <span class="show-mobile">Cerrado</span>
+                <a href="pedidos.html?batch=${batchKey}" class="badge-supplier-tag" style="text-decoration: none; color: var(--gold-primary); display: inline-flex; align-items: center; gap: 3px;" title="Ver en Historial de Pedidos">
+                  <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+                  <span class="hide-mobile">Historial</span>
+                </a>
+                <span class="badge-supplier-tag tag-locked" title="Pedido Cerrado">
+                  <i data-lucide="lock" style="width: 13px; height: 13px;"></i>
                 </span>
                 <button type="button" class="btn-toggle-batch" data-action="toggle-batch-collapse" data-batch-key="${batchKey}">
                   <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
@@ -1228,7 +1268,25 @@ function renderTable(rows) {
                 </button>
               </div>
             </div>
-            <div class="supplier-header-badges">
+
+            <!-- Vista Móvil: Mini tarjeta de 3 columnas limpias -->
+            <div class="batch-mobile-summary-grid show-mobile">
+              <div class="batch-mobile-stat">
+                <span class="stat-label">Venta</span>
+                <span class="stat-value">${formatCLP(bSale)}</span>
+              </div>
+              <div class="batch-mobile-stat">
+                <span class="stat-label">Total Prov</span>
+                <span class="stat-value val-cost">${formatCLP(totalCostoFinal)}</span>
+              </div>
+              <div class="batch-mobile-stat stat-highlight">
+                <span class="stat-label">Ganancia</span>
+                <span class="stat-value val-profit">${bProfit > 0 ? '+' : ''}${formatCLP(bProfit)}</span>
+              </div>
+            </div>
+
+            <!-- Vista Desktop: Barra horizontal completa -->
+            <div class="supplier-header-badges hide-mobile">
               <span class="badge-supplier-tag tag-cost" title="Costo base de los perfumes según catálogo">
                 Costo Prod: ${formatCLP(bCost)}
               </span>
@@ -1257,14 +1315,11 @@ function renderTable(rows) {
                 Venta: ${formatCLP(bSale)}
               </span>
               <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Total Proveedor)">
-                <span class="hide-mobile">Ganancia Real: </span>
-                <span class="show-mobile">Gan: </span>
-                ${bProfit > 0 ? '+' : ''}${formatCLP(bProfit)}
+                Ganancia Real: ${bProfit > 0 ? '+' : ''}${formatCLP(bProfit)}
               </span>
-              <a href="pedidos.html" class="badge-supplier-tag" style="text-decoration: none; color: var(--gold-primary); display: inline-flex; align-items: center; gap: 4px;" title="Ver detalle completo del comprobante en Historial de Pedidos">
+              <a href="pedidos.html?batch=${batchKey}" class="badge-supplier-tag" style="text-decoration: none; color: var(--gold-primary); display: inline-flex; align-items: center; gap: 4px;" title="Ver detalle completo del comprobante en Historial de Pedidos">
                 <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
-                <span class="hide-mobile">Ver en Historial</span>
-                <span class="show-mobile">Historial</span>
+                Ver en Historial
               </a>
             </div>
           </div>
@@ -1835,6 +1890,27 @@ function initAnalyticsControls() {
     if (e.key === "notes_theme" && allSaleRows && allSaleRows.length > 0) {
       renderAnalyticsDashboard(allSaleRows);
     }
+    if (e.key === "notes_tuesday_batches" || e.key === "notes_sales_updated") {
+      const fresh = getSavedTuesdayBatches();
+      tuesdayBatches.clear();
+      fresh.forEach(k => tuesdayBatches.add(k));
+      applyFilters();
+    }
+  });
+
+  window.addEventListener("focus", () => {
+    const fresh = getSavedTuesdayBatches();
+    let hasChanged = fresh.size !== tuesdayBatches.size;
+    if (!hasChanged) {
+      for (const k of fresh) {
+        if (!tuesdayBatches.has(k)) { hasChanged = true; break; }
+      }
+    }
+    if (hasChanged) {
+      tuesdayBatches.clear();
+      fresh.forEach(k => tuesdayBatches.add(k));
+      applyFilters();
+    }
   });
 }
 
@@ -2100,6 +2176,14 @@ document.addEventListener("click", event => {
   const modalEl = document.getElementById("modalSupplierBatch");
   if (modalEl) modalEl.hidden = false;
   if (window.lucide) lucide.createIcons();
+});
+
+// Mostrar detalle de flete y envío gratis al hacer clic/tap en la insignia móvil
+document.addEventListener("click", event => {
+  const badge = event.target.closest('[data-action="show-shipping-info"]');
+  if (!badge) return;
+  const msg = badge.dataset.shippingInfo;
+  if (msg) showToast(msg);
 });
 
 // Listener de cambio de fecha en el modal de pedido proveedor para auto-detectar martes
@@ -2577,6 +2661,14 @@ document.addEventListener("click", event => {
   if (window.lucide) lucide.createIcons();
 });
 
+// Mostrar detalle de flete y envío gratis al hacer clic/tap en la insignia móvil
+document.addEventListener("click", event => {
+  const badge = event.target.closest('[data-action="show-shipping-info"]');
+  if (!badge) return;
+  const msg = badge.dataset.shippingInfo;
+  if (msg) showToast(msg);
+});
+
 // Toggle descuento martes en un lote
 document.addEventListener("change", event => {
   const toggle = event.target.closest(".check-tuesday-toggle");
@@ -2604,7 +2696,7 @@ function exportToCSV() {
     return;
   }
 
-  const headers = ["Fecha", "Código", "Fragancia", "Formato", "Cantidad", "Cliente", "Teléfono", "Institución", "Precio Venta", "Costo", "Ganancia", "Estado", "Pagado", "Pago Interno"];
+  const headers = ["Fecha", "Código", "Fragancia", "Formato", "Cantidad", "Cliente", "Teléfono", "Institución", "Precio Venta", "Costo", "Ganancia", "Estado", "Pagado"];
   const csvRows = [headers.join(";")];
 
   filtered.forEach(r => {
@@ -2621,8 +2713,7 @@ function exportToCSV() {
       r.costo,
       r.ganancia,
       `"${r.estado}"`,
-      r.pagado ? "TRUE" : "FALSE",
-      r.confirmado ? "TRUE" : "FALSE"
+      r.pagado ? "TRUE" : "FALSE"
     ];
     csvRows.push(rowData.join(";"));
   });
@@ -2890,7 +2981,7 @@ function openNewSaleModal() {
   manualQty.value = "1";
   manualStatus.value = "Entregado";
   manualPaid.checked = true;
-  manualConfirmed.checked = true;
+  if (manualConfirmed) manualConfirmed.checked = true;
   if (manualAtCost) manualAtCost.checked = false;
   if (manualZeroCost) manualZeroCost.checked = false;
   if (manualClientGift) manualClientGift.checked = false;
@@ -2968,7 +3059,7 @@ function openEditSaleModal(saleId, code) {
   manualQty.value = row.qty || 1;
   manualStatus.value = row.estado || "Entregado";
   manualPaid.checked = Boolean(row.pagado);
-  manualConfirmed.checked = Boolean(row.confirmado);
+  if (manualConfirmed) manualConfirmed.checked = Boolean(row.confirmado);
 
   const unitPriceFromRow = (row.qty > 0) ? Math.round(row.precioVenta / row.qty) : row.precioVenta;
   const unitCostFromRow = (row.qty > 0) ? Math.round(row.costo / row.qty) : row.costo;
@@ -3240,8 +3331,8 @@ newSaleForm.addEventListener("submit", async e => {
   const size = manualSizeSelect.value;
   const qty = parseInt(document.getElementById("manualQty").value, 10) || 1;
   const estado = document.getElementById("manualStatus").value;
-  const pagado = document.getElementById("manualPaid").checked;
-  const confirmado = document.getElementById("manualConfirmed").checked;
+  const pagado = document.getElementById("manualPaid")?.checked || false;
+  const confirmado = document.getElementById("manualConfirmed")?.checked || true;
 
   if (!customerName) {
     alert("Por favor ingresa el nombre del cliente.");

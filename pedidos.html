@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Historial y Control de Pedidos | Notes & Sillage</title>
-  <meta name="description" content="Historial completo de pedidos al proveedor, agrupaciones por mes y análisis consolidado de productos en Notes & Sillage.">
+  <title>Historial Pedidos | Notes & Sillage</title>
+  <meta name="description" content="Historial completo de pedidos al proveedor en Notes & Sillage.">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
   
   <!-- Estilos del Sistema -->
-  <link rel="stylesheet" href="css/ventas.css?v=20261108_02">
-  <link rel="stylesheet" href="css/pedidos.css?v=20261108_01">
+  <link rel="stylesheet" href="css/ventas.css?v=20261118_mobile_ui">
+  <link rel="stylesheet" href="css/pedidos.css?v=20261118_breakdown_check">
   
   <!-- Script para mantener tema oscuro o claro antes de pintar -->
   <script>
@@ -35,12 +35,7 @@
           <img src="img/logo-notes-and-sillage-hd.webp" alt="Notes & Sillage" class="brand-logo" onerror="this.src='favicon.ico'">
         </a>
         <div class="brand-title">
-          <h1 style="display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
-            <span>Historial y Agrupación de Pedidos</span>
-            <span class="pedidos-header-badge">
-              <i data-lucide="package-check" style="width: 14px; height: 14px;"></i> Parfums
-            </span>
-          </h1>
+          <h1>Historial Pedidos</h1>
         </div>
       </div>
       <div class="header-actions">
@@ -56,86 +51,74 @@
       </div>
     </header>
 
-    <!-- Barra de Métricas Globales -->
-    <section class="summary-metrics-bar">
-      <div class="metric-item">
-        <span class="metric-label">Inversión Total en Pedidos</span>
-        <span class="metric-value highlight-green" id="kpiTotalInversion">$0</span>
+    <!-- Sección de Métricas de Pedidos (Colapsable con la misma lógica que Ventas) -->
+    <section class="analytics-dashboard-section" id="pedidosKpiSection">
+      <div class="analytics-header">
+        <div class="analytics-header-title">
+          <div class="analytics-title-wrap">
+            <span class="analytics-icon-badge">
+              <i data-lucide="bar-chart-3" aria-hidden="true"></i>
+            </span>
+            <div>
+              <h2 class="analytics-title">Métricas de Pedidos</h2>
+              <p class="analytics-subtitle">Inversión acumulada, compras al proveedor y total de fragancias</p>
+            </div>
+          </div>
+        </div>
+        <div class="analytics-header-actions">
+          <button type="button" id="btnTogglePedidosKpi" class="btn-analytics-toggle" title="Mostrar u ocultar métricas" aria-expanded="true">
+            <span id="btnTogglePedidosKpiText">Ocultar métricas</span>
+            <i data-lucide="chevron-up" id="iconTogglePedidosKpi" aria-hidden="true"></i>
+          </button>
+        </div>
       </div>
-      <div class="metric-divider"></div>
-      <div class="metric-item">
-        <span class="metric-label">Pedidos Realizados</span>
-        <span class="metric-value" id="kpiTotalPedidos">0</span>
-      </div>
-      <div class="metric-divider"></div>
-      <div class="metric-item">
-        <span class="metric-label">Productos Solicitados</span>
-        <span class="metric-value" id="kpiTotalUnidades">0 un.</span>
-      </div>
-      <div class="metric-divider"></div>
-      <div class="metric-item">
-        <span class="metric-label">Regalos del Proveedor</span>
-        <span class="metric-value" style="color: #9333ea;" id="kpiTotalRegalos">0 un. ($0)</span>
-      </div>
-      <div class="metric-divider"></div>
-      <div class="metric-item">
-        <span class="metric-label">Inversión Media x Pedido</span>
-        <span class="metric-value" id="kpiPromedioPedido">$0</span>
+
+      <div class="analytics-body" id="pedidosKpiBody">
+        <div class="summary-metrics-bar" id="summaryMetricsBar">
+          <div class="metric-item">
+            <span class="metric-label">Inversión Total en Pedidos</span>
+            <span class="metric-value highlight-green" id="kpiTotalInversion">$0</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">Pedidos Realizados</span>
+            <span class="metric-value" id="kpiTotalPedidos">0</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">Productos Solicitados</span>
+            <span class="metric-value" id="kpiTotalUnidades">0 un.</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">Regalos del Proveedor</span>
+            <span class="metric-value" style="color: #9333ea;" id="kpiTotalRegalos">0 un. ($0)</span>
+          </div>
+          <div class="metric-divider"></div>
+          <div class="metric-item">
+            <span class="metric-label">Inversión Media x Pedido</span>
+            <span class="metric-value" id="kpiPromedioPedido">$0</span>
+          </div>
+        </div>
       </div>
     </section>
 
-    <!-- Barra de Herramientas y Filtros -->
-    <section class="pedidos-toolbar">
-      <!-- Filtros Rápidos por Mes -->
-      <div class="month-filter-group" id="monthFilterChips">
-        <button type="button" class="filter-chip-btn is-active" data-month-filter="ALL">
-          <i data-lucide="layers" style="width: 14px; height: 14px;"></i>
-          <span>Todos los Pedidos</span>
-          <span class="filter-chip-count">6</span>
-        </button>
-        <button type="button" class="filter-chip-btn" data-month-filter="2026-10">
-          <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
-          <span>Octubre 2026</span>
-          <span class="filter-chip-count">5</span>
-        </button>
-        <button type="button" class="filter-chip-btn" data-month-filter="2026-11">
-          <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
-          <span>Noviembre 2026</span>
-          <span class="filter-chip-count">1</span>
-        </button>
-      </div>
-
-      <!-- Selector de Modo de Vista -->
-      <div class="view-mode-selector">
-        <button type="button" class="view-mode-btn is-active" id="viewModeOrders" title="Ver lista de pedidos agrupados por mes">
-          <i data-lucide="list-ordered" style="width: 16px; height: 16px;"></i>
-          <span>Vista por Pedidos</span>
-        </button>
-        <button type="button" class="view-mode-btn" id="viewModeProducts" title="Ver consolidado total de fragancias y stock pedido">
-          <i data-lucide="boxes" style="width: 16px; height: 16px;"></i>
-          <span>Vista por Producto</span>
-        </button>
-      </div>
-
-      <!-- Buscador en tiempo real -->
-      <div class="search-box-wrapper">
-        <i data-lucide="search" style="width: 16px; height: 16px;"></i>
-        <input type="text" id="searchPedidosInput" class="search-box-input" placeholder="Buscar por código (ej. F-57), perfume (Sauvage), tamaño o estado..." autocomplete="off">
-      </div>
+    <!-- Filtros Rápidos por Mes -->
+    <section class="pedidos-toolbar" style="margin-top: 12px; margin-bottom: 20px;">
+      <div class="month-filter-group" id="monthFilterChips"></div>
     </section>
 
-    <!-- Contenedor Principal: Vista 1 (Por Pedidos / Meses) -->
+    <!-- Contenedor Principal: Historial de Pedidos por Mes -->
     <main id="containerOrdersView"></main>
-
-    <!-- Contenedor Principal: Vista 2 (Por Producto Consolidado) -->
-    <main id="containerProductsView" hidden></main>
   </div>
 
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Dataset de Pedidos -->
-  <script src="js/pedidos-data.js?v=20261108_01"></script>
-  <!-- Lógica de la Página -->
-  <script src="js/pedidos.js?v=20261108_01"></script>
+  <!-- Dataset de Pedidos Base -->
+  <script src="js/pedidos-data.js?v=20261118_01"></script>
+  <!-- Firebase Config (Firestore & Auth) -->
+  <script type="module" src="js/firebase-config.js?v=20261118_pedidos_sync"></script>
+  <!-- Lógica y Sincronización en Vivo de Pedidos -->
+  <script type="module" src="js/pedidos.js?v=20261118_breakdown_check"></script>
 </body>
 </html>
