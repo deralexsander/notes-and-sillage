@@ -242,8 +242,8 @@
 
 .badge-movement-type svg,
 .badge-movement-type i {
-  width: 12px;
-  height: 12px;
+  width: 1.1em;
+  height: 1.1em;
 }
 
 .badge-type-retiro {
@@ -372,8 +372,8 @@
 
 .gastos-search-icon svg,
 .gastos-search-icon i {
-  width: 15px;
-  height: 15px;
+  width: 1.15em;
+  height: 1.15em;
 }
 
 .gastos-actions-group {
@@ -610,8 +610,8 @@
 
   .header-actions .btn-secondary svg,
   .header-actions .btn-secondary i {
-    width: 13px;
-    height: 13px;
+    width: 1.15em;
+    height: 1.15em;
   }
 
   /* Métricas Globales: Grid 2x2 + 1 Hero Card Full Width */

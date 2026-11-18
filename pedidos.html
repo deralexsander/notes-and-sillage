@@ -9,8 +9,8 @@
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
   
   <!-- Estilos del Sistema -->
-  <link rel="stylesheet" href="css/ventas.css?v=20261118_mobile_ui">
-  <link rel="stylesheet" href="css/pedidos.css?v=20261118_breakdown_check">
+  <link rel="stylesheet" href="css/ventas.css?v=20261118_font_and_icons_scale">
+  <link rel="stylesheet" href="css/pedidos.css?v=20261118_font_and_icons_scale">
   
   <!-- Script para mantener tema oscuro o claro y tamaño de letra antes de pintar -->
   <script>
@@ -50,9 +50,9 @@
         <a href="gastos.html" class="btn-secondary" title="Control de gastos, retiros de ganancias y liquidación mensual">
           <i data-lucide="wallet" aria-hidden="true"></i> Gastos y Balance
         </a>
-        <a href="ventas.html?config=settings" class="btn-secondary btn-header-icon" title="Ajustes, Configuración y Salir">
+        <button type="button" id="btnOpenSettingsModal" class="btn-secondary btn-header-icon" title="Ajustes, Configuración y Salir">
           <i data-lucide="settings" aria-hidden="true"></i>
-        </a>
+        </button>
       </div>
     </header>
 
@@ -123,6 +123,8 @@
   <script src="js/pedidos-data.js?v=20261118_01"></script>
   <!-- Firebase Config (Firestore & Auth) -->
   <script type="module" src="js/firebase-config.js?v=20261118_pedidos_sync"></script>
+  <!-- Modal unificado de Ajustes y Tamaño de Letra -->
+  <script type="module" src="js/settings-modal.js?v=20261118_font_and_icons_scale"></script>
   <!-- Lógica y Sincronización en Vivo de Pedidos -->
   <script type="module" src="js/pedidos.js?v=20261118_responsive_collapse"></script>
 </body>

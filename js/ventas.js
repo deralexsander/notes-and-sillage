@@ -1185,7 +1185,7 @@ function renderTableRow(row, rowNum, isPending) {
       </td>
       <td class="cell-check td-paid">
         <button type="button" class="btn-pay-status ${row.pagado ? 'status-paid' : (hasAbono ? 'status-partial' : 'status-unpaid')}" data-action="open-payment-modal" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr} title="${row.pagado ? 'Pagado al 100% (Click para editar o gestionar cuotas)' : (hasAbono ? 'Abono: ' + formatCLP(row.montoPagado) + ' (Resta: ' + formatCLP(row.saldoPendiente) + ')' : 'Pendiente de pago (Click para pagar o abonar)')}">
-          <i data-lucide="${row.pagado ? 'check' : (hasAbono ? 'clock' : 'circle')}" style="width: 13px; height: 13px;"></i>
+          <i data-lucide="${row.pagado ? 'check' : (hasAbono ? 'clock' : 'circle')}"></i>
         </button>
       </td>
       ${!isUnpaidViewActive ? `
@@ -1315,7 +1315,7 @@ function renderTable(rows) {
           <div class="batches-section-divider-content">
             <span class="batches-divider-line line-pending"></span>
             <div class="batches-divider-badge badge-pending">
-              <i data-lucide="clock" style="width: 14px; height: 14px;"></i>
+              <i data-lucide="clock"></i>
               <span>Por Pedir al Proveedor</span>
               <span class="batches-count-pill pill-pending">${pendingUnits} un.</span>
             </div>
@@ -1329,7 +1329,7 @@ function renderTable(rows) {
             <div class="supplier-header-top">
               <div class="supplier-header-title">
                 <span class="supplier-status-icon pending-icon">
-                  <i data-lucide="clock" style="width: 15px; height: 15px;"></i>
+                  <i data-lucide="clock"></i>
                 </span>
                 <strong style="color: #b45309; font-size: 0.90rem;">PENDIENTES</strong>
                 <span class="badge-supplier-tag badge-units" style="background: rgba(245, 158, 11, 0.2); color: #b45309;">
@@ -1339,11 +1339,11 @@ function renderTable(rows) {
               <div class="supplier-header-actions">
                 ${shippingTag}
                 <button type="button" class="btn-create-supplier-batch" id="btnOpenBatchModal" title="Abrir resumen y preparar pedido al proveedor">
-                  <i data-lucide="package-plus" style="width: 14px; height: 14px;"></i>
+                  <i data-lucide="package-plus"></i>
                   <span>Pasar a Pedido</span>
                 </button>
                 <button type="button" class="btn-toggle-batch" data-action="toggle-batch-collapse" data-batch-key="PENDIENTE" title="Contraer o desplegar perfumes pendientes">
-                  <i data-lucide="${isPendingCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
+                  <i data-lucide="${isPendingCollapsed ? 'chevron-right' : 'chevron-down'}"></i>
                   <span>${isPendingCollapsed ? 'Desplegar' : 'Contraer'}</span>
                 </button>
               </div>
@@ -1430,7 +1430,7 @@ function renderTable(rows) {
             <div class="supplier-header-top">
               <div class="supplier-header-title">
                 <span class="supplier-status-icon ordered-icon" title="${escapeAttr(bTitle)}">
-                  <i data-lucide="package-check" style="width: 15px; height: 15px;"></i>
+                  <i data-lucide="package-check"></i>
                 </span>
                 <span class="badge-supplier-tag badge-units">
                   ${bUnits} un.
@@ -1438,13 +1438,13 @@ function renderTable(rows) {
               </div>
               <div class="supplier-header-actions">
                 <a href="pedidos.html?batch=${batchKey}" class="badge-supplier-tag" style="text-decoration: none; color: var(--gold-primary); display: inline-flex; align-items: center; gap: 3px;" title="Ver en Historial de Pedidos">
-                  <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+                  <i data-lucide="external-link"></i>
                 </a>
                 <span class="badge-supplier-tag tag-locked" title="Pedido Cerrado">
-                  <i data-lucide="lock" style="width: 13px; height: 13px;"></i>
+                  <i data-lucide="lock"></i>
                 </span>
                 <button type="button" class="btn-toggle-batch" data-action="toggle-batch-collapse" data-batch-key="${batchKey}">
-                  <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
+                  <i data-lucide="${isCollapsed ? 'chevron-right' : 'chevron-down'}"></i>
                   <span>${isCollapsed ? 'Desplegar' : 'Contraer'}</span>
                 </button>
               </div>

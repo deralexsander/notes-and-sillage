@@ -9,9 +9,9 @@
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
 
   <!-- Estilos del Sistema -->
-  <link rel="stylesheet" href="css/ventas.css?v=20261108_02">
-  <link rel="stylesheet" href="css/pedidos.css?v=20261108_01">
-  <link rel="stylesheet" href="css/gastos.css?v=20261112_02">
+  <link rel="stylesheet" href="css/ventas.css?v=20261118_font_and_icons_scale">
+  <link rel="stylesheet" href="css/pedidos.css?v=20261118_font_and_icons_scale">
+  <link rel="stylesheet" href="css/gastos.css?v=20261118_font_and_icons_scale">
 
   <!-- Restaurar Tema Claro / Oscuro y tamaño de letra antes de pintar -->
   <script>
@@ -57,9 +57,9 @@
         <a href="pedidos.html" class="btn-secondary btn-header-icon" title="Pedidos Proveedor">
           <i data-lucide="package" aria-hidden="true"></i>
         </a>
-        <a href="ventas.html?config=settings" class="btn-secondary btn-header-icon" title="Ajustes, Configuración y Salir">
+        <button type="button" id="btnOpenSettingsModal" class="btn-secondary btn-header-icon" title="Ajustes, Configuración y Salir">
           <i data-lucide="settings" aria-hidden="true"></i>
-        </a>
+        </button>
       </div>
     </header>
 
@@ -369,6 +369,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
   <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/settings-modal.js?v=20261118_font_and_icons_scale"></script>
   <script type="module" src="js/gastos.js"></script>
 </body>
 </html>
