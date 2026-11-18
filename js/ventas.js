@@ -2988,7 +2988,7 @@ try {
   }
 } catch (e) {}
 
-// Pestañas internas de Gastos y Balances
+// Pestañas internas de Gastos, Balances y Tamaño de Letra
 document.addEventListener("click", event => {
   const tabBtn = event.target.closest(".btn-balance-tab");
   if (!tabBtn) return;
@@ -2997,7 +2997,107 @@ document.addEventListener("click", event => {
   document.querySelectorAll(".balance-tab-content").forEach(content => {
     content.hidden = (content.id !== targetId);
   });
+  if (window.lucide) lucide.createIcons();
 });
+
+// ==========================================================================
+// CONTROL DE TAMAÑO DE LETRA EN AJUSTES (LOCALSTORAGE)
+// ==========================================================================
+const FONT_SIZE_STORAGE_KEY = "notes_font_size";
+const FONT_SCALE_STORAGE_KEY = "notes_font_scale";
+
+function getScaleDescription(scale) {
+  if (scale <= 92) return "Pequeño";
+  if (scale <= 105) return "Normal (Predeterminado)";
+  if (scale <= 120) return "Grande (+15%)";
+  if (scale <= 135) return "Muy Grande (+30%)";
+  return "Gigante (+45%)";
+}
+
+function applyAppFontSize(scale, showFeedback = false) {
+  scale = Math.min(150, Math.max(85, Math.round(Number(scale) || 100)));
+  const percentageStr = `${scale}%`;
+  document.documentElement.style.fontSize = percentageStr;
+
+  try {
+    localStorage.setItem(FONT_SIZE_STORAGE_KEY, percentageStr);
+    localStorage.setItem(FONT_SCALE_STORAGE_KEY, String(scale));
+  } catch (e) {}
+
+  const slider = document.getElementById("rangeFontSize");
+  const numDisplay = document.getElementById("txtFontScalePercent");
+  const descDisplay = document.getElementById("txtFontScaleName");
+  const savedPill = document.getElementById("fontSavedIndicator");
+
+  if (slider && Number(slider.value) !== scale) slider.value = scale;
+  if (numDisplay) numDisplay.textContent = percentageStr;
+  if (descDisplay) descDisplay.textContent = getScaleDescription(scale);
+
+  document.querySelectorAll(".btn-font-preset").forEach(btn => {
+    const btnScale = Number(btn.dataset.scale);
+    btn.classList.toggle("is-active", btnScale === scale);
+  });
+
+  if (showFeedback && savedPill) {
+    savedPill.hidden = false;
+    savedPill.style.opacity = "1";
+    clearTimeout(window.__fontSavedTimeout);
+    window.__fontSavedTimeout = setTimeout(() => {
+      savedPill.style.opacity = "0";
+      setTimeout(() => { savedPill.hidden = true; }, 300);
+    }, 2000);
+  }
+}
+
+function initFontSizeControls() {
+  let savedScale = 100;
+  try {
+    const raw = localStorage.getItem(FONT_SCALE_STORAGE_KEY);
+    if (raw) savedScale = Number(raw) || 100;
+  } catch (e) {}
+
+  applyAppFontSize(savedScale, false);
+
+  const slider = document.getElementById("rangeFontSize");
+  if (slider) {
+    slider.addEventListener("input", e => {
+      applyAppFontSize(Number(e.target.value), false);
+    });
+    slider.addEventListener("change", e => {
+      applyAppFontSize(Number(e.target.value), true);
+    });
+  }
+
+  const btnInc = document.getElementById("btnFontInc");
+  if (btnInc) {
+    btnInc.addEventListener("click", () => {
+      const cur = Number(localStorage.getItem(FONT_SCALE_STORAGE_KEY)) || 100;
+      applyAppFontSize(cur + 5, true);
+    });
+  }
+
+  const btnDec = document.getElementById("btnFontDec");
+  if (btnDec) {
+    btnDec.addEventListener("click", () => {
+      const cur = Number(localStorage.getItem(FONT_SCALE_STORAGE_KEY)) || 100;
+      applyAppFontSize(cur - 5, true);
+    });
+  }
+
+  document.addEventListener("click", e => {
+    const presetBtn = e.target.closest(".btn-font-preset");
+    if (presetBtn && presetBtn.dataset.scale) {
+      applyAppFontSize(Number(presetBtn.dataset.scale), true);
+      return;
+    }
+
+    const resetBtn = e.target.closest("#btnResetFontSize");
+    if (resetBtn) {
+      applyAppFontSize(100, true);
+      return;
+    }
+  });
+}
 
 function syncBalancesModalInputs() {
   const cfg = currentBalancesConfig || DEFAULT_BALANCES_CONFIG;
@@ -4302,6 +4402,7 @@ function initVentasTheme() {
 }
 
 initVentasTheme();
+initFontSizeControls();
 
 // Timeout de resguardo: si en 2.5 segundos no hay sesión activa, redirigir al inicio
 const authRedirectTimer = setTimeout(() => {

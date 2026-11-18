@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css?v=20261118_desktop_mobile_parity">
+  <link rel="stylesheet" href="css/ventas.css?v=20261118_font_size_customizer">
   <script>
     (function() {
       try {
@@ -20,6 +20,11 @@
           document.documentElement.setAttribute('data-theme', 'dark');
         } else {
           document.documentElement.removeAttribute('data-theme');
+        }
+
+        var savedFontSize = localStorage.getItem('notes_font_size');
+        if (savedFontSize) {
+          document.documentElement.style.fontSize = savedFontSize;
         }
       } catch(e) {}
     })();
@@ -676,6 +681,9 @@
           <button type="button" class="btn-balance-tab" data-tab="tabBalancesBank">
             <i data-lucide="credit-card" style="width: 14px; height: 14px;"></i> Datos de Cobro
           </button>
+          <button type="button" class="btn-balance-tab" data-tab="tabBalancesFontSize">
+            <i data-lucide="type" style="width: 14px; height: 14px;"></i> Tamaño de Letra
+          </button>
         </div>
 
         <!-- Tab 1: Configuración & Envíos -->
@@ -755,6 +763,104 @@
             </div>
           </form>
         </div>
+
+        <!-- Tab 3: Tamaño de Letra y Visualización -->
+        <div id="tabBalancesFontSize" class="balance-tab-content" hidden>
+          <div class="font-size-settings-box">
+            <div class="font-size-header-info">
+              <h4>
+                <span class="supplier-status-icon ordered-icon" style="width: 24px; height: 24px;">
+                  <i data-lucide="type" style="width: 14px; height: 14px;"></i>
+                </span>
+                Tamaño de Letra en la Aplicación
+              </h4>
+              <p>Aumenta o reduce el tamaño de las letras y números de toda la planilla. Tu preferencia se guardará automáticamente en este navegador.</p>
+            </div>
+
+            <!-- Tarjeta de Controles: Stepper y Slider -->
+            <div class="font-size-controls-card">
+              <div class="font-size-stepper-row">
+                <button type="button" id="btnFontDec" class="btn-font-step" title="Disminuir tamaño de letra">
+                  <i data-lucide="minus" style="width: 14px; height: 14px;"></i>
+                  <span>A-</span>
+                </button>
+
+                <div class="font-size-display-wrap">
+                  <span id="txtFontScalePercent" class="font-scale-number">100%</span>
+                  <span id="txtFontScaleName" class="font-scale-desc">Normal (Predeterminado)</span>
+                </div>
+
+                <button type="button" id="btnFontInc" class="btn-font-step" title="Aumentar tamaño de letra">
+                  <span>A+</span>
+                  <i data-lucide="plus" style="width: 14px; height: 14px;"></i>
+                </button>
+              </div>
+
+              <div class="font-slider-container">
+                <span class="slider-end-label">A</span>
+                <input type="range" id="rangeFontSize" min="85" max="150" step="5" value="100" class="font-size-slider" aria-label="Ajustar tamaño de texto">
+                <span class="slider-end-label large">A</span>
+              </div>
+            </div>
+
+            <!-- Selector Rápido de Presets -->
+            <div class="font-presets-section">
+              <label class="font-presets-label">O elige un tamaño predefinido:</label>
+              <div class="font-presets-grid">
+                <button type="button" class="btn-font-preset" data-scale="90">
+                  <span class="preset-name">Pequeño</span>
+                  <span class="preset-pct">90%</span>
+                </button>
+                <button type="button" class="btn-font-preset is-active" data-scale="100">
+                  <span class="preset-name">Normal</span>
+                  <span class="preset-pct">100%</span>
+                </button>
+                <button type="button" class="btn-font-preset" data-scale="115">
+                  <span class="preset-name">Grande</span>
+                  <span class="preset-pct">115%</span>
+                </button>
+                <button type="button" class="btn-font-preset" data-scale="130">
+                  <span class="preset-name">Muy Grande</span>
+                  <span class="preset-pct">130%</span>
+                </button>
+                <button type="button" class="btn-font-preset" data-scale="145">
+                  <span class="preset-name">Gigante</span>
+                  <span class="preset-pct">145%</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Vista Previa en Vivo -->
+            <div class="font-size-preview-box">
+              <div class="preview-tag">
+                <i data-lucide="eye" style="width: 13px; height: 13px;"></i>
+                <span>Vista Previa en Vivo</span>
+              </div>
+              <div class="preview-content-box">
+                <div class="preview-row-top">
+                  <span class="preview-client">Arantxa Flores</span>
+                  <span class="preview-status">✓ Pagado</span>
+                </div>
+                <div class="preview-perfume">Altazor (100ml) • 2 un.</div>
+                <div class="preview-row-bottom">
+                  <span class="preview-inst">Colegio San Pedro</span>
+                  <span class="preview-price">$28.000</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Acciones de Pie: Restablecer y Feedback de Guardado -->
+            <div class="font-size-footer-actions">
+              <button type="button" id="btnResetFontSize" class="btn-font-reset">
+                <i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i>
+                <span>Restablecer Tamaño Normal (100%)</span>
+              </button>
+              <div id="fontSavedIndicator" class="font-saved-pill" hidden>
+                <i data-lucide="check" style="width: 13px; height: 13px;"></i> Guardado en este navegador
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="modal-footer-close">
@@ -767,6 +873,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
   <script type="module" src="js/firebase-config.js?v=20261118_fuzzy_search"></script>
-  <script type="module" src="js/ventas.js?v=20261118_desktop_mobile_parity"></script>
+  <script type="module" src="js/ventas.js?v=20261118_font_size_customizer"></script>
 </body>
 </html>

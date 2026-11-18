@@ -13,7 +13,7 @@
   <link rel="stylesheet" href="css/pedidos.css?v=20261108_01">
   <link rel="stylesheet" href="css/gastos.css?v=20261112_02">
 
-  <!-- Restaurar Tema Claro / Oscuro antes de pintar -->
+  <!-- Restaurar Tema Claro / Oscuro y tamaño de letra antes de pintar -->
   <script>
     (function() {
       try {
@@ -22,6 +22,11 @@
           document.documentElement.setAttribute('data-theme', 'dark');
         } else {
           document.documentElement.removeAttribute('data-theme');
+        }
+
+        var savedFontSize = localStorage.getItem('notes_font_size');
+        if (savedFontSize) {
+          document.documentElement.style.fontSize = savedFontSize;
         }
       } catch(e) {}
     })();
