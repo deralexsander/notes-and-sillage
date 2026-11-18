@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css?v=20261115_mobile_fix4">
+  <link rel="stylesheet" href="css/ventas.css?v=20261117_batch_modal">
   <script>
     (function() {
       try {
@@ -458,42 +458,73 @@
     </div>
   </div>
 
-  <!-- Modal Crear Lote / Pedido al Proveedor -->
+  <!-- Modal Resumen y Pasar Pedido al Proveedor -->
   <div id="modalSupplierBatch" class="modal-overlay" hidden>
-    <div class="modal-content" style="max-width: 520px;">
+    <div class="modal-content modal-batch-content" style="max-width: 580px; width: 95%;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 10px;">
           <span class="supplier-status-icon ordered-icon"><i data-lucide="package-plus"></i></span>
-          <h3 style="margin: 0;">Generar Pedido al Proveedor</h3>
+          <h3 style="margin: 0;">Pasar Pedido a Proveedor</h3>
         </div>
         <button type="button" class="modal-close" data-action="close-batch-modal">&times;</button>
       </div>
-      <div style="padding: 10px 0;">
-        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4;">
-          Vas a pasar los productos seleccionados de <strong style="color: #d97706;">Pendiente</strong> a <strong style="color: var(--gold-primary);">Pedido</strong>, agrupándolos y sellándolos en un lote por fecha.
+      <div class="modal-batch-body" style="padding: 12px 0;">
+        <p style="font-size: 0.86rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+          Resumen consolidado de perfumes pendientes. Pasa a <strong style="color: #ea580c;">Carrito</strong> cada perfume a medida que lo agregues en el proveedor. Al finalizar, se guardará como nuevo pedido en el historial en modo <strong style="color: var(--gold-primary);">Pedido</strong>.
         </p>
-        <div class="form-group" style="margin-bottom: 16px;">
-          <label for="batchSupplierDate" style="font-weight: 600; font-size: 0.82rem;">Fecha del Pedido al Proveedor:</label>
-          <input type="date" id="batchSupplierDate" class="form-control" style="padding: 8px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main);">
+
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap;">
+          <div class="form-group" style="margin-bottom: 0; flex: 1 1 200px;">
+            <label for="batchSupplierDate" style="font-weight: 600; font-size: 0.80rem; margin-bottom: 4px; display: block;">Fecha del Pedido Proveedor:</label>
+            <input type="date" id="batchSupplierDate" class="form-control" style="padding: 7px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-main); font-size: 0.85rem; width: 100%;">
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <button type="button" class="btn-subtle-action" id="btnBatchMarkAllCart" title="Marcar todos los perfumes en carrito">
+              <i data-lucide="shopping-cart" style="width: 13px; height: 13px;"></i>
+              <span>Todos a Carrito</span>
+            </button>
+            <button type="button" class="btn-subtle-action" id="btnBatchMarkAllPending" title="Marcar todos los perfumes como pendientes">
+              <i data-lucide="clock" style="width: 13px; height: 13px;"></i>
+              <span>Todos a Pendiente</span>
+            </button>
+          </div>
         </div>
-        <div style="background: var(--bg-hover); padding: 14px; border-radius: var(--radius-sm); margin-bottom: 16px;">
-          <div style="display: flex; justify-content: space-between; font-size: 0.86rem; font-weight: 700; margin-bottom: 6px;">
-            <span>Perfumes seleccionados:</span>
-            <span id="batchModalItemCount">0 un.</span>
+
+        <!-- Barra de contadores -->
+        <div class="batch-summary-stats-bar">
+          <div class="batch-stat-item">
+            <span class="stat-label">Total Perfumes:</span>
+            <span id="batchModalTotalUnits" class="stat-value">0 un.</span>
           </div>
-          <div style="display: flex; justify-content: space-between; font-size: 0.86rem; color: var(--text-muted);">
-            <span>Costo total estimado:</span>
-            <span id="batchModalTotalCost" style="font-family: var(--font-mono); font-weight: 700; color: var(--text-title);">$0</span>
+          <div class="batch-stat-divider"></div>
+          <div class="batch-stat-item">
+            <span class="stat-label">En Carrito:</span>
+            <span id="batchModalCartUnits" class="stat-value highlight-cart">0 un.</span>
           </div>
-          <div id="batchModalItemsList" style="max-height: 140px; overflow-y: auto; margin-top: 10px; font-size: 0.8rem; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 8px;">
-            <!-- Lista de perfumes seleccionados -->
+          <div class="batch-stat-divider"></div>
+          <div class="batch-stat-item">
+            <span class="stat-label">Pendientes:</span>
+            <span id="batchModalPendingUnits" class="stat-value highlight-pending">0 un.</span>
           </div>
+        </div>
+
+        <!-- Cabecera de la lista de resumen (Código, Formato/ml, Cantidad, Estado) -->
+        <div class="batch-items-table-header">
+          <span class="batch-col-code">Código</span>
+          <span class="batch-col-size">Formato</span>
+          <span class="batch-col-qty">Cantidad</span>
+          <span class="batch-col-action">Estado</span>
+        </div>
+
+        <!-- Contenedor scrollable con el resumen de perfumes -->
+        <div id="batchModalItemsList" class="batch-items-container">
+          <!-- Filas de perfumes generadas dinámicamente -->
         </div>
       </div>
-      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 14px;">
+      <div style="display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-color); padding-top: 14px; margin-top: 10px;">
         <button type="button" class="btn-secondary" data-action="close-batch-modal">Cancelar</button>
-        <button type="button" class="btn-primary" id="btnConfirmSupplierBatch">
-          <i data-lucide="check" aria-hidden="true"></i> Confirmar Pedido Proveedor
+        <button type="button" class="btn-primary btn-batch-finalize" id="btnConfirmSupplierBatch">
+          <i data-lucide="check" aria-hidden="true"></i> <span id="btnConfirmBatchText">Finalizar</span>
         </button>
       </div>
     </div>
@@ -606,6 +637,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
   <script type="module" src="js/firebase-config.js"></script>
-  <script type="module" src="js/ventas.js?v=20261115_mobile_fix4"></script>
+  <script type="module" src="js/ventas.js?v=20261117_batch_modal"></script>
 </body>
 </html>

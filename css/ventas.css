@@ -2003,6 +2003,269 @@ body.auth-checking .container-fluid {
   border-color: var(--gold-primary) !important;
 }
 
+/* ==========================================================================
+   MODAL RESUMEN Y GESTIÓN DE PEDIDOS AL PROVEEDOR
+   ========================================================================== */
+.modal-batch-content {
+  max-width: 620px;
+  width: 95%;
+}
+
+.modal-batch-body {
+  padding: 10px 0;
+}
+
+.batch-summary-stats-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.batch-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.batch-stat-item .stat-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.batch-stat-item .stat-value {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-title);
+}
+
+.batch-stat-item .stat-value.highlight-cart {
+  color: #ea580c;
+}
+
+[data-theme="dark"] .batch-stat-item .stat-value.highlight-cart {
+  color: #fb923c;
+}
+
+.batch-stat-item .stat-value.highlight-pending {
+  color: #d97706;
+}
+
+.batch-stat-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--border-color);
+}
+
+.btn-subtle-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-main);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-subtle-action:hover {
+  background: var(--border-color);
+  color: var(--text-title);
+}
+
+.batch-items-table-header {
+  display: grid;
+  grid-template-columns: 80px 85px 80px 1fr;
+  padding: 8px 12px;
+  background: var(--table-thead-bg);
+  border: 1px solid var(--border-color);
+  border-bottom: 2px solid var(--border-color);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  align-items: center;
+}
+
+.batch-items-container {
+  max-height: 290px;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  border-top: none;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+.batch-item-row {
+  display: grid;
+  grid-template-columns: 80px 85px 80px 1fr;
+  padding: 9px 12px;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  transition: background-color 0.15s ease;
+}
+
+.batch-item-row:last-child {
+  border-bottom: none;
+}
+
+.batch-item-row:hover {
+  background-color: var(--bg-hover);
+}
+
+.batch-item-row.in-cart {
+  background-color: rgba(234, 88, 12, 0.06);
+}
+
+[data-theme="dark"] .batch-item-row.in-cart {
+  background-color: rgba(251, 146, 60, 0.08);
+}
+
+.batch-col-code {
+  display: flex;
+  align-items: center;
+}
+
+.batch-col-code .code-chip {
+  font-size: 0.82rem;
+  padding: 3px 7px;
+  font-weight: 700;
+}
+
+.batch-col-size {
+  display: flex;
+  align-items: center;
+}
+
+.batch-col-size .size-tag {
+  font-size: 0.80rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.batch-col-qty {
+  display: flex;
+  align-items: center;
+}
+
+.batch-col-qty .qty-badge {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-title);
+  background: var(--bg-hover);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+}
+
+.batch-col-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.btn-cart-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.btn-cart-toggle.state-pending {
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+[data-theme="dark"] .btn-cart-toggle.state-pending {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.5);
+}
+
+.btn-cart-toggle.state-pending:hover {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #ea580c;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
+}
+
+.btn-cart-toggle.state-cart {
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  border: 1px solid #ea580c;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+}
+
+.btn-cart-toggle.state-cart:hover {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.btn-batch-finalize {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+}
+
+.btn-batch-finalize:hover {
+  filter: brightness(1.1);
+}
+
+@media (max-width: 540px) {
+  .batch-items-table-header,
+  .batch-item-row {
+    grid-template-columns: 65px 65px 55px 1fr;
+    padding: 8px 6px;
+    gap: 4px;
+  }
+  .batch-col-code .code-chip {
+    font-size: 0.74rem;
+    padding: 2px 4px;
+  }
+  .batch-col-size .size-tag {
+    font-size: 0.72rem;
+  }
+  .batch-col-qty .qty-badge {
+    font-size: 0.74rem;
+    padding: 2px 4px;
+  }
+  .btn-cart-toggle {
+    padding: 5px 7px;
+    font-size: 0.70rem;
+    gap: 3px;
+  }
+}
+
 @media (max-width: 768px) {
   /* Ocultar en modo celular: #, Fecha, Cód., Fragancia, Formato, Cantidad, Venta, Costo y Ganancia */
   .spreadsheet-table .th-num,

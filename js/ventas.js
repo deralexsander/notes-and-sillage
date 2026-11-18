@@ -690,10 +690,7 @@ function renderTableRow(row, rowNum, isPending) {
   return `
     <tr data-sale-id="${row.saleId}" data-code="${row.code}">
       <td class="td-num">
-        <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
-          ${isPending ? `<input type="checkbox" class="pending-row-select" data-sale-id="${row.saleId}" data-code="${row.code}" title="Seleccionar para lote de compra al proveedor">` : ''}
-          <span>${rowNum}</span>
-        </div>
+        <span>${rowNum}</span>
       </td>
       <td class="td-date">${row.fecha || "-"}</td>
       <td class="td-code">
@@ -859,13 +856,10 @@ function renderTable(rows) {
                 </span>
               </div>
               <div class="supplier-header-actions">
-                <label class="select-all-pending-label hide-mobile">
-                  <input type="checkbox" id="checkSelectAllPending" title="Seleccionar todos los pendientes">
-                  <span>Seleccionar todos</span>
-                </label>
-                <button type="button" class="btn-create-supplier-batch hide-mobile" id="btnOpenBatchModal" title="Marcar los perfumes seleccionados como Pedido Proveedor">
+                <button type="button" class="btn-create-supplier-batch" id="btnOpenBatchModal" title="Abrir resumen y preparar pedido al proveedor">
                   <i data-lucide="package-plus" style="width: 14px; height: 14px;"></i>
-                  <span>Pasar a Pedido Proveedor</span>
+                  <span class="hide-mobile">Pasar a Pedido Proveedor</span>
+                  <span class="show-mobile">Pasar a Pedido</span>
                 </button>
                 <button type="button" class="btn-toggle-batch" data-action="toggle-batch-collapse" data-batch-key="PENDIENTE" title="Contraer o desplegar perfumes pendientes">
                   <i data-lucide="${isPendingCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
@@ -1628,79 +1622,242 @@ tableBody.addEventListener("change", async event => {
 // 7.1 CONTROL Y GESTIÓN DE LOTES / PEDIDOS AL PROVEEDOR
 // ==========================================================================
 
-// Alternar checkbox "Seleccionar todos los pendientes"
-document.addEventListener("change", event => {
-  if (event.target && event.target.id === "checkSelectAllPending") {
-    const isChecked = event.target.checked;
-    document.querySelectorAll(".pending-row-select").forEach(cb => {
-      cb.checked = isChecked;
-    });
-  }
-});
+// Extrae el resumen de perfumes pendientes agrupados únicamente por Código y Formato (ml)
+function getPendingSummaryItems() {
+  const pendingRows = allSaleRows.filter(r => resolveSupplierBatch(r).isPending);
+  const summaryMap = new Map();
 
-// Abrir modal de creación de lote con los pendientes seleccionados
+  pendingRows.forEach(r => {
+    const key = `${r.code}___${r.size}`;
+    if (!summaryMap.has(key)) {
+      summaryMap.set(key, {
+        key: key,
+        code: r.code,
+        size: r.size,
+        fragrance: r.fragrance || "",
+        totalQty: 0,
+        rows: []
+      });
+    }
+    const item = summaryMap.get(key);
+    item.totalQty += Number(r.qty) || 1;
+    item.rows.push(r);
+  });
+
+  const items = Array.from(summaryMap.values()).map(item => {
+    const inCart = item.rows.length > 0 && item.rows.every(r => getStatusSlug(r.estado) === "encarrito");
+    return {
+      ...item,
+      inCart: inCart
+    };
+  });
+
+  // Ordenar alfabéticamente y numéricamente por código
+  items.sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+  return items;
+}
+
+// Renderizar el modal interactivo con el resumen de perfumes pendientes
+function renderSupplierBatchModal() {
+  const modalEl = document.getElementById("modalSupplierBatch");
+  if (!modalEl) return;
+
+  const summaryItems = getPendingSummaryItems();
+  const totalUnitsEl = document.getElementById("batchModalTotalUnits");
+  const cartUnitsEl = document.getElementById("batchModalCartUnits");
+  const pendingUnitsEl = document.getElementById("batchModalPendingUnits");
+  const listEl = document.getElementById("batchModalItemsList");
+  const btnFinalizeText = document.getElementById("btnConfirmBatchText");
+
+  const totalUnits = summaryItems.reduce((acc, it) => acc + it.totalQty, 0);
+  const cartUnits = summaryItems.filter(it => it.inCart).reduce((acc, it) => acc + it.totalQty, 0);
+  const pendingUnits = totalUnits - cartUnits;
+
+  if (totalUnitsEl) totalUnitsEl.textContent = `${totalUnits} un.`;
+  if (cartUnitsEl) cartUnitsEl.textContent = `${cartUnits} un.`;
+  if (pendingUnitsEl) pendingUnitsEl.textContent = `${pendingUnits} un.`;
+
+  if (btnFinalizeText) {
+    if (cartUnits > 0) {
+      btnFinalizeText.textContent = `Finalizar (${cartUnits} un.)`;
+    } else {
+      btnFinalizeText.textContent = "Finalizar";
+    }
+  }
+
+  if (listEl) {
+    if (summaryItems.length === 0) {
+      listEl.innerHTML = `
+        <div style="text-align: center; padding: 30px 15px; color: var(--text-muted); font-size: 0.86rem;">
+          No hay perfumes pendientes por pedir al proveedor.
+        </div>
+      `;
+    } else {
+      listEl.innerHTML = summaryItems.map(item => `
+        <div class="batch-item-row ${item.inCart ? 'in-cart' : 'is-pending'}" data-key="${item.key}">
+          <div class="batch-col-code">
+            <span class="code-chip" title="${item.fragrance}">${item.code}</span>
+          </div>
+          <div class="batch-col-size">
+            <span class="size-tag">${item.size}</span>
+          </div>
+          <div class="batch-col-qty">
+            <strong class="qty-badge">${item.totalQty} un.</strong>
+          </div>
+          <div class="batch-col-action">
+            <button type="button" class="btn-cart-toggle ${item.inCart ? 'state-cart' : 'state-pending'}" data-action="toggle-item-cart" data-key="${item.key}" title="${item.inCart ? 'En Carrito (clic para volver a Pendiente)' : 'Pendiente (clic para pasar a Carrito)'}">
+              ${item.inCart ? `
+                <i data-lucide="shopping-cart" style="width: 13px; height: 13px;"></i>
+                <span>En Carrito ✓</span>
+              ` : `
+                <i data-lucide="clock" style="width: 13px; height: 13px;"></i>
+                <span>Pendiente</span>
+                <i data-lucide="arrow-right" style="width: 11px; height: 11px;"></i>
+                <i data-lucide="shopping-cart" style="width: 13px; height: 13px;"></i>
+              `}
+            </button>
+          </div>
+        </div>
+      `).join("");
+    }
+  }
+
+  if (window.lucide) lucide.createIcons();
+}
+
+// Abrir modal de resumen al presionar el botón "Pasar a Pedido Proveedor"
 document.addEventListener("click", event => {
   const btn = event.target.closest("#btnOpenBatchModal");
   if (!btn) return;
 
-  const selectedCbs = Array.from(document.querySelectorAll(".pending-row-select:checked"));
-  if (selectedCbs.length === 0) {
-    showToast("Selecciona al menos un perfume pendiente para crear el pedido");
+  const pendingRows = allSaleRows.filter(r => resolveSupplierBatch(r).isPending);
+  if (pendingRows.length === 0) {
+    showToast("No hay perfumes pendientes por pedir al proveedor");
     return;
   }
 
-  const selectedItems = [];
-  let totalCost = 0;
-  let totalQty = 0;
-  const seenKeys = new Set();
-
-  selectedCbs.forEach(cb => {
-    const saleId = cb.dataset.saleId;
-    const code = cb.dataset.code;
-    const key = `${saleId}_${code}`;
-    if (seenKeys.has(key)) return;
-    seenKeys.add(key);
-
-    const row = allSaleRows.find(r => r.saleId === saleId && r.code === code);
-    if (row) {
-      selectedItems.push(row);
-      totalCost += row.costo;
-      totalQty += row.qty;
-    }
-  });
-
-  const modalEl = document.getElementById("modalSupplierBatch");
-  const countEl = document.getElementById("batchModalItemCount");
-  const costEl = document.getElementById("batchModalTotalCost");
-  const listEl = document.getElementById("batchModalItemsList");
   const dateInput = document.getElementById("batchSupplierDate");
-
-  if (countEl) countEl.textContent = `${totalQty} perfumes (${selectedItems.length} líneas)`;
-  if (costEl) costEl.textContent = formatCLP(totalCost);
-  if (dateInput) dateInput.value = new Date().toISOString().split("T")[0];
-
-  if (listEl) {
-    listEl.innerHTML = selectedItems.map(it => `
-      <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed var(--border-subtle);">
-        <span><strong>[${it.code}]</strong> ${it.fragrance} (${it.size}) x${it.qty}</span>
-        <span style="font-family: var(--font-mono);">${formatCLP(it.costo)}</span>
-      </div>
-    `).join("");
+  if (dateInput && !dateInput.value) {
+    dateInput.value = new Date().toISOString().split("T")[0];
   }
 
+  renderSupplierBatchModal();
+
+  const modalEl = document.getElementById("modalSupplierBatch");
   if (modalEl) modalEl.hidden = false;
   if (window.lucide) lucide.createIcons();
 });
 
-// Confirmar creación de lote de Pedido Proveedor
+// Modificar el estado de un perfume individual (Pendiente <-> En Carrito)
+document.addEventListener("click", async event => {
+  const btn = event.target.closest('[data-action="toggle-item-cart"]');
+  if (!btn) return;
+
+  const key = btn.dataset.key;
+  const summaryItems = getPendingSummaryItems();
+  const targetItem = summaryItems.find(it => it.key === key);
+  if (!targetItem) return;
+
+  const nextStatus = targetItem.inCart ? "Pendiente" : "en carrito";
+
+  // Actualizar en memoria local
+  targetItem.rows.forEach(r => {
+    r.estado = nextStatus;
+  });
+
+  // Re-renderizar modal y actualizar la tabla principal
+  renderSupplierBatchModal();
+  applyFilters();
+
+  // Guardar en Firestore asíncronamente
+  try {
+    const updatePromises = targetItem.rows.map(r =>
+      updateSaleRow(r.saleId, r.code, { estado: nextStatus })
+    );
+    await Promise.all(updatePromises);
+  } catch (err) {
+    console.error("Error al actualizar estado en Firestore:", err);
+    showToast("Error al sincronizar con Firestore: " + err.message);
+  }
+});
+
+// Botón rápido: Pasar todos los perfumes a Carrito
+document.addEventListener("click", async event => {
+  if (!event.target.closest("#btnBatchMarkAllCart")) return;
+
+  const summaryItems = getPendingSummaryItems();
+  const updatePromises = [];
+
+  summaryItems.forEach(it => {
+    it.rows.forEach(r => {
+      if (getStatusSlug(r.estado) !== "encarrito") {
+        r.estado = "en carrito";
+        updatePromises.push(updateSaleRow(r.saleId, r.code, { estado: "en carrito" }));
+      }
+    });
+  });
+
+  renderSupplierBatchModal();
+  applyFilters();
+
+  if (updatePromises.length > 0) {
+    try {
+      await Promise.all(updatePromises);
+      showToast("Todos los perfumes marcados en Carrito ✓");
+    } catch (err) {
+      console.error("Error al sincronizar:", err);
+    }
+  }
+});
+
+// Botón rápido: Pasar todos los perfumes a Pendiente
+document.addEventListener("click", async event => {
+  if (!event.target.closest("#btnBatchMarkAllPending")) return;
+
+  const summaryItems = getPendingSummaryItems();
+  const updatePromises = [];
+
+  summaryItems.forEach(it => {
+    it.rows.forEach(r => {
+      if (getStatusSlug(r.estado) === "encarrito") {
+        r.estado = "Pendiente";
+        updatePromises.push(updateSaleRow(r.saleId, r.code, { estado: "Pendiente" }));
+      }
+    });
+  });
+
+  renderSupplierBatchModal();
+  applyFilters();
+
+  if (updatePromises.length > 0) {
+    try {
+      await Promise.all(updatePromises);
+      showToast("Todos los perfumes vueltos a Pendiente ✓");
+    } catch (err) {
+      console.error("Error al sincronizar:", err);
+    }
+  }
+});
+
+// Botón Finalizar: Guarda como nuevo pedido en el historial en modo Pedido
 const btnConfirmBatch = document.getElementById("btnConfirmSupplierBatch");
 if (btnConfirmBatch) {
   btnConfirmBatch.addEventListener("click", async () => {
-    const selectedCbs = Array.from(document.querySelectorAll(".pending-row-select:checked"));
-    if (selectedCbs.length === 0) {
+    const pendingRows = allSaleRows.filter(r => resolveSupplierBatch(r).isPending);
+    if (pendingRows.length === 0) {
       const m = document.getElementById("modalSupplierBatch");
       if (m) m.hidden = true;
       return;
+    }
+
+    // Identificar qué filas van al nuevo pedido (las que están en carrito)
+    let rowsToFinalize = pendingRows.filter(r => getStatusSlug(r.estado) === "encarrito");
+
+    // Si no hay ninguna marcada en carrito, consultar si desea pasar todos los pendientes
+    if (rowsToFinalize.length === 0) {
+      const confirmAll = confirm(`No has marcado perfumes en carrito. ¿Deseas finalizar y pasar TODOS los ${pendingRows.length} perfumes pendientes al nuevo Pedido Proveedor?`);
+      if (!confirmAll) return;
+      rowsToFinalize = pendingRows;
     }
 
     const dateInput = document.getElementById("batchSupplierDate");
@@ -1708,29 +1865,25 @@ if (btnConfirmBatch) {
     const batchId = "PROV-" + chosenDate;
 
     btnConfirmBatch.disabled = true;
-    btnConfirmBatch.textContent = "Guardando lote...";
+    btnConfirmBatch.innerHTML = `<i data-lucide="loader" class="spin"></i> Guardando nuevo pedido...`;
+    if (window.lucide) lucide.createIcons();
 
     try {
       const updatePromises = [];
       const seenConfirmKeys = new Set();
-      selectedCbs.forEach(cb => {
-        const saleId = cb.dataset.saleId;
-        const code = cb.dataset.code;
-        const key = `${saleId}_${code}`;
+
+      rowsToFinalize.forEach(r => {
+        const key = `${r.saleId}_${r.code}`;
         if (seenConfirmKeys.has(key)) return;
         seenConfirmKeys.add(key);
 
-        // Actualizar en memoria local
-        allSaleRows.forEach(r => {
-          if (r.saleId === saleId && r.code === code) {
-            r.estado = "Pedido";
-            r.fechaPedidoProveedor = chosenDate;
-            r.idPedidoProveedor = batchId;
-          }
-        });
+        // Actualizar en memoria local: en el historial como todos en modo pedido
+        r.estado = "Pedido";
+        r.fechaPedidoProveedor = chosenDate;
+        r.idPedidoProveedor = batchId;
 
         // Guardar en Firestore
-        updatePromises.push(updateSaleRow(saleId, code, {
+        updatePromises.push(updateSaleRow(r.saleId, r.code, {
           estado: "Pedido",
           fechaPedidoProveedor: chosenDate,
           idPedidoProveedor: batchId
@@ -1738,15 +1891,17 @@ if (btnConfirmBatch) {
       });
 
       await Promise.all(updatePromises);
+
       const m = document.getElementById("modalSupplierBatch");
       if (m) m.hidden = true;
-      showToast(`¡Pedido Proveedor creado! (${selectedCbs.length} productos agrupados para el ${chosenDate}) ✓`);
+
+      showToast(`¡Nuevo pedido finalizado! (${rowsToFinalize.length} productos guardados en el historial en modo Pedido para el ${chosenDate}) ✓`);
       applyFilters();
     } catch (err) {
-      alert("Error al crear el lote de pedido: " + err.message);
+      alert("Error al finalizar el pedido al proveedor: " + err.message);
     } finally {
       btnConfirmBatch.disabled = false;
-      btnConfirmBatch.innerHTML = `<i data-lucide="check" aria-hidden="true"></i> Confirmar Pedido Proveedor`;
+      btnConfirmBatch.innerHTML = `<i data-lucide="check" aria-hidden="true"></i> <span id="btnConfirmBatchText">Finalizar</span>`;
       if (window.lucide) lucide.createIcons();
     }
   });
