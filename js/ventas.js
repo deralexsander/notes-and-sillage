@@ -56,6 +56,24 @@ function persistCollapsedBatches() {
 
 const collapsedSupplierBatches = getSavedCollapsedBatches();
 
+// Control de lotes con Descuento de Proveedor los Martes (10%)
+function getSavedTuesdayBatches() {
+  try {
+    const raw = localStorage.getItem("notes_tuesday_batches");
+    return new Set(raw ? JSON.parse(raw) : ["2026-11-18", "2026-11-17"]);
+  } catch (e) {
+    return new Set(["2026-11-18", "2026-11-17"]);
+  }
+}
+
+function persistTuesdayBatches() {
+  try {
+    localStorage.setItem("notes_tuesday_batches", JSON.stringify([...tuesdayBatches]));
+  } catch (e) {}
+}
+
+const tuesdayBatches = getSavedTuesdayBatches();
+
 // Definición exacta de los 6 Pedidos Proveedor Históricos de PEDIDOS.TXT
 const HISTORICAL_SUPPLIER_BATCHES = [
   {
@@ -211,8 +229,14 @@ const manualStatus = document.getElementById("manualStatus");
 const manualPaid = document.getElementById("manualPaid");
 const manualConfirmed = document.getElementById("manualConfirmed");
 const manualUnitPrice = document.getElementById("manualUnitPrice");
+const manualUnitCost = document.getElementById("manualUnitCost");
 const manualAtCost = document.getElementById("manualAtCost");
+const manualZeroCost = document.getElementById("manualZeroCost");
+const manualClientGift = document.getElementById("manualClientGift");
 const btnSetAtCost = document.getElementById("btnSetAtCost");
+const btnSetZeroCost = document.getElementById("btnSetZeroCost");
+const btnSetClientGift = document.getElementById("btnSetClientGift");
+const btnResetCost = document.getElementById("btnResetCost");
 const calcUnitPrice = document.getElementById("calcUnitPrice");
 const calcTotalPrice = document.getElementById("calcTotalPrice");
 const calcTotalCost = document.getElementById("calcTotalCost");
@@ -698,7 +722,11 @@ function renderTableRow(row, rowNum, isPending) {
         <span class="code-chip">${row.code}</span>
       </td>
       <td class="td-name">
-        <div class="fragrance-name" title="${row.fragrance}">${row.fragrance}</div>
+        <div class="fragrance-name" title="${row.fragrance}">
+          ${row.costo === 0 && row.precioVenta > 0 ? '<span class="badge-zero-cost" style="font-size: 0.65rem; padding: 0 4px; margin-right: 4px; line-height: 1.4;">PUNTOS</span>' : ''}
+          ${row.precioVenta === 0 ? '<span class="badge-client-gift" style="font-size: 0.65rem; padding: 0 4px; margin-right: 4px; line-height: 1.4;">REGALO</span>' : ''}
+          ${row.fragrance}
+        </div>
       </td>
       <td class="td-size">
         <span class="size-tag">${row.size}</span>
@@ -713,8 +741,12 @@ function renderTableRow(row, rowNum, isPending) {
       <td class="td-inst">
         <span class="inst-name" title="${row.institution || "-"}">${row.institution || "-"}</span>
       </td>
-      <td class="price-cell">${formatCLP(row.precioVenta)}</td>
-      <td class="cost-cell">${formatCLP(row.costo)}</td>
+      <td class="price-cell">
+        ${row.precioVenta === 0 ? '<span class="badge-client-gift">$0 (Regalo)</span>' : formatCLP(row.precioVenta)}
+      </td>
+      <td class="cost-cell">
+        ${row.costo === 0 ? '<span class="badge-zero-cost" title="Sin costo para nosotros (Canje de puntos o regalo del proveedor)">$0 (Canje)</span>' : formatCLP(row.costo)}
+      </td>
       <td class="profit-cell ${row.ganancia === 0 ? 'profit-zero' : ''}">${row.ganancia > 0 ? '+' : ''}${formatCLP(row.ganancia)}</td>
       <td class="td-status">
         <div class="status-select-wrap">
@@ -825,15 +857,17 @@ function renderTable(rows) {
     const pendingProfit = pendingSale - pendingCost;
 
     const minShipping = Number(currentBalancesConfig?.envioGratisMinimo) || 120000;
+    const shippingFeeAmt = Number(currentBalancesConfig?.costoEnvioFijo) || 6000;
     const diffShipping = Math.max(0, minShipping - pendingCost);
     const progressShipping = Math.min(100, Math.round((pendingCost / minShipping) * 100));
     const isPendingCollapsed = collapsedSupplierBatches.has("PENDIENTE");
     const shippingTag = diffShipping > 0
-      ? `<span class="badge-supplier-tag tag-shipping-pending" title="Meta para envío gratis: ${formatCLP(minShipping)} (modificable en Gastos y Balances)">
+      ? `<span class="badge-supplier-tag tag-shipping-pending" title="Meta para envío gratis: ${formatCLP(minShipping)} (Si no se alcanza, costo de envío: ${formatCLP(shippingFeeAmt)})">
            <i data-lucide="truck" style="width: 13px; height: 13px;"></i>
            <span class="hide-mobile">Falta para envío gratis: </span>
            <span class="show-mobile">Falta envío: </span>
            <strong>${formatCLP(diffShipping)}</strong> (${progressShipping}%)
+           <span style="opacity: 0.85; margin-left: 3px;">(Flete: ${formatCLP(shippingFeeAmt)})</span>
          </span>`
       : `<span class="badge-supplier-tag tag-shipping-reached" title="¡Meta de envío gratis superada!">
            <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
@@ -907,9 +941,22 @@ function renderTable(rows) {
     const bUnits = bRows.reduce((sum, r) => sum + r.qty, 0);
     const bCost = bRows.reduce((sum, r) => sum + r.costo, 0);
     const bSale = bRows.reduce((sum, r) => sum + r.precioVenta, 0);
-    const bProfit = bSale - bCost;
     const bTitle = batchObj.title || getSupplierBatchTitle(batchKey);
     const isCollapsed = collapsedSupplierBatches.has(batchKey);
+
+    // Cálculos de Descuento Martes (10%) y Costo de Envío ($6.000 si < meta $120.000)
+    const isTuesdayDiscountActive = tuesdayBatches.has(batchKey);
+    const discountPct = Number(currentBalancesConfig?.descuentoMartesPorcentaje) || 10;
+    const discountAmt = isTuesdayDiscountActive ? Math.round(bCost * (discountPct / 100)) : 0;
+    const costAfterDiscount = bCost - discountAmt;
+
+    const minShipping = Number(currentBalancesConfig?.envioGratisMinimo) || 120000;
+    const shippingFeeAmt = Number(currentBalancesConfig?.costoEnvioFijo) || 6000;
+    const hasFreeShipping = costAfterDiscount >= minShipping;
+    const shippingFee = (bCost > 0 && !hasFreeShipping) ? shippingFeeAmt : 0;
+
+    const totalCostoFinal = costAfterDiscount + shippingFee;
+    const bProfit = bSale - totalCostoFinal;
 
     html += `
       <tr class="tr-supplier-header group-ordered" data-batch-key="${batchKey}">
@@ -927,6 +974,10 @@ function renderTable(rows) {
                 </span>
               </div>
               <div class="supplier-header-actions">
+                <label class="check-tuesday-label" title="Activar/desactivar descuento del ${discountPct}% para compras realizadas en día martes">
+                  <input type="checkbox" class="check-tuesday-toggle" data-batch-key="${batchKey}" ${isTuesdayDiscountActive ? "checked" : ""}>
+                  <span>Martes (-${discountPct}%)</span>
+                </label>
                 <span class="badge-supplier-tag tag-locked">
                   <i data-lucide="lock" style="width: 12px; height: 12px;"></i>
                   <span class="hide-mobile">Pedido Cerrado</span>
@@ -939,13 +990,34 @@ function renderTable(rows) {
               </div>
             </div>
             <div class="supplier-header-badges">
-              <span class="badge-supplier-tag tag-cost">
-                Costo: ${formatCLP(bCost)}
+              <span class="badge-supplier-tag tag-cost" title="Costo base de los perfumes según catálogo">
+                Costo Prod: ${formatCLP(bCost)}
               </span>
+              ${isTuesdayDiscountActive ? `
+                <span class="badge-supplier-tag" style="color: #9333ea; background: rgba(147, 51, 234, 0.12); border-color: rgba(147, 51, 234, 0.35);" title="Descuento del ${discountPct}% aplicado al costo de proveedor por pedido en martes">
+                  Desc. Martes: -${formatCLP(discountAmt)} (-${discountPct}%)
+                </span>
+              ` : ''}
+              ${bCost > 0 ? (hasFreeShipping ? `
+                <span class="badge-supplier-tag tag-shipping-reached" title="Meta de envío gratis superada (${formatCLP(costAfterDiscount)} >= ${formatCLP(minShipping)})">
+                  <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i>
+                  Envío Gratis ✓
+                </span>
+              ` : `
+                <span class="badge-supplier-tag" style="color: #dc2626; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.35);" title="Costo de envío por no alcanzar la meta de ${formatCLP(minShipping)} (Faltaron ${formatCLP(minShipping - costAfterDiscount)})">
+                  <i data-lucide="truck" style="width: 12px; height: 12px;"></i>
+                  Flete: +${formatCLP(shippingFee)}
+                </span>
+              `) : ''}
+              ${(isTuesdayDiscountActive || shippingFee > 0) ? `
+                <span class="badge-supplier-tag tag-cost" style="font-weight: 800; border-color: var(--gold-primary);" title="Costo total final a pagar al proveedor (Productos con descuento + Flete si aplica)">
+                  Total Prov: ${formatCLP(totalCostoFinal)}
+                </span>
+              ` : ''}
               <span class="badge-supplier-tag" style="color: var(--text-title);">
                 Venta: ${formatCLP(bSale)}
               </span>
-              <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Costo)">
+              <span class="badge-supplier-tag tag-profit" title="Ganancia Real (Venta - Total Proveedor)">
                 <span class="hide-mobile">Ganancia Real: </span>
                 <span class="show-mobile">Gan: </span>
                 ${bProfit > 0 ? '+' : ''}${formatCLP(bProfit)}
@@ -1704,6 +1776,21 @@ function renderSupplierBatchModal() {
     }
   }
 
+  // Sincronizar estado del checkbox y etiqueta de descuento martes
+  const dateInput = document.getElementById("batchSupplierDate");
+  const chosenDate = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().split("T")[0];
+  const d = new Date(chosenDate + "T12:00:00");
+  const isTue = (d.getDay() === 2);
+  const cbTuesday = document.getElementById("batchModalTuesdayDiscount");
+  if (cbTuesday) {
+    cbTuesday.checked = isTue || tuesdayBatches.has(chosenDate);
+  }
+  const discountPct = Number(currentBalancesConfig?.descuentoMartesPorcentaje) || 10;
+  const badgeDiscount = document.getElementById("batchModalDiscountBadge");
+  if (badgeDiscount) {
+    badgeDiscount.textContent = `-${discountPct}% proveedor`;
+  }
+
   if (listEl) {
     if (summaryItems.length === 0) {
       listEl.innerHTML = `
@@ -1775,6 +1862,20 @@ document.addEventListener("click", event => {
   if (modalEl) modalEl.hidden = false;
   if (window.lucide) lucide.createIcons();
 });
+
+// Listener de cambio de fecha en el modal de pedido proveedor para auto-detectar martes
+const batchSupplierDateInput = document.getElementById("batchSupplierDate");
+if (batchSupplierDateInput) {
+  batchSupplierDateInput.addEventListener("change", () => {
+    const chosenVal = batchSupplierDateInput.value;
+    if (chosenVal) {
+      const d = new Date(chosenVal + "T12:00:00");
+      const isTue = (d.getDay() === 2);
+      const cb = document.getElementById("batchModalTuesdayDiscount");
+      if (cb) cb.checked = isTue || tuesdayBatches.has(chosenVal);
+    }
+  });
+}
 
 // Modificar el estado de un perfume individual (Pendiente <-> En Carrito)
 document.addEventListener("click", async event => {
@@ -1933,6 +2034,15 @@ if (btnConfirmBatch) {
 
       await updateMultipleSaleRows(rowUpdates);
 
+      // Persistir descuento martes si estaba marcado en el modal
+      const cbTuesday = document.getElementById("batchModalTuesdayDiscount");
+      if (cbTuesday && cbTuesday.checked) {
+        tuesdayBatches.add(chosenDate);
+      } else {
+        tuesdayBatches.delete(chosenDate);
+      }
+      persistTuesdayBatches();
+
       const m = document.getElementById("modalSupplierBatch");
       if (m) m.hidden = true;
 
@@ -2024,6 +2134,12 @@ function syncBalancesModalInputs() {
   const inputShipping = document.getElementById("cfgEnvioGratisMinimo");
   if (inputShipping) inputShipping.value = cfg.envioGratisMinimo || 120000;
 
+  const inputCostoEnvio = document.getElementById("cfgCostoEnvioFijo");
+  if (inputCostoEnvio) inputCostoEnvio.value = (cfg.costoEnvioFijo !== undefined) ? cfg.costoEnvioFijo : 6000;
+
+  const inputDescuentoMartes = document.getElementById("cfgDescuentoMartes");
+  if (inputDescuentoMartes) inputDescuentoMartes.value = (cfg.descuentoMartesPorcentaje !== undefined) ? cfg.descuentoMartesPorcentaje : 10;
+
   const bank = cfg.datosBancarios || DEFAULT_BALANCES_CONFIG.datosBancarios;
   const bankTitular = document.getElementById("bankTitular");
   const bankRut = document.getElementById("bankRut");
@@ -2098,19 +2214,27 @@ function renderExpensesTable() {
   `).join("");
 }
 
-// Guardar configuración de envío gratis
+// Guardar configuración de envío gratis, flete y descuentos
 const formShippingConfig = document.getElementById("formShippingConfig");
 if (formShippingConfig) {
   formShippingConfig.addEventListener("submit", async e => {
     e.preventDefault();
     const val = Number(document.getElementById("cfgEnvioGratisMinimo").value) || 120000;
+    const costoEnvioFijo = Number(document.getElementById("cfgCostoEnvioFijo")?.value) ?? 6000;
+    const descuentoMartesPorcentaje = Number(document.getElementById("cfgDescuentoMartes")?.value) ?? 10;
     try {
-      await saveBalancesConfig({ envioGratisMinimo: val });
+      await saveBalancesConfig({
+        envioGratisMinimo: val,
+        costoEnvioFijo,
+        descuentoMartesPorcentaje
+      });
       currentBalancesConfig.envioGratisMinimo = val;
-      showToast("Meta de envío gratis guardada en Firestore ✓");
+      currentBalancesConfig.costoEnvioFijo = costoEnvioFijo;
+      currentBalancesConfig.descuentoMartesPorcentaje = descuentoMartesPorcentaje;
+      showToast("Ajustes de envíos y descuento martes guardados en Firestore ✓");
       applyFilters();
     } catch (err) {
-      alert("Error al guardar meta de envío: " + err.message);
+      alert("Error al guardar ajustes de envío y descuento: " + err.message);
     }
   });
 }
@@ -2214,6 +2338,23 @@ document.addEventListener("click", event => {
   if (window.lucide) lucide.createIcons();
 });
 
+// Toggle descuento martes en un lote
+document.addEventListener("change", event => {
+  const toggle = event.target.closest(".check-tuesday-toggle");
+  if (!toggle) return;
+
+  const batchKey = toggle.dataset.batchKey;
+  if (!batchKey) return;
+
+  if (toggle.checked) {
+    tuesdayBatches.add(batchKey);
+  } else {
+    tuesdayBatches.delete(batchKey);
+  }
+  persistTuesdayBatches();
+  applyFilters();
+});
+
 // 8. Exportar a CSV compatible con Excel
 function exportToCSV() {
   const query = (searchInput.value || "").toLowerCase().trim();
@@ -2265,7 +2406,7 @@ function exportToCSV() {
 }
 
 // 9. Lógica de Precios, Costos y Cálculos Dinámicos
-function calculateItemPricing(code, size, product, overridePrice = null) {
+function calculateItemPricing(code, size, product, overridePrice = null, overrideCost = null) {
   const normCode = (code || "").toUpperCase().trim();
   const cleanSize = (size || "").toLowerCase().replace(/\s+/g, "");
 
@@ -2314,22 +2455,25 @@ function calculateItemPricing(code, size, product, overridePrice = null) {
     }
   }
 
-  // Costo base unitario del producto
-  let unitCost = Math.round(defaultPrice * 0.5);
+  // Costo base unitario del producto según catálogo o financials
+  let defaultCost = Math.round(defaultPrice * 0.5);
   if (typeof getUnitFinancials === "function") {
     const fin = getUnitFinancials(normCode, cleanSize, defaultPrice);
     if (fin) {
-      unitCost = fin.unitCost;
+      defaultCost = fin.unitCost;
     }
   }
 
-  const hasOverride = overridePrice !== null && overridePrice !== "" && !isNaN(Number(overridePrice));
-  const unitPrice = hasOverride ? Math.max(0, Number(overridePrice)) : defaultPrice;
+  const hasOverridePrice = overridePrice !== null && overridePrice !== "" && !isNaN(Number(overridePrice));
+  const unitPrice = hasOverridePrice ? Math.max(0, Number(overridePrice)) : defaultPrice;
 
-  // Ganancia real: precio de venta menos costo del producto
+  const hasOverrideCost = overrideCost !== null && overrideCost !== "" && !isNaN(Number(overrideCost));
+  const unitCost = hasOverrideCost ? Math.max(0, Number(overrideCost)) : defaultCost;
+
+  // Ganancia real: precio de venta menos costo del producto (si costo es 0, todo es ganancia)
   const unitProfit = Math.max(0, unitPrice - unitCost);
 
-  return { unitPrice, unitCost, unitProfit, defaultPrice };
+  return { unitPrice, unitCost, unitProfit, defaultPrice, defaultCost };
 }
 
 function updateModalFinancialPreview(forceResetPrice = false) {
@@ -2342,16 +2486,45 @@ function updateModalFinancialPreview(forceResetPrice = false) {
   // Precios y costos base sin override
   const basePricing = calculateItemPricing(code, size, p);
 
-  // Si está activo "Venta al costo"
-  if (manualAtCost && manualAtCost.checked) {
-    if (manualUnitPrice) manualUnitPrice.value = basePricing.unitCost;
-  } else if (forceResetPrice || (manualUnitPrice && manualUnitPrice.value === "")) {
-    if (manualUnitPrice) manualUnitPrice.value = basePricing.defaultPrice;
+  // Manejo de valores forzados o restablecidos
+  if (forceResetPrice) {
+    if (manualZeroCost && manualZeroCost.checked) {
+      if (manualUnitCost) manualUnitCost.value = 0;
+    } else {
+      if (manualUnitCost) manualUnitCost.value = basePricing.defaultCost;
+    }
+
+    if (manualClientGift && manualClientGift.checked) {
+      if (manualUnitPrice) manualUnitPrice.value = 0;
+    } else if (manualAtCost && manualAtCost.checked) {
+      const currentCost = (manualUnitCost && manualUnitCost.value !== "") ? Number(manualUnitCost.value) : basePricing.defaultCost;
+      if (manualUnitPrice) manualUnitPrice.value = currentCost;
+    } else {
+      if (manualUnitPrice) manualUnitPrice.value = basePricing.defaultPrice;
+    }
+  } else {
+    // Si los inputs están vacíos, rellenar con valores base según corresponda
+    if (manualUnitCost && manualUnitCost.value === "") {
+      manualUnitCost.value = (manualZeroCost && manualZeroCost.checked) ? 0 : basePricing.defaultCost;
+    }
+    if (manualUnitPrice && manualUnitPrice.value === "") {
+      if (manualClientGift && manualClientGift.checked) {
+        manualUnitPrice.value = 0;
+      } else if (manualAtCost && manualAtCost.checked) {
+        manualUnitPrice.value = manualUnitCost ? manualUnitCost.value : basePricing.defaultCost;
+      } else {
+        manualUnitPrice.value = basePricing.defaultPrice;
+      }
+    }
   }
 
   const rawUserPrice = manualUnitPrice ? manualUnitPrice.value.trim() : "";
-  const overrideVal = rawUserPrice !== "" ? parseFloat(rawUserPrice) : null;
-  const pricing = calculateItemPricing(code, size, p, overrideVal);
+  const overridePriceVal = rawUserPrice !== "" ? parseFloat(rawUserPrice) : null;
+
+  const rawUserCost = manualUnitCost ? manualUnitCost.value.trim() : "";
+  const overrideCostVal = rawUserCost !== "" ? parseFloat(rawUserCost) : null;
+
+  const pricing = calculateItemPricing(code, size, p, overridePriceVal, overrideCostVal);
 
   const subtotalVenta = pricing.unitPrice * qty;
   const subtotalCosto = pricing.unitCost * qty;
@@ -2371,9 +2544,17 @@ function updateModalFinancialPreview(forceResetPrice = false) {
     }
   }
 
-  if (btnSetAtCost) {
-    btnSetAtCost.classList.toggle("active", Boolean(manualAtCost && manualAtCost.checked));
-  }
+  // Sincronizar botones de acceso rápido y visualización
+  const isZeroCost = pricing.unitCost === 0;
+  const isClientGift = pricing.unitPrice === 0;
+  const isAtCost = (manualAtCost && manualAtCost.checked) || (pricing.unitProfit === 0 && !isZeroCost && !isClientGift);
+
+  if (btnSetZeroCost) btnSetZeroCost.classList.toggle("active", isZeroCost);
+  if (btnSetClientGift) btnSetClientGift.classList.toggle("active", isClientGift);
+  if (btnSetAtCost) btnSetAtCost.classList.toggle("active", isAtCost);
+
+  if (manualZeroCost) manualZeroCost.checked = isZeroCost;
+  if (manualClientGift) manualClientGift.checked = isClientGift;
 }
 
 function populateSizeSelectForProduct(p, currentSelectedSize) {
@@ -2477,7 +2658,10 @@ function openNewSaleModal() {
   manualPaid.checked = true;
   manualConfirmed.checked = true;
   if (manualAtCost) manualAtCost.checked = false;
+  if (manualZeroCost) manualZeroCost.checked = false;
+  if (manualClientGift) manualClientGift.checked = false;
   if (manualUnitPrice) manualUnitPrice.value = "";
+  if (manualUnitCost) manualUnitCost.value = "";
 
   updateModalFinancialPreview(true);
   modalNewSale.hidden = false;
@@ -2542,8 +2726,17 @@ function openEditSaleModal(saleId, code) {
   if (manualUnitPrice) {
     manualUnitPrice.value = unitPriceFromRow;
   }
+  if (manualUnitCost) {
+    manualUnitCost.value = unitCostFromRow;
+  }
+  if (manualZeroCost) {
+    manualZeroCost.checked = (unitCostFromRow === 0);
+  }
+  if (manualClientGift) {
+    manualClientGift.checked = (unitPriceFromRow === 0);
+  }
   if (manualAtCost) {
-    manualAtCost.checked = (row.ganancia === 0) || (unitPriceFromRow === unitCostFromRow);
+    manualAtCost.checked = (row.ganancia === 0 && unitPriceFromRow > 0 && unitPriceFromRow === unitCostFromRow);
   }
 
   updateModalFinancialPreview(false);
@@ -2568,13 +2761,11 @@ manualQty.addEventListener("change", () => updateModalFinancialPreview(false));
 
 if (manualUnitPrice) {
   manualUnitPrice.addEventListener("input", () => {
-    const prodVal = manualProductSelect.value;
-    const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
-    const size = manualSizeSelect.value || "100 ml";
-    const code = p ? p.code : (prodVal || "");
-    const base = calculateItemPricing(code, size, p);
+    const val = Number(manualUnitPrice.value);
+    if (manualClientGift) manualClientGift.checked = (val === 0 && manualUnitPrice.value !== "");
     if (manualAtCost && manualAtCost.checked) {
-      if (Number(manualUnitPrice.value) !== base.unitCost) {
+      const currentCost = manualUnitCost ? Number(manualUnitCost.value) : null;
+      if (currentCost !== null && val !== currentCost) {
         manualAtCost.checked = false;
       }
     }
@@ -2582,18 +2773,134 @@ if (manualUnitPrice) {
   });
 }
 
+if (manualUnitCost) {
+  manualUnitCost.addEventListener("input", () => {
+    const val = Number(manualUnitCost.value);
+    if (manualZeroCost) manualZeroCost.checked = (val === 0 && manualUnitCost.value !== "");
+    if (manualAtCost && manualAtCost.checked) {
+      if (manualUnitPrice) manualUnitPrice.value = val;
+    }
+    updateModalFinancialPreview(false);
+  });
+}
+
+if (manualZeroCost) {
+  manualZeroCost.addEventListener("change", () => {
+    if (manualZeroCost.checked) {
+      if (manualUnitCost) manualUnitCost.value = 0;
+    } else {
+      const prodVal = manualProductSelect.value;
+      const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
+      const size = manualSizeSelect.value || "100 ml";
+      const code = p ? p.code : (prodVal || "");
+      const base = calculateItemPricing(code, size, p);
+      if (manualUnitCost) manualUnitCost.value = base.defaultCost;
+    }
+    updateModalFinancialPreview(false);
+  });
+}
+
+if (manualClientGift) {
+  manualClientGift.addEventListener("change", () => {
+    if (manualClientGift.checked) {
+      if (manualUnitPrice) manualUnitPrice.value = 0;
+      if (manualAtCost) manualAtCost.checked = false;
+    } else {
+      const prodVal = manualProductSelect.value;
+      const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
+      const size = manualSizeSelect.value || "100 ml";
+      const code = p ? p.code : (prodVal || "");
+      const base = calculateItemPricing(code, size, p);
+      if (manualUnitPrice) manualUnitPrice.value = base.defaultPrice;
+    }
+    updateModalFinancialPreview(false);
+  });
+}
+
 if (manualAtCost) {
   manualAtCost.addEventListener("change", () => {
-    updateModalFinancialPreview(true);
+    if (manualAtCost.checked) {
+      if (manualClientGift) manualClientGift.checked = false;
+      const currentCost = (manualUnitCost && manualUnitCost.value !== "") ? manualUnitCost.value : null;
+      if (currentCost !== null) {
+        if (manualUnitPrice) manualUnitPrice.value = currentCost;
+      }
+    }
+    updateModalFinancialPreview(false);
+  });
+}
+
+if (btnSetZeroCost) {
+  btnSetZeroCost.addEventListener("click", () => {
+    const isCurrentlyZero = (manualUnitCost && Number(manualUnitCost.value) === 0 && manualUnitCost.value !== "");
+    if (isCurrentlyZero) {
+      const prodVal = manualProductSelect.value;
+      const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
+      const size = manualSizeSelect.value || "100 ml";
+      const code = p ? p.code : (prodVal || "");
+      const base = calculateItemPricing(code, size, p);
+      if (manualUnitCost) manualUnitCost.value = base.defaultCost;
+      if (manualZeroCost) manualZeroCost.checked = false;
+    } else {
+      if (manualUnitCost) manualUnitCost.value = 0;
+      if (manualZeroCost) manualZeroCost.checked = true;
+    }
+    updateModalFinancialPreview(false);
+  });
+}
+
+if (btnSetClientGift) {
+  btnSetClientGift.addEventListener("click", () => {
+    const isCurrentlyGift = (manualUnitPrice && Number(manualUnitPrice.value) === 0 && manualUnitPrice.value !== "");
+    if (isCurrentlyGift) {
+      const prodVal = manualProductSelect.value;
+      const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
+      const size = manualSizeSelect.value || "100 ml";
+      const code = p ? p.code : (prodVal || "");
+      const base = calculateItemPricing(code, size, p);
+      if (manualUnitPrice) manualUnitPrice.value = base.defaultPrice;
+      if (manualClientGift) manualClientGift.checked = false;
+    } else {
+      if (manualUnitPrice) manualUnitPrice.value = 0;
+      if (manualClientGift) manualClientGift.checked = true;
+      if (manualAtCost) manualAtCost.checked = false;
+    }
+    updateModalFinancialPreview(false);
   });
 }
 
 if (btnSetAtCost) {
   btnSetAtCost.addEventListener("click", () => {
-    if (manualAtCost) {
-      manualAtCost.checked = true;
+    const isCurrentlyAtCost = (manualAtCost && manualAtCost.checked);
+    if (isCurrentlyAtCost) {
+      if (manualAtCost) manualAtCost.checked = false;
+      const prodVal = manualProductSelect.value;
+      const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
+      const size = manualSizeSelect.value || "100 ml";
+      const code = p ? p.code : (prodVal || "");
+      const base = calculateItemPricing(code, size, p);
+      if (manualUnitPrice) manualUnitPrice.value = base.defaultPrice;
+    } else {
+      if (manualAtCost) manualAtCost.checked = true;
+      if (manualClientGift) manualClientGift.checked = false;
+      const prodVal = manualProductSelect.value;
+      const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
+      const size = manualSizeSelect.value || "100 ml";
+      const code = p ? p.code : (prodVal || "");
+      const base = calculateItemPricing(code, size, p);
+      const currentCost = (manualUnitCost && manualUnitCost.value !== "") ? manualUnitCost.value : base.defaultCost;
+      if (manualUnitPrice) manualUnitPrice.value = currentCost;
     }
     updateModalFinancialPreview(false);
+  });
+}
+
+if (btnResetCost) {
+  btnResetCost.addEventListener("click", () => {
+    if (manualZeroCost) manualZeroCost.checked = false;
+    if (manualClientGift) manualClientGift.checked = false;
+    if (manualAtCost) manualAtCost.checked = false;
+    updateModalFinancialPreview(true);
   });
 }
 
@@ -2631,8 +2938,10 @@ newSaleForm.addEventListener("submit", async e => {
   }
 
   const rawUserPrice = manualUnitPrice ? manualUnitPrice.value.trim() : "";
-  const overrideVal = rawUserPrice !== "" ? parseFloat(rawUserPrice) : null;
-  const { unitPrice, unitCost, unitProfit } = calculateItemPricing(p.code, size, p, overrideVal);
+  const overridePriceVal = rawUserPrice !== "" ? parseFloat(rawUserPrice) : null;
+  const rawUserCost = manualUnitCost ? manualUnitCost.value.trim() : "";
+  const overrideCostVal = rawUserCost !== "" ? parseFloat(rawUserCost) : null;
+  const { unitPrice, unitCost, unitProfit } = calculateItemPricing(p.code, size, p, overridePriceVal, overrideCostVal);
 
   if (modalMode === "edit" && currentEditSaleId) {
     try {

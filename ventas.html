@@ -343,22 +343,55 @@
             </div>
           </div>
 
-          <!-- Ajuste de Precio Unitario y Venta al Costo (Ganancia $0) -->
-          <div class="form-grid" style="margin-top: 14px; grid-template-columns: 1fr 1fr; align-items: end;">
-            <div class="form-group">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <label for="manualUnitPrice">Precio Unitario ($)</label>
+          <!-- Ajuste de Precios, Costos, Regalos y Canjes -->
+          <div class="pricing-controls-wrapper" style="margin-top: 14px; background: var(--bg-card); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+              <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-title); display: flex; align-items: center; gap: 5px;">
+                <i data-lucide="badge-dollar-sign" style="width: 14px; height: 14px; color: var(--gold-primary);"></i>
+                Precios y Costos de Venta
+              </span>
+              <div style="display: flex; gap: 5px; flex-wrap: wrap;">
+                <button type="button" id="btnSetZeroCost" class="btn-pill-cost pill-zero-cost" title="Marcar que el perfume salió gratis por canje de puntos o regalo del proveedor">
+                  <i data-lucide="gift" style="width: 12px; height: 12px;"></i>
+                  <span>Costo $0 (Canje / Regalo)</span>
+                </button>
+                <button type="button" id="btnSetClientGift" class="btn-pill-cost pill-client-gift" title="Marcar como regalo al cliente ($0 precio de venta)">
+                  <i data-lucide="sparkles" style="width: 12px; height: 12px;"></i>
+                  <span>Regalo Cliente ($0 Venta)</span>
+                </button>
                 <button type="button" id="btnSetAtCost" class="btn-pill-cost" title="Fijar precio igual al costo del proveedor (Ganancia $0 para uso personal o familia)">
                   <i data-lucide="tag" style="width: 12px; height: 12px;"></i>
                   <span>Al costo ($0 ganancia)</span>
                 </button>
               </div>
-              <input type="number" id="manualUnitPrice" placeholder="Precio venta (ej: 26000 o 13000)" min="0" step="500">
             </div>
-            <div class="form-group">
-              <label class="checkbox-label" style="height: 42px; display: flex; align-items: center; margin: 0; padding: 0 10px; background: var(--bg-primary); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;">
+
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label for="manualUnitPrice" style="font-size: 0.80rem; font-weight: 600; margin-bottom: 3px; display: block;">Precio Venta Unitario ($):</label>
+                <input type="number" id="manualUnitPrice" placeholder="Precio venta (ej: 8000 o 17000)" min="0" step="500">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px;">
+                  <label for="manualUnitCost" style="font-size: 0.80rem; font-weight: 600;">Costo Proveedor Unitario ($):</label>
+                  <button type="button" id="btnResetCost" class="btn-subtle-link" style="font-size: 0.70rem; color: var(--text-muted); cursor: pointer; background: none; border: none; text-decoration: underline;" title="Restablecer costo normal de catálogo">Costo normal</button>
+                </div>
+                <input type="number" id="manualUnitCost" placeholder="Costo proveedor (ej: 0 o 4000)" min="0" step="500">
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; padding-top: 4px; border-top: 1px dashed var(--border-color);">
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.80rem; cursor: pointer; margin: 0;">
+                <input type="checkbox" id="manualZeroCost">
+                <span style="font-weight: 600; color: #16a34a;">Sin costo para nosotros (Canje / Puntos / Regalo $0)</span>
+              </label>
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.80rem; cursor: pointer; margin: 0;">
+                <input type="checkbox" id="manualClientGift">
+                <span style="font-weight: 600; color: #9333ea;">Regalo al cliente ($0 Venta)</span>
+              </label>
+              <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.80rem; cursor: pointer; margin: 0;">
                 <input type="checkbox" id="manualAtCost">
-                <span style="font-size: 0.82rem; font-weight: 600;">Venta al Costo / Uso Personal</span>
+                <span style="font-weight: 600;">Venta al Costo (Uso personal)</span>
               </label>
             </div>
           </div>
@@ -490,6 +523,15 @@
           </div>
         </div>
 
+        <!-- Opción Descuento Martes en el modal -->
+        <div style="margin-bottom: 12px; padding: 8px 12px; background: rgba(147, 51, 234, 0.08); border: 1px solid rgba(147, 51, 234, 0.25); border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;">
+          <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 700; cursor: pointer; margin: 0; color: #9333ea;">
+            <input type="checkbox" id="batchModalTuesdayDiscount" checked>
+            <span>¿Pedido en Martes? (Aplica descuento del 10% del proveedor)</span>
+          </label>
+          <span id="batchModalDiscountBadge" style="font-size: 0.72rem; font-weight: 700; color: #9333ea; background: rgba(147, 51, 234, 0.15); padding: 2px 7px; border-radius: 4px;">-10% proveedor</span>
+        </div>
+
         <!-- Barra de contadores -->
         <div class="batch-summary-stats-bar">
           <div class="batch-stat-item">
@@ -572,18 +614,39 @@
         <!-- Tab 1: Configuración & Envíos -->
         <div id="tabBalancesConfig" class="balance-tab-content">
           <form id="formShippingConfig">
-            <div class="form-group" style="margin-bottom: 16px;">
-              <label for="cfgEnvioGratisMinimo" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 6px;">
-                Monto Mínimo de Pedido para Envío Gratis Proveedor ($ CLP):
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="cfgEnvioGratisMinimo" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 5px;">
+                Monto Mínimo para Envío Gratis Proveedor ($ CLP):
               </label>
               <input type="number" id="cfgEnvioGratisMinimo" class="form-control" value="120000" min="0" step="1000" required>
-              <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 5px; line-height: 1.4;">
-                Este valor se utiliza para calcular automáticamente cuánto falta para el envío gratis en los pedidos pendientes.
+              <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 4px; line-height: 1.4;">
+                Monto mínimo de compra al proveedor para no pagar envío (Predeterminado: $120.000).
               </small>
             </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="cfgCostoEnvioFijo" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 5px;">
+                Costo de Envío si no se cumple la meta ($ CLP):
+              </label>
+              <input type="number" id="cfgCostoEnvioFijo" class="form-control" value="6000" min="0" step="500" required>
+              <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 4px; line-height: 1.4;">
+                Costo de flete cobrado por el proveedor cuando la compra no alcanza la meta de envío gratis ($6.000).
+              </small>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+              <label for="cfgDescuentoMartes" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 5px;">
+                Descuento Proveedor los días Martes (%):
+              </label>
+              <input type="number" id="cfgDescuentoMartes" class="form-control" value="10" min="0" max="100" step="1" required>
+              <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 4px; line-height: 1.4;">
+                Porcentaje de descuento sobre el costo aplicado cuando se realiza el pedido un día martes (Predeterminado: 10%).
+              </small>
+            </div>
+
             <div class="modal-form-actions">
               <button type="submit" class="btn-primary">
-                <i data-lucide="save" style="width: 14px; height: 14px;"></i> Guardar Meta de Envío
+                <i data-lucide="save" style="width: 14px; height: 14px;"></i> Guardar Configuración
               </button>
             </div>
           </form>
@@ -636,7 +699,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
-  <script type="module" src="js/firebase-config.js?v=20261118_batch_faltantes"></script>
-  <script type="module" src="js/ventas.js?v=20261118_batch_faltantes"></script>
+  <script type="module" src="js/firebase-config.js?v=20261118_gifts_tuesday_shipping"></script>
+  <script type="module" src="js/ventas.js?v=20261118_gifts_tuesday_shipping"></script>
 </body>
 </html>

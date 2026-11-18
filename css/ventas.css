@@ -1197,6 +1197,73 @@ body.auth-checking .container-fluid {
   color: #111827;
 }
 
+.btn-pill-cost.pill-zero-cost.active {
+  background: #16a34a !important;
+  color: #ffffff !important;
+  border-color: #16a34a !important;
+}
+
+.btn-pill-cost.pill-client-gift.active {
+  background: #9333ea !important;
+  color: #ffffff !important;
+  border-color: #9333ea !important;
+}
+
+.badge-zero-cost {
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.badge-client-gift {
+  color: #9333ea;
+  background: rgba(147, 51, 234, 0.12);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.check-tuesday-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: #9333ea;
+  background: rgba(147, 51, 234, 0.10);
+  border: 1px solid rgba(147, 51, 234, 0.3);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.check-tuesday-label:hover {
+  background: rgba(147, 51, 234, 0.18);
+  border-color: #9333ea;
+}
+
+.check-tuesday-label input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #9333ea;
+  width: 13px;
+  height: 13px;
+  margin: 0;
+}
+
 .modal-calc-preview {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

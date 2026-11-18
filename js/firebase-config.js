@@ -244,7 +244,9 @@ export async function recordSale(saleData) {
     const enrichedItems = (items || []).map(item => {
       const qty = Number(item.qty) || 1;
       const unitPrice = Number(item.unitPrice) || 0;
-      const { unitCost, unitProfit } = getUnitFinancials(item.code, item.size, unitPrice);
+      const fin = getUnitFinancials(item.code, item.size, unitPrice);
+      const unitCost = typeof item.unitCost === "number" ? item.unitCost : fin.unitCost;
+      const unitProfit = typeof item.unitProfit === "number" ? item.unitProfit : Math.max(0, unitPrice - unitCost);
       
       const subtotal = unitPrice * qty;
       const subtotalCosto = unitCost * qty;
@@ -266,6 +268,8 @@ export async function recordSale(saleData) {
         subtotal: subtotal,
         subtotalCosto: subtotalCosto,
         subtotalGanancia: subtotalGanancia,
+        esCostoCero: unitCost === 0,
+        esRegaloCliente: unitPrice === 0,
         estado: item.estado || estado || "Pendiente",
         pagado: typeof item.pagado === "boolean" ? item.pagado : (typeof pagado === "boolean" ? pagado : false),
         confirmado: typeof item.confirmado === "boolean" ? item.confirmado : (typeof confirmado === "boolean" ? confirmado : false)
@@ -569,6 +573,8 @@ export async function updateFullSaleRow(saleId, oldCode, updatedData) {
           subtotal: unitPrice * qty,
           subtotalCosto: unitCost * qty,
           subtotalGanancia: unitProfit * qty,
+          esCostoCero: unitCost === 0,
+          esRegaloCliente: unitPrice === 0,
           estado: estado,
           pagado: pagado,
           confirmado: confirmado
@@ -727,6 +733,8 @@ export async function syncCustomerInfoToPastSales(customerName, phone, instituti
 
 export const DEFAULT_BALANCES_CONFIG = {
   envioGratisMinimo: 120000,
+  costoEnvioFijo: 6000,
+  descuentoMartesPorcentaje: 10,
   capitalOctubre: 150000,
   datosBancarios: {
     titular: "Christian Eduardo Fuentealba Reyes",
