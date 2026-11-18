@@ -214,6 +214,9 @@
       </div>
     </section>
 
+    <!-- Banner de sugerencia inteligente para búsquedas mal escritas -->
+    <div id="searchSuggestionBanner" class="search-suggestion-banner" hidden></div>
+
     <!-- Contenedor de la Tabla de Ventas -->
     <div class="spreadsheet-container">
       <table class="spreadsheet-table" id="salesSpreadsheet">
@@ -260,7 +263,8 @@
       <div id="tableEmptyState" class="empty-state" hidden>
         <i data-lucide="search-x" aria-hidden="true"></i>
         <h3>No se encontraron ventas</h3>
-        <p>Intenta ajustar el buscador o los filtros para visualizar los registros.</p>
+        <p id="tableEmptyStateDesc">Intenta ajustar el buscador o los filtros para visualizar los registros.</p>
+        <div id="tableEmptyStateSuggestion" class="search-suggestion" hidden></div>
       </div>
     </div>
   </div>
@@ -310,7 +314,13 @@
           </div>
 
           <div class="form-group" style="margin-top: 14px;">
-            <label for="manualProductSelect">Fragancia / Producto</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+              <label for="manualProductSelect">Fragancia / Producto</label>
+              <span id="manualProductMatchBadge" style="font-size: 0.72rem; font-weight: 700; color: #16a34a;" hidden></span>
+            </div>
+            <div style="margin-bottom: 6px;">
+              <input type="text" id="manualProductSearch" placeholder="🔍 Escribe para buscar perfume (ej: clud, erba, f12, jadire)..." style="font-size: 0.85rem;" autocomplete="off">
+            </div>
             <select id="manualProductSelect" required>
               <option value="">Cargando catálogo...</option>
             </select>
@@ -699,7 +709,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
-  <script type="module" src="js/firebase-config.js?v=20261118_gifts_tuesday_shipping"></script>
-  <script type="module" src="js/ventas.js?v=20261118_gifts_tuesday_shipping"></script>
+  <script type="module" src="js/firebase-config.js?v=20261118_fuzzy_search"></script>
+  <script type="module" src="js/ventas.js?v=20261118_fuzzy_search"></script>
 </body>
 </html>

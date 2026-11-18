@@ -198,6 +198,9 @@ function resolveSupplierBatch(row) {
 // Elementos del DOM
 const tableBody = document.getElementById("salesTableBody");
 const emptyState = document.getElementById("tableEmptyState");
+const tableEmptyStateDesc = document.getElementById("tableEmptyStateDesc");
+const tableEmptyStateSuggestion = document.getElementById("tableEmptyStateSuggestion");
+const searchSuggestionBanner = document.getElementById("searchSuggestionBanner");
 const searchInput = document.getElementById("searchInput");
 const btnClearSearch = document.getElementById("btnClearSearch");
 const btnExportCSV = document.getElementById("btnExportCSV");
@@ -222,6 +225,8 @@ const manualDate = document.getElementById("manualDate");
 const manualCustomerName = document.getElementById("manualCustomerName");
 const manualCustomerPhone = document.getElementById("manualCustomerPhone");
 const manualInstitution = document.getElementById("manualInstitution");
+const manualProductSearch = document.getElementById("manualProductSearch");
+const manualProductMatchBadge = document.getElementById("manualProductMatchBadge");
 const manualProductSelect = document.getElementById("manualProductSelect");
 const manualSizeSelect = document.getElementById("manualSizeSelect");
 const manualQty = document.getElementById("manualQty");
@@ -684,28 +689,262 @@ function getStatusSlug(estado) {
   return "entregado";
 }
 
-// 4. Filtro de búsqueda en tiempo real
-function applyFilters() {
-  const query = (searchInput.value || "").toLowerCase().trim();
+// ==========================================================================
+// FUNCIONES DE BÚSQUEDA Y TOLERANCIA A ERRORES TIPOGRÁFICOS (PORTADAS DE INDEX.HTML)
+// ==========================================================================
 
-  btnClearSearch.hidden = !query;
+function normalizeSearchText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function normalizeProductCode(value) {
+  return normalizeSearchText(value)
+    .replace(/\s+/g, "")
+    .replace(/([a-z]+)0+(\d+)/g, "$1$2");
+}
+
+function getProductCodeVariants(code) {
+  return String(code || "").split(/[\/,;|]/).map(normalizeProductCode).filter(Boolean);
+}
+
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+function escapeAttr(value) {
+  return String(value || "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+function escapeHTML(value) {
+  return String(value || "").replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
+
+function getAllAvailableProducts() {
+  const list = [...catalogProducts];
+  const seenCodes = new Set(catalogProducts.map(p => (p.code || "").toUpperCase().trim()));
+
+  allSaleRows.forEach(r => {
+    const code = (r.code || "").toUpperCase().trim();
+    if (code && !seenCodes.has(code)) {
+      seenCodes.add(code);
+      list.push({
+        id: r.code,
+        code: r.code,
+        name: r.fragrance || r.code,
+        sub: "",
+        notes: "",
+        price: r.precioVenta || 17000
+      });
+    }
+  });
+
+  return list;
+}
+
+function productMatchesQuery(p, rawQuery, allProducts = null) {
+  const query = normalizeSearchText(rawQuery);
+  if (!query) return true;
+  const compactQuery = query.replace(/\s+/g, "");
+  const codeQuery = normalizeProductCode(rawQuery);
+  const queryWords = query.split(/\s+/).filter(Boolean);
+  const exactCodeQuery = /^[a-z]+\d+$/.test(codeQuery);
+
+  const prodList = allProducts || getAllAvailableProducts();
+  const hasExactCodeMatch = exactCodeQuery && prodList.some(item =>
+    getProductCodeVariants(item.code).includes(codeQuery)
+  );
+  if (hasExactCodeMatch) return getProductCodeVariants(p.code).includes(codeQuery);
+
+  const searchableText = normalizeSearchText([p.code, p.name, p.sub, p.notes].filter(Boolean).join(" "));
+  const searchableWords = searchableText.split(" ");
+  return searchableText.replace(/\s+/g, "").includes(compactQuery) ||
+    queryWords.every(word => searchableWords.some(searchableWord => searchableWord.startsWith(word)));
+}
+
+// Sugiere el nombre de la base de datos o catálogo más parecido a lo escrito aunque tenga errores ortográficos
+function findSearchSuggestion(rawQuery, allProducts = null) {
+  const query = normalizeSearchText(rawQuery);
+  if (query.length < 3) return "";
+  const queryWords = query.split(/\s+/).filter(Boolean);
+  const prodList = allProducts || getAllAvailableProducts();
+
+  const vocabulary = new Set();
+  prodList.forEach(p => {
+    normalizeSearchText([p.name, p.sub, p.code].filter(Boolean).join(" ")).split(" ")
+      .forEach(word => { if (word.length >= 3 || /^\d+$/.test(word)) vocabulary.add(word); });
+  });
+
+  const corrected = queryWords.map(word => {
+    if (vocabulary.has(word) || /^\d+$/.test(word)) return word;
+    const maxDistance = word.length <= 4 ? 1 : 2;
+    let best = word, bestDistance = maxDistance + 1;
+    vocabulary.forEach(candidate => {
+      const distance = editDistance(word, candidate);
+      if (distance < bestDistance) { best = candidate; bestDistance = distance; }
+    });
+    return best;
+  });
+  const correctedQuery = corrected.join(" ");
+  if (correctedQuery !== query) {
+    const match = prodList.find(p => productMatchesQuery(p, correctedQuery, prodList));
+    if (match) return match.name;
+  }
+
+  // Comparación contra el nombre completo
+  const compact = query.replace(/\s+/g, "");
+  let bestName = "", bestDistance = Math.max(2, Math.floor(compact.length / 4)) + 1;
+  prodList.forEach(p => {
+    const distance = editDistance(compact, normalizeSearchText(p.name).replace(/\s+/g, ""));
+    if (distance < bestDistance) { bestName = p.name; bestDistance = distance; }
+  });
+  return bestName;
+}
+
+// Comprueba si una fila de venta coincide directamente con la consulta (cliente, código, institución, fragancia, etc.)
+function rowMatchesDirectly(row, rawQuery, allProducts) {
+  const query = normalizeSearchText(rawQuery);
+  if (!query) return true;
+
+  const compactQuery = query.replace(/\s+/g, "");
+  const codeQuery = normalizeProductCode(rawQuery);
+
+  // 1. Coincidencia directa de código normalizado (ej: "f-12" con "f12", "j00" con "j-00")
+  if (codeQuery && normalizeProductCode(row.code) === codeQuery) return true;
+
+  // 2. Coincidencia por texto completo (cliente, fragancia, código, institución, teléfono, código venta)
+  const fullTarget = normalizeSearchText(`${row.clientName} ${row.fragrance} ${row.code} ${row.institution} ${row.clientPhone} ${row.codigoVenta}`);
+  if (fullTarget.includes(query) || fullTarget.replace(/\s+/g, "").includes(compactQuery)) return true;
+
+  // 3. Coincidencia de producto usando productMatchesQuery (código, nombre, notas, sub)
+  const productStub = { code: row.code, name: row.fragrance };
+  if (productMatchesQuery(productStub, rawQuery, allProducts)) return true;
+
+  // 4. Coincidencia si cada palabra de la búsqueda aparece en algún campo del registro
+  const queryWords = query.split(/\s+/).filter(Boolean);
+  if (queryWords.length > 1) {
+    const rowWords = fullTarget.split(/\s+/).filter(Boolean);
+    const allWordsMatch = queryWords.every(qWord => {
+      if (rowWords.some(rWord => rWord.startsWith(qWord) || rWord.includes(qWord))) return true;
+      if (normalizeProductCode(row.code) === normalizeProductCode(qWord)) return true;
+      return false;
+    });
+    if (allWordsMatch) return true;
+  }
+
+  return false;
+}
+
+let currentFilteredRows = [];
+
+// 4. Filtro de búsqueda en tiempo real con tolerancia a errores tipográficos
+function applyFilters() {
+  const rawQuery = (searchInput.value || "").trim();
+  btnClearSearch.hidden = !rawQuery;
 
   const unpaidRows = allSaleRows.filter(r => !r.pagado && (r.estado || "").toLowerCase().trim() === "entregado");
   const badgeUnpaidCount = document.getElementById("badgeUnpaidCount");
   if (badgeUnpaidCount) badgeUnpaidCount.textContent = unpaidRows.length;
 
   const baseRows = isUnpaidViewActive ? unpaidRows : allSaleRows;
+  const allProds = getAllAvailableProducts();
 
-  const filtered = baseRows.filter(row => {
-    // Filtro Texto
-    if (!query) return true;
-    const matchTarget = `${row.clientName} ${row.fragrance} ${row.code} ${row.institution} ${row.clientPhone} ${row.codigoVenta}`.toLowerCase();
-    return matchTarget.includes(query);
-  });
+  // Reset de avisos de sugerencia
+  if (searchSuggestionBanner) {
+    searchSuggestionBanner.hidden = true;
+    searchSuggestionBanner.innerHTML = "";
+  }
+  if (tableEmptyStateSuggestion) {
+    tableEmptyStateSuggestion.hidden = true;
+    tableEmptyStateSuggestion.innerHTML = "";
+  }
 
-  renderTable(filtered);
-  updateMetrics(filtered);
-  updateOctoberBalances();
+  if (!rawQuery) {
+    currentFilteredRows = baseRows;
+    renderTable(currentFilteredRows);
+    updateMetrics(currentFilteredRows);
+    updateOctoberBalances();
+    return;
+  }
+
+  // 1. Filtrado directo
+  const directMatches = baseRows.filter(row => rowMatchesDirectly(row, rawQuery, allProds));
+
+  if (directMatches.length > 0) {
+    currentFilteredRows = directMatches;
+    renderTable(currentFilteredRows);
+    updateMetrics(currentFilteredRows);
+    updateOctoberBalances();
+    return;
+  }
+
+  // 2. Si no hay coincidencias directas, buscar si el perfume o término está mal escrito (función de index.html)
+  const suggestion = findSearchSuggestion(rawQuery, allProds);
+
+  if (suggestion) {
+    // Buscar si hay filas con la fragancia sugerida corregida
+    const suggestedMatches = baseRows.filter(row => rowMatchesDirectly(row, suggestion, allProds));
+
+    if (suggestedMatches.length > 0) {
+      currentFilteredRows = suggestedMatches;
+      if (searchSuggestionBanner) {
+        searchSuggestionBanner.innerHTML = `
+          <div class="suggestion-info">
+            <span class="search-suggestion-badge">¿Quisiste decir?</span>
+            <span>Mostrando ventas de <strong>${escapeHTML(suggestion)}</strong></span>
+            <span style="opacity: 0.75; font-size: 0.76rem;">(coincidencia aproximada para "<em>${escapeHTML(rawQuery)}</em>")</span>
+          </div>
+          <button type="button" class="search-suggestion-btn" data-action="apply-suggestion" data-suggestion="${escapeAttr(suggestion)}" title="Fijar búsqueda como ${escapeAttr(suggestion)}">
+            Buscar "${escapeHTML(suggestion)}"
+          </button>
+        `;
+        searchSuggestionBanner.hidden = false;
+        if (window.lucide) lucide.createIcons();
+      }
+
+      renderTable(currentFilteredRows);
+      updateMetrics(currentFilteredRows);
+      updateOctoberBalances();
+      return;
+    } else {
+      // La sugerencia existe en el catálogo pero no hay ventas de ese producto
+      currentFilteredRows = [];
+      renderTable([]);
+      if (tableEmptyStateDesc) {
+        tableEmptyStateDesc.textContent = `No se encontraron ventas para "${rawQuery}".`;
+      }
+      if (tableEmptyStateSuggestion) {
+        tableEmptyStateSuggestion.innerHTML = `¿Quisiste decir <button type="button" class="search-suggestion-btn" data-action="apply-suggestion" data-suggestion="${escapeAttr(suggestion)}">${escapeAttr(suggestion)}</button>?`;
+        tableEmptyStateSuggestion.hidden = false;
+      }
+      return;
+    }
+  }
+
+  // 3. Sin coincidencias ni sugerencias
+  currentFilteredRows = [];
+  renderTable([]);
+  if (tableEmptyStateDesc) {
+    tableEmptyStateDesc.textContent = `No se encontraron ventas coincidentes con "${rawQuery}".`;
+  }
 }
 
 // Helper para renderizar una fila individual
@@ -2357,13 +2596,8 @@ document.addEventListener("change", event => {
 
 // 8. Exportar a CSV compatible con Excel
 function exportToCSV() {
-  const query = (searchInput.value || "").toLowerCase().trim();
-
-  const filtered = allSaleRows.filter(row => {
-    if (!query) return true;
-    const matchTarget = `${row.clientName} ${row.fragrance} ${row.code} ${row.institution} ${row.clientPhone} ${row.codigoVenta}`.toLowerCase();
-    return matchTarget.includes(query);
-  });
+  const query = (searchInput.value || "").trim();
+  const filtered = (query || isUnpaidViewActive) ? currentFilteredRows : allSaleRows;
 
   if (filtered.length === 0) {
     alert("No hay filas para exportar.");
@@ -2662,6 +2896,8 @@ function openNewSaleModal() {
   if (manualClientGift) manualClientGift.checked = false;
   if (manualUnitPrice) manualUnitPrice.value = "";
   if (manualUnitCost) manualUnitCost.value = "";
+  if (manualProductSearch) manualProductSearch.value = "";
+  if (manualProductMatchBadge) manualProductMatchBadge.hidden = true;
 
   updateModalFinancialPreview(true);
   modalNewSale.hidden = false;
@@ -2697,8 +2933,22 @@ function openEditSaleModal(saleId, code) {
 
   let matchedProduct = catalogProducts.find(x => x.code === row.code || x.id === row.code);
   if (!matchedProduct) {
+    matchedProduct = catalogProducts.find(x => normalizeProductCode(x.code) === normalizeProductCode(row.code));
+  }
+  if (!matchedProduct) {
     matchedProduct = catalogProducts.find(x => x.name.toLowerCase() === row.fragrance.toLowerCase());
   }
+  if (!matchedProduct) {
+    const sug = findSearchSuggestion(row.fragrance, catalogProducts);
+    if (sug) {
+      matchedProduct = catalogProducts.find(x => x.name.toLowerCase() === sug.toLowerCase() || productMatchesQuery(x, sug, catalogProducts));
+    }
+  }
+
+  if (manualProductSearch) {
+    manualProductSearch.value = matchedProduct ? matchedProduct.name : (row.fragrance || "");
+  }
+  if (manualProductMatchBadge) manualProductMatchBadge.hidden = true;
 
   if (matchedProduct) {
     manualProductSelect.value = matchedProduct.id;
@@ -2751,9 +3001,81 @@ if (btnNewManualSale) {
 manualProductSelect.addEventListener("change", () => {
   const prodVal = manualProductSelect.value;
   const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
+  if (manualProductSearch && p) {
+    manualProductSearch.value = p.name;
+    if (manualProductMatchBadge) manualProductMatchBadge.hidden = true;
+  }
   populateSizeSelectForProduct(p, manualSizeSelect.value);
   updateModalFinancialPreview(true);
 });
+
+// Autocompletado inteligente de perfume en el modal con tolerancia a errores tipográficos (index.html)
+if (manualProductSearch) {
+  manualProductSearch.addEventListener("input", () => {
+    const term = manualProductSearch.value.trim();
+    if (!term) {
+      if (manualProductMatchBadge) manualProductMatchBadge.hidden = true;
+      return;
+    }
+
+    const allProds = getAllAvailableProducts();
+
+    // 1. Coincidencia directa por código o productMatchesQuery
+    let matched = allProds.find(p => productMatchesQuery(p, term, allProds));
+    let isTypo = false;
+
+    // 2. Si no encuentra directo, buscar por sugerencia (editDistance / Levenshtein de index.html)
+    if (!matched) {
+      const sug = findSearchSuggestion(term, allProds);
+      if (sug) {
+        matched = allProds.find(p => (p.name || "").toLowerCase() === sug.toLowerCase() || productMatchesQuery(p, sug, allProds));
+        isTypo = Boolean(matched);
+      }
+    }
+
+    // 3. Búsqueda por similitud de caracteres (distancia de edición en nombre compacto)
+    if (!matched && term.length >= 3) {
+      const normTerm = normalizeSearchText(term).replace(/\s+/g, "");
+      let bestDistance = Math.max(2, Math.floor(normTerm.length / 3)) + 1;
+      allProds.forEach(p => {
+        const pNorm = normalizeSearchText(p.name || "").replace(/\s+/g, "");
+        const d = editDistance(normTerm, pNorm);
+        if (d < bestDistance) {
+          bestDistance = d;
+          matched = p;
+          isTypo = true;
+        }
+      });
+    }
+
+    if (matched) {
+      let opt = Array.from(manualProductSelect.options).find(o => o.value === matched.id || o.value === matched.code);
+      if (!opt) {
+        opt = document.createElement("option");
+        opt.value = matched.code;
+        opt.textContent = `[${matched.code}] ${matched.name}`;
+        manualProductSelect.appendChild(opt);
+      }
+      manualProductSelect.value = opt.value;
+      populateSizeSelectForProduct(matched, manualSizeSelect.value);
+      updateModalFinancialPreview(true);
+
+      if (manualProductMatchBadge) {
+        manualProductMatchBadge.textContent = isTypo
+          ? `✓ Sugerido: [${matched.code}] ${matched.name}`
+          : `✓ Seleccionado: [${matched.code}] ${matched.name}`;
+        manualProductMatchBadge.style.color = isTypo ? "#9333ea" : "#16a34a";
+        manualProductMatchBadge.hidden = false;
+      }
+    } else {
+      if (manualProductMatchBadge) {
+        manualProductMatchBadge.textContent = "Sin coincidencia en catálogo";
+        manualProductMatchBadge.style.color = "#dc2626";
+        manualProductMatchBadge.hidden = false;
+      }
+    }
+  });
+}
 
 manualSizeSelect.addEventListener("change", () => updateModalFinancialPreview(true));
 manualQty.addEventListener("input", () => updateModalFinancialPreview(false));
@@ -3095,6 +3417,17 @@ btnClearSearch.addEventListener("click", () => {
   applyFilters();
 });
 if (btnExportCSV) btnExportCSV.addEventListener("click", exportToCSV);
+
+// Aplicar sugerencia de búsqueda inteligente al hacer clic en "¿Quisiste decir...?"
+document.addEventListener("click", event => {
+  const btn = event.target.closest('[data-action="apply-suggestion"]');
+  if (!btn) return;
+  const suggestion = btn.dataset.suggestion;
+  if (!suggestion) return;
+  searchInput.value = suggestion;
+  applyFilters();
+  searchInput.focus();
+});
 
 // Cerrar modal al hacer clic en fondo o botones
 document.addEventListener("click", e => {
