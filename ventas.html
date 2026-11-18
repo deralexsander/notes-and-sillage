@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css?v=20261118_section_dividers">
+  <link rel="stylesheet" href="css/ventas.css?v=20261118_hide_edit_unpaid">
   <script>
     (function() {
       try {
@@ -574,6 +574,83 @@
     </div>
   </div>
 
+  <!-- Modal Gestión de Pago y Abonos / Cuotas -->
+  <div id="modalPaymentManagement" class="modal-overlay" hidden>
+    <div class="modal-content modal-payment-content" style="max-width: 440px; width: 95%;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="supplier-status-icon ordered-icon" style="background: rgba(34, 197, 94, 0.15); color: #16a34a;">
+            <i data-lucide="wallet"></i>
+          </span>
+          <h3 style="margin: 0; font-size: 1.05rem;">Registro de Pago / Abono</h3>
+        </div>
+        <button type="button" class="modal-close" data-action="close-payment-modal">&times;</button>
+      </div>
+
+      <div class="modal-body" style="padding: 14px 4px;">
+        <!-- Ficha Resumen del Perfume y Cliente -->
+        <div class="pay-modal-summary-box">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+            <div>
+              <div id="payModalClient" style="font-weight: 700; font-size: 0.95rem; color: var(--text-title);">-</div>
+              <div id="payModalFragrance" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">-</div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.70rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); display: block;">Total Venta</span>
+              <strong id="payModalTotal" style="font-family: var(--font-mono); font-size: 1.15rem; color: var(--gold-primary);">$0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botón de Pago Completo (1 Toque) -->
+        <button type="button" class="btn-pay-action btn-pay-full-action" id="btnQuickFullPay">
+          <i data-lucide="check-circle-2" style="width: 18px; height: 18px;"></i>
+          <span>Marcar Pagado Completo (<span id="btnQuickFullPayAmt">$0</span>)</span>
+        </button>
+
+        <!-- Bloque de Abonos / Cuotas -->
+        <div class="pay-abono-block">
+          <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.80rem; color: var(--text-title); margin-bottom: 8px;">
+            <i data-lucide="split" style="width: 14px; height: 14px; color: #d97706;"></i>
+            <span>O registrar abono en cuotas:</span>
+          </div>
+
+          <div style="margin-bottom: 8px;">
+            <label style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600; display: block; margin-bottom: 4px;">Monto Abonado / Pagado hoy:</label>
+            <div class="pay-input-wrap">
+              <span class="pay-input-prefix">$</span>
+              <input type="number" id="payInputAbono" class="pay-input-field" placeholder="Ej. 15000" min="0" step="500">
+            </div>
+          </div>
+
+          <!-- Presets rápidos -->
+          <div class="pay-presets-row">
+            <button type="button" class="btn-pay-preset" id="btnPreset50">50% (<span id="txtPreset50">$0</span>)</button>
+          </div>
+
+          <!-- Cálculo de Saldo Restante -->
+          <div class="pay-balance-indicator">
+            <span style="font-size: 0.75rem; color: var(--text-muted);">Saldo pendiente por cobrar:</span>
+            <strong id="payBalancePendingVal" style="font-family: var(--font-mono); font-size: 0.95rem; color: #ef4444;">$0</strong>
+          </div>
+
+          <button type="button" class="btn-pay-action btn-pay-save-abono" id="btnSaveAbono">
+            <i data-lucide="save" style="width: 15px; height: 15px;"></i>
+            <span>Guardar Abono</span>
+          </button>
+        </div>
+
+        <!-- Marcar como No Pagado ($0) -->
+        <div style="text-align: center; margin-top: 12px;">
+          <button type="button" class="btn-text-unpaid" id="btnResetUnpaid">
+            <i data-lucide="rotate-ccw" style="width: 13px; height: 13px;"></i>
+            <span>Marcar como No Pagado ($0 pagado)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal Ajustes y Configuración (Tuerca) -->
   <div id="modalBalances" class="modal-overlay" hidden>
     <div class="modal-content modal-settings-content">
@@ -702,6 +779,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
   <script type="module" src="js/firebase-config.js?v=20261118_fuzzy_search"></script>
-  <script type="module" src="js/ventas.js?v=20261118_section_dividers"></script>
+  <script type="module" src="js/ventas.js?v=20261118_clean_client_cell"></script>
 </body>
 </html>

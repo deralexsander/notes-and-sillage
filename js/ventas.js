@@ -652,7 +652,9 @@ async function loadSales() {
           costo: subtotalCosto,
           ganancia: subtotalGanancia,
           estado: item.estado || estadoGeneral,
-          pagado: typeof item.pagado === "boolean" ? item.pagado : pagadoGeneral,
+          pagado: (typeof item.pagado === "boolean" ? item.pagado : pagadoGeneral) || (typeof item.montoPagado === "number" && item.montoPagado >= subtotalVenta && subtotalVenta > 0),
+          montoPagado: typeof item.montoPagado === "number" ? item.montoPagado : ((typeof item.pagado === "boolean" ? item.pagado : pagadoGeneral) ? subtotalVenta : 0),
+          saldoPendiente: typeof item.saldoPendiente === "number" ? item.saldoPendiente : Math.max(0, subtotalVenta - (typeof item.montoPagado === "number" ? item.montoPagado : ((typeof item.pagado === "boolean" ? item.pagado : pagadoGeneral) ? subtotalVenta : 0))),
           confirmado: typeof item.confirmado === "boolean" ? item.confirmado : confirmadoGeneral,
           fechaPedidoProveedor: item.fechaPedidoProveedor || sale.fechaPedidoProveedor || null,
           idPedidoProveedor: item.idPedidoProveedor || sale.idPedidoProveedor || null
@@ -947,38 +949,218 @@ function applyFilters() {
   }
 }
 
+// ==========================================================================
+// REGISTRO DE FILAS FUSIONADAS POR CLIENTE (PEDIDOS MULTI-PRODUCTO)
+// ==========================================================================
+const activeFusedRowsMap = new Map();
+
+function normalizeCustomerPhone(phone) {
+  if (!phone) return "";
+  const digits = String(phone).replace(/\D/g, "");
+  return digits.length >= 8 ? digits.slice(-9) : digits;
+}
+
+function normalizeCustomerString(str) {
+  if (!str) return "";
+  return String(str).trim().toLowerCase();
+}
+
+function formatCustomerProductsSummary(products) {
+  if (!Array.isArray(products) || products.length === 0) return "";
+  if (products.length === 1) {
+    return products[0].fragrance;
+  }
+  const map = new Map();
+  products.forEach(p => {
+    const key = `${p.fragrance} (${p.size})`;
+    map.set(key, (map.get(key) || 0) + (Number(p.qty) || 1));
+  });
+  return Array.from(map.entries())
+    .map(([desc, q]) => q > 1 ? `${desc} [x${q}]` : desc)
+    .join(" + ");
+}
+
+function fuseRowsByCustomer(rowsList, batchKey = "") {
+  if (!Array.isArray(rowsList) || rowsList.length === 0) return [];
+
+  const groupsMap = new Map();
+  const order = [];
+
+  rowsList.forEach((row, originalIdx) => {
+    const normName = normalizeCustomerString(row.clientName);
+    const normPhone = normalizeCustomerPhone(row.clientPhone);
+    const normInst = normalizeCustomerString(row.institution);
+
+    const canFuse = normName && normName !== "-" && normName !== "cliente" && normName !== "sin cliente";
+    const fusionKey = canFuse ? `${batchKey}__${normName}__${normPhone}__${normInst}` : `solo_${originalIdx}_${row.saleId}_${row.code}`;
+
+    if (!groupsMap.has(fusionKey)) {
+      groupsMap.set(fusionKey, []);
+      order.push(fusionKey);
+    }
+    groupsMap.get(fusionKey).push(row);
+  });
+
+  const result = [];
+
+  order.forEach(fusionKey => {
+    const items = groupsMap.get(fusionKey);
+    if (items.length === 1) {
+      const r = items[0];
+      const isSolo = fusionKey.startsWith("solo_");
+      const fKey = isSolo ? `${r.saleId}__${r.code}` : fusionKey;
+      const fusedObj = {
+        ...r,
+        isFused: false,
+        fusionKey: fKey,
+        items: [r],
+        products: [{
+          code: r.code,
+          fragrance: r.fragrance,
+          size: r.size,
+          qty: r.qty,
+          precioVenta: r.precioVenta,
+          costo: r.costo,
+          ganancia: r.ganancia,
+          estado: r.estado,
+          pagado: r.pagado,
+          montoPagado: r.montoPagado,
+          saldoPendiente: r.saldoPendiente
+        }]
+      };
+      result.push(fusedObj);
+      activeFusedRowsMap.set(fKey, fusedObj);
+      activeFusedRowsMap.set(`${r.saleId}__${r.code}`, fusedObj);
+    } else {
+      const primary = items[0];
+      const totalQty = items.reduce((sum, it) => sum + (Number(it.qty) || 1), 0);
+      const totalVenta = items.reduce((sum, it) => sum + (Number(it.precioVenta) || 0), 0);
+      const totalCosto = items.reduce((sum, it) => sum + (Number(it.costo) || 0), 0);
+      const totalGanancia = items.reduce((sum, it) => sum + (Number(it.ganancia) || 0), 0);
+      const totalMontoPagado = items.reduce((sum, it) => sum + (Number(it.montoPagado) || 0), 0);
+      const totalSaldoPendiente = Math.max(0, totalVenta - totalMontoPagado);
+      const isAllPaid = (totalMontoPagado >= totalVenta && totalVenta > 0) || items.every(it => it.pagado);
+
+      const products = items.map(it => ({
+        code: it.code,
+        fragrance: it.fragrance,
+        size: it.size,
+        qty: it.qty,
+        precioVenta: it.precioVenta,
+        costo: it.costo,
+        ganancia: it.ganancia,
+        estado: it.estado,
+        pagado: it.pagado,
+        montoPagado: it.montoPagado,
+        saldoPendiente: it.saldoPendiente
+      }));
+
+      const fusedObj = {
+        ...primary,
+        isFused: true,
+        fusionKey: fusionKey,
+        items: items,
+        products: products,
+        qty: totalQty,
+        precioVenta: totalVenta,
+        costo: totalCosto,
+        ganancia: totalGanancia,
+        montoPagado: totalMontoPagado,
+        saldoPendiente: totalSaldoPendiente,
+        pagado: isAllPaid,
+        estado: primary.estado
+      };
+
+      result.push(fusedObj);
+      activeFusedRowsMap.set(fusionKey, fusedObj);
+      items.forEach(it => {
+        activeFusedRowsMap.set(`${it.saleId}__${it.code}`, fusedObj);
+      });
+    }
+  });
+
+  return result;
+}
+
 // Helper para renderizar una fila individual
 function renderTableRow(row, rowNum, isPending) {
   const statusSlug = getStatusSlug(row.estado);
+  const hasAbono = !row.pagado && (row.montoPagado > 0) && (row.montoPagado < row.precioVenta);
+  const products = row.products && row.products.length > 0 ? row.products : [{
+    code: row.code,
+    fragrance: row.fragrance,
+    size: row.size,
+    qty: row.qty,
+    precioVenta: row.precioVenta,
+    costo: row.costo,
+    ganancia: row.ganancia
+  }];
+
+  const isMulti = products.length > 1;
+
+  // Renderizado para móviles: listado de perfumes ordenado y total
+  const mobilePerfumeSummary = isMulti
+    ? formatCustomerProductsSummary(products)
+    : row.fragrance;
+  const mobilePerfumeDetails = isMulti
+    ? `${formatCLP(row.precioVenta)} • ${row.qty} un.`
+    : `(${row.size}) • ${row.precioVenta === 0 ? 'Regalo' : formatCLP(row.precioVenta)}`;
+
+  // En Desktop: stack si hay múltiples productos
+  const desktopCodeHtml = isMulti
+    ? `<div style="display: flex; flex-direction: column; gap: 3px;">
+         ${products.map(p => `<span class="code-chip">${p.code}</span>`).join("")}
+       </div>`
+    : `<span class="code-chip">${row.code}</span>`;
+
+  const desktopFragranceHtml = isMulti
+    ? `<div style="display: flex; flex-direction: column; gap: 4px;">
+         ${products.map(p => `
+           <div class="fragrance-name" title="${escapeAttr(p.fragrance)}">
+             ${p.costo === 0 && p.precioVenta > 0 ? '<span class="badge-zero-cost" style="font-size: 0.65rem; padding: 0 4px; margin-right: 4px; line-height: 1.4;">PUNTOS</span>' : ''}
+             ${p.precioVenta === 0 ? '<span class="badge-client-gift" style="font-size: 0.65rem; padding: 0 4px; margin-right: 4px; line-height: 1.4;">REGALO</span>' : ''}
+             ${escapeAttr(p.fragrance)}
+           </div>
+         `).join("")}
+       </div>`
+    : `<div class="fragrance-name" title="${escapeAttr(row.fragrance)}">
+         ${row.costo === 0 && row.precioVenta > 0 ? '<span class="badge-zero-cost" style="font-size: 0.65rem; padding: 0 4px; margin-right: 4px; line-height: 1.4;">PUNTOS</span>' : ''}
+         ${row.precioVenta === 0 ? '<span class="badge-client-gift" style="font-size: 0.65rem; padding: 0 4px; margin-right: 4px; line-height: 1.4;">REGALO</span>' : ''}
+         ${escapeAttr(row.fragrance)}
+       </div>`;
+
+  const desktopSizeHtml = isMulti
+    ? `<div style="display: flex; flex-direction: column; gap: 3px;">
+         ${products.map(p => `<span class="size-tag">${escapeAttr(p.size)}</span>`).join("")}
+       </div>`
+    : `<span class="size-tag">${escapeAttr(row.size)}</span>`;
+
+  const fusionAttr = row.fusionKey ? `data-fusion-key="${escapeAttr(row.fusionKey)}"` : '';
 
   return `
-    <tr data-sale-id="${row.saleId}" data-code="${row.code}">
+    <tr data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr}>
       <td class="td-num">
         <span>${rowNum}</span>
       </td>
       <td class="td-date">${row.fecha || "-"}</td>
       <td class="td-code">
-        <span class="code-chip">${row.code}</span>
+        ${desktopCodeHtml}
       </td>
       <td class="td-name">
-        <div class="fragrance-name" title="${row.fragrance}">
-          ${row.costo === 0 && row.precioVenta > 0 ? '<span class="badge-zero-cost" style="font-size: 0.65rem; padding: 0 4px; margin-right: 4px; line-height: 1.4;">PUNTOS</span>' : ''}
-          ${row.precioVenta === 0 ? '<span class="badge-client-gift" style="font-size: 0.65rem; padding: 0 4px; margin-right: 4px; line-height: 1.4;">REGALO</span>' : ''}
-          ${row.fragrance}
-        </div>
+        ${desktopFragranceHtml}
       </td>
       <td class="td-size">
-        <span class="size-tag">${row.size}</span>
+        ${desktopSizeHtml}
       </td>
       <td class="qty-val">${row.qty}</td>
       <td class="td-client">
-        <span class="client-name" title="${row.clientName}">${row.clientName}</span>
+        <span class="client-name" title="${escapeAttr(row.clientName)}">${escapeAttr(row.clientName)}</span>
       </td>
       <td class="td-phone">
         ${renderPhoneCell(row.clientPhone, row)}
       </td>
       <td class="td-inst">
-        <span class="inst-name" title="${row.institution || "-"}">${row.institution || "-"}</span>
+        <span class="inst-name" title="${escapeAttr(row.institution || "-")}">${escapeAttr(row.institution || "-")}</span>
       </td>
       <td class="price-cell">
         ${row.precioVenta === 0 ? '<span class="badge-client-gift">$0 (Regalo)</span>' : formatCLP(row.precioVenta)}
@@ -990,7 +1172,7 @@ function renderTableRow(row, rowNum, isPending) {
       <td class="td-status">
         <div class="status-select-wrap">
           <span class="status-dot dot-${statusSlug}"></span>
-          <select class="status-dropdown opt-${statusSlug}" data-action="change-status" data-sale-id="${row.saleId}" data-code="${row.code}">
+          <select class="status-dropdown opt-${statusSlug}" data-action="change-status" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr}>
             <option value="Pedido" ${statusSlug === "pedido" ? "selected" : ""}>Pedido</option>
             <option value="Recepcionado" ${statusSlug === "recepcionado" ? "selected" : ""}>Recepcionado</option>
             <option value="Pendiente" ${statusSlug === "pendiente" ? "selected" : ""}>Pendiente</option>
@@ -1002,19 +1184,17 @@ function renderTableRow(row, rowNum, isPending) {
         </div>
       </td>
       <td class="cell-check td-paid">
-        <input type="checkbox" class="table-checkbox" data-action="toggle-paid" data-sale-id="${row.saleId}" data-code="${row.code}" ${row.pagado ? "checked" : ""} title="${row.pagado ? "Pagado (True)" : "Pendiente de pago (False)"}">
+        <button type="button" class="btn-pay-status ${row.pagado ? 'status-paid' : (hasAbono ? 'status-partial' : 'status-unpaid')}" data-action="open-payment-modal" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr} title="${row.pagado ? 'Pagado al 100% (Click para editar o gestionar cuotas)' : (hasAbono ? 'Abono: ' + formatCLP(row.montoPagado) + ' (Resta: ' + formatCLP(row.saldoPendiente) + ')' : 'Pendiente de pago (Click para pagar o abonar)')}">
+          <i data-lucide="${row.pagado ? 'check' : (hasAbono ? 'clock' : 'circle')}" style="width: 13px; height: 13px;"></i>
+        </button>
       </td>
-      <td class="td-action" style="text-align: center; white-space: nowrap;">
-        ${isUnpaidViewActive ? `
-          <button type="button" class="btn-mark-paid-direct" data-action="mark-paid-direct" data-sale-id="${row.saleId}" data-code="${row.code}" title="Marcar como pagado y retirar de faltantes">
-            <i data-lucide="check" style="width: 12px; height: 12px;"></i> Pagado
-          </button>
-        ` : `
+      ${!isUnpaidViewActive ? `
+        <td class="td-action" style="text-align: center; white-space: nowrap;">
           <button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" title="Editar venta o eliminar">
             <i data-lucide="pencil" aria-hidden="true"></i>
           </button>
-        `}
-      </td>
+        </td>
+      ` : ''}
     </tr>
   `;
 }
@@ -1028,20 +1208,31 @@ function renderTable(rows) {
   }
 
   emptyState.hidden = true;
+  activeFusedRowsMap.clear();
+
+  document.body.classList.toggle("view-unpaid-active", isUnpaidViewActive);
+  const thAction = document.querySelector(".spreadsheet-table thead .th-action");
+  if (thAction) {
+    thAction.hidden = isUnpaidViewActive;
+    thAction.style.display = isUnpaidViewActive ? "none" : "";
+  }
 
   const isMobileScreen = window.innerWidth <= 768;
-  const headerColspan = isMobileScreen ? 6 : 15;
+  const headerColspan = isMobileScreen ? (isUnpaidViewActive ? 5 : 6) : (isUnpaidViewActive ? 14 : 15);
 
   // Si estamos en la vista de Faltantes por Pagar
   if (isUnpaidViewActive) {
-    const totalUnpaidAmount = rows.reduce((sum, r) => sum + r.precioVenta, 0);
+    const totalUnpaidAmount = rows.reduce((sum, r) => sum + (typeof r.saldoPendiente === "number" ? r.saldoPendiente : r.precioVenta), 0);
+    const fusedUnpaid = fuseRowsByCustomer(rows, "FALTANTES");
+
     let html = `
       <tr class="tr-supplier-header" style="background: rgba(239, 68, 68, 0.12); border-left: 4px solid #ef4444;">
         <td colspan="${headerColspan}">
           <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 12px; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 8px;">
-              <span style="color: #ef4444; display: inline-flex;"><i data-lucide="receipt"></i></span>
-              <strong style="color: #ef4444; font-size: 0.92rem;">FALTANTES POR PAGAR (${rows.length} pedidos entregados sin pagar)</strong>
+              <span class="supplier-status-icon" style="background: rgba(239, 68, 68, 0.2); color: #ef4444; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%;" title="Faltantes por pagar (${rows.length} perfumes)">
+                <i data-lucide="receipt" style="width: 15px; height: 15px;"></i>
+              </span>
             </div>
             <div>
               <span class="badge-supplier-tag" style="background: rgba(239, 68, 68, 0.2); color: #dc2626; font-weight: 700;">
@@ -1052,8 +1243,8 @@ function renderTable(rows) {
         </td>
       </tr>
     `;
-    let idx = rows.length;
-    rows.forEach(r => {
+    let idx = fusedUnpaid.length;
+    fusedUnpaid.forEach(r => {
       html += renderTableRow(r, idx--, false);
     });
     tableBody.innerHTML = html;
@@ -1082,8 +1273,21 @@ function renderTable(rows) {
     }
   });
 
+  // 2. Grupos de Lotes de Pedidos Proveedor (Ordenados por fecha descendente)
+  const sortedBatchKeys = Object.keys(orderedBatches).sort((a, b) => b.localeCompare(a));
+
+  // Fusionar por cliente dentro de cada lote o sección
+  const fusedPendingRows = pendingRows.length > 0 ? fuseRowsByCustomer(pendingRows, "PENDIENTE") : [];
+  const fusedBatchMap = {};
+  let totalFusedCount = fusedPendingRows.length;
+
+  sortedBatchKeys.forEach(bKey => {
+    fusedBatchMap[bKey] = fuseRowsByCustomer(orderedBatches[bKey].rows, bKey);
+    totalFusedCount += fusedBatchMap[bKey].length;
+  });
+
   let html = "";
-  let overallIndex = rows.length;
+  let overallIndex = totalFusedCount;
 
   // 1. Sección PENDIENTES POR PEDIR AL PROVEEDOR
   if (pendingRows.length > 0) {
@@ -1131,7 +1335,7 @@ function renderTable(rows) {
                 </span>
                 <strong style="color: #b45309; font-size: 0.90rem;">PENDIENTES</strong>
                 <span class="badge-supplier-tag badge-units" style="background: rgba(245, 158, 11, 0.2); color: #b45309;">
-                  <span class="hide-mobile">${pendingUnits} perfumes (${pendingRows.length} líneas)</span>
+                  <span class="hide-mobile">${pendingUnits} perfumes (${fusedPendingRows.length} ${fusedPendingRows.length === 1 ? 'pedido' : 'pedidos'})</span>
                   <span class="show-mobile">${pendingUnits} un.</span>
                 </span>
               </div>
@@ -1183,7 +1387,7 @@ function renderTable(rows) {
       </tr>
     `;
 
-    pendingRows.forEach(r => {
+    fusedPendingRows.forEach(r => {
       let rHtml = renderTableRow(r, overallIndex--, true);
       if (isPendingCollapsed) {
         rHtml = rHtml.replace('<tr ', '<tr data-batch-row="PENDIENTE" class="batch-collapsed-row row-pending-item" ');
@@ -1193,9 +1397,6 @@ function renderTable(rows) {
       html += rHtml;
     });
   }
-
-  // 2. Grupos de Lotes de Pedidos Proveedor (Ordenados por fecha descendente)
-  const sortedBatchKeys = Object.keys(orderedBatches).sort((a, b) => b.localeCompare(a));
 
   // Separador de sección entre Pendientes y Pedidos Realizados
   if (sortedBatchKeys.length > 0) {
@@ -1219,6 +1420,7 @@ function renderTable(rows) {
   sortedBatchKeys.forEach(batchKey => {
     const batchObj = orderedBatches[batchKey];
     const bRows = batchObj.rows;
+    const bFusedRows = fusedBatchMap[batchKey] || [];
     const bUnits = bRows.reduce((sum, r) => sum + r.qty, 0);
     const bCost = bRows.reduce((sum, r) => sum + r.costo, 0);
     const bSale = bRows.reduce((sum, r) => sum + r.precioVenta, 0);
@@ -1250,7 +1452,7 @@ function renderTable(rows) {
                 </span>
                 <strong class="hide-mobile" style="color: var(--text-title); font-size: 0.90rem;">${bTitle}</strong>
                 <span class="badge-supplier-tag badge-units">
-                  <span class="hide-mobile">${bUnits} perfumes (${bRows.length} líneas)</span>
+                  <span class="hide-mobile">${bUnits} perfumes (${bFusedRows.length} ${bFusedRows.length === 1 ? 'pedido' : 'pedidos'})</span>
                   <span class="show-mobile">${bUnits} un.</span>
                 </span>
               </div>
@@ -1327,7 +1529,7 @@ function renderTable(rows) {
       </tr>
     `;
 
-    bRows.forEach(r => {
+    bFusedRows.forEach(r => {
       let rHtml = renderTableRow(r, overallIndex--, false);
       if (isCollapsed) {
         rHtml = rHtml.replace('<tr ', `<tr data-batch-row="${batchKey}" class="batch-collapsed-row" `);
@@ -1929,11 +2131,59 @@ tableBody.addEventListener("change", async event => {
   if (action === "change-status") {
     const newStatus = target.value;
     const newSlug = getStatusSlug(newStatus);
+    const fusionKey = target.dataset.fusionKey;
 
     // Actualizar aspecto visual inmediatamente
     target.className = `status-dropdown opt-${newSlug}`;
     const dot = target.parentElement.querySelector(".status-dot");
     if (dot) dot.className = `status-dot dot-${newSlug}`;
+
+    if (fusionKey && activeFusedRowsMap.has(fusionKey)) {
+      const fusedGroup = activeFusedRowsMap.get(fusionKey);
+      const items = fusedGroup.items || [];
+      const updates = [];
+
+      items.forEach(it => {
+        let updateFields = { estado: newStatus };
+        if (newSlug === "pedido" && !it.fechaPedidoProveedor) {
+          const siblingWithBatch = allSaleRows.find(r => r.saleId === it.saleId && r.fechaPedidoProveedor);
+          if (siblingWithBatch) {
+            it.fechaPedidoProveedor = siblingWithBatch.fechaPedidoProveedor;
+            it.idPedidoProveedor = siblingWithBatch.idPedidoProveedor;
+            updateFields.fechaPedidoProveedor = siblingWithBatch.fechaPedidoProveedor;
+            updateFields.idPedidoProveedor = siblingWithBatch.idPedidoProveedor;
+          }
+        }
+        it.estado = newStatus;
+        const inAll = allSaleRows.find(r => r.saleId === it.saleId && r.code === it.code);
+        if (inAll) {
+          inAll.estado = newStatus;
+          if (updateFields.fechaPedidoProveedor) {
+            inAll.fechaPedidoProveedor = updateFields.fechaPedidoProveedor;
+            inAll.idPedidoProveedor = updateFields.idPedidoProveedor;
+          }
+        }
+        updates.push({
+          saleId: it.saleId,
+          code: it.code,
+          changes: updateFields
+        });
+      });
+
+      renderAnalyticsDashboard(allSaleRows);
+      try {
+        localStorage.setItem("notes_sales_updated", Date.now().toString());
+      } catch (e) {}
+
+      try {
+        await updateMultipleSaleRows(updates);
+        showToast(newSlug === "faltante" ? `Estado cambiado a "Faltante" en ${items.length} productos ✓` : `Estado cambiado a "${newStatus}" en ${items.length} productos ✓`);
+        applyFilters();
+      } catch (err) {
+        alert("Error al actualizar estado en Firestore: " + err.message);
+      }
+      return;
+    }
 
     let updateFields = { estado: newStatus };
 
@@ -2008,14 +2258,51 @@ tableBody.addEventListener("change", async event => {
       target.checked = !isConfirmed;
     }
   } else if (action === "mark-paid-direct") {
+    const fusionKey = target.dataset.fusionKey;
+    if (fusionKey && activeFusedRowsMap.has(fusionKey)) {
+      const fused = activeFusedRowsMap.get(fusionKey);
+      const items = fused.items || [];
+      const updates = [];
+      items.forEach(it => {
+        it.pagado = true;
+        it.montoPagado = it.precioVenta;
+        it.saldoPendiente = 0;
+        const inAll = allSaleRows.find(r => r.saleId === it.saleId && r.code === it.code);
+        if (inAll) {
+          inAll.pagado = true;
+          inAll.montoPagado = inAll.precioVenta;
+          inAll.saldoPendiente = 0;
+        }
+        updates.push({
+          saleId: it.saleId,
+          code: it.code,
+          changes: { pagado: true, montoPagado: it.precioVenta, saldoPendiente: 0 }
+        });
+      });
+      fused.pagado = true;
+      fused.montoPagado = fused.precioVenta;
+      fused.saldoPendiente = 0;
+      applyFilters();
+      showToast("¡Venta marcada como Pagada! Retirada de faltantes ✓");
+      try {
+        await updateMultipleSaleRows(updates);
+        localStorage.setItem("notes_sales_updated", Date.now().toString());
+      } catch (err) {
+        alert("Error al actualizar pago en Firestore: " + err.message);
+      }
+      return;
+    }
+
     allSaleRows.forEach(r => {
       if (r.saleId === saleId && r.code === code) {
         r.pagado = true;
+        r.montoPagado = r.precioVenta;
+        r.saldoPendiente = 0;
       }
     });
 
     try {
-      await updateSaleRow(saleId, code, { pagado: true });
+      await updateSaleRow(saleId, code, { pagado: true, montoPagado: allSaleRows.find(r => r.saleId === saleId && r.code === code)?.precioVenta || 0, saldoPendiente: 0 });
       showToast("¡Venta marcada como Pagada! Eliminada de la lista de faltantes ✓");
       applyFilters();
     } catch (err) {
@@ -2401,6 +2688,325 @@ if (btnToggleUnpaid) {
 }
 
 // ==========================================================================
+// 7.15 GESTIÓN DE PAGOS, ABONOS Y CUOTAS INTERACTIVAS
+// ==========================================================================
+let currentPaymentSaleId = null;
+let currentPaymentCode = null;
+let currentPaymentRow = null;
+
+const modalPayment = document.getElementById("modalPaymentManagement");
+const payModalClient = document.getElementById("payModalClient");
+const payModalFragrance = document.getElementById("payModalFragrance");
+const payModalTotal = document.getElementById("payModalTotal");
+const btnQuickFullPay = document.getElementById("btnQuickFullPay");
+const btnQuickFullPayAmt = document.getElementById("btnQuickFullPayAmt");
+const payInputAbono = document.getElementById("payInputAbono");
+const btnPreset50 = document.getElementById("btnPreset50");
+const txtPreset50 = document.getElementById("txtPreset50");
+const payBalancePendingVal = document.getElementById("payBalancePendingVal");
+const btnSaveAbono = document.getElementById("btnSaveAbono");
+const btnResetUnpaid = document.getElementById("btnResetUnpaid");
+
+function openPaymentModal(saleId, code, fusionKey = null) {
+  let row = null;
+  if (fusionKey && activeFusedRowsMap.has(fusionKey)) {
+    row = activeFusedRowsMap.get(fusionKey);
+  } else if (saleId && code && activeFusedRowsMap.has(`${saleId}__${code}`)) {
+    row = activeFusedRowsMap.get(`${saleId}__${code}`);
+  } else if (saleId && code) {
+    const single = allSaleRows.find(r => r.saleId === saleId && r.code === code);
+    if (single) {
+      row = {
+        ...single,
+        isFused: false,
+        items: [single],
+        products: [{ ...single }]
+      };
+    }
+  }
+
+  if (!row) return;
+
+  currentPaymentSaleId = saleId;
+  currentPaymentCode = code;
+  currentPaymentRow = row;
+
+  if (payModalClient) payModalClient.textContent = row.clientName;
+
+  if (payModalFragrance) {
+    if (row.products && row.products.length > 1) {
+      payModalFragrance.innerHTML = row.products.map(p => `
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 4px; font-size: 0.82rem; padding: 2px 0; border-bottom: 1px dashed rgba(255,255,255,0.08);">
+          <span>• ${escapeAttr(p.fragrance)} (${escapeAttr(p.size)})</span>
+          <span style="font-weight: 700; color: var(--gold-primary);">${formatCLP(p.precioVenta)}</span>
+        </div>
+      `).join("");
+    } else {
+      payModalFragrance.textContent = `${row.fragrance} (${row.size})`;
+    }
+  }
+
+  if (payModalTotal) payModalTotal.textContent = formatCLP(row.precioVenta);
+  if (btnQuickFullPayAmt) btnQuickFullPayAmt.textContent = formatCLP(row.precioVenta);
+
+  const half50 = Math.round(row.precioVenta / 2);
+  if (txtPreset50) txtPreset50.textContent = formatCLP(half50);
+
+  // Cargar abono existente o monto completo si ya está pagado
+  if (payInputAbono) {
+    if (row.montoPagado > 0 && !row.pagado) {
+      payInputAbono.value = row.montoPagado;
+    } else if (row.pagado) {
+      payInputAbono.value = row.precioVenta;
+    } else {
+      payInputAbono.value = "";
+    }
+  }
+
+  updateLivePaymentBalance();
+
+  if (modalPayment) modalPayment.hidden = false;
+  if (window.lucide) lucide.createIcons();
+}
+
+function updateLivePaymentBalance() {
+  if (!currentPaymentRow) return;
+  if (!payInputAbono || !payBalancePendingVal) return;
+
+  const entered = Number(payInputAbono.value) || 0;
+  const total = currentPaymentRow.precioVenta || 0;
+  const pending = Math.max(0, total - entered);
+
+  if (entered >= total && total > 0) {
+    payBalancePendingVal.style.color = "#16a34a";
+    payBalancePendingVal.textContent = "0";
+  } else {
+    payBalancePendingVal.style.color = "#ef4444";
+    payBalancePendingVal.textContent = formatCLP(pending);
+  }
+}
+
+function closePaymentModal() {
+  if (modalPayment) modalPayment.hidden = true;
+  currentPaymentSaleId = null;
+  currentPaymentCode = null;
+  currentPaymentRow = null;
+}
+
+if (payInputAbono) {
+  payInputAbono.addEventListener("input", updateLivePaymentBalance);
+}
+
+if (btnPreset50) {
+  btnPreset50.addEventListener("click", () => {
+    if (!currentPaymentRow) return;
+    const half = Math.round(currentPaymentRow.precioVenta / 2);
+    if (payInputAbono) {
+      payInputAbono.value = half;
+      updateLivePaymentBalance();
+    }
+  });
+}
+
+// Botones presets (+10k, +15k, +20k)
+document.addEventListener("click", event => {
+  const btn = event.target.closest("[data-preset]");
+  if (!btn) return;
+  const val = Number(btn.dataset.preset);
+  if (val && payInputAbono) {
+    const cur = Number(payInputAbono.value) || 0;
+    payInputAbono.value = cur + val;
+    updateLivePaymentBalance();
+  }
+});
+
+// Cerrar modal de pago
+document.addEventListener("click", event => {
+  if (event.target.closest('[data-action="close-payment-modal"]')) {
+    closePaymentModal();
+  }
+});
+
+// 1. Marcar Pago Total (1 toque)
+if (btnQuickFullPay) {
+  btnQuickFullPay.addEventListener("click", async () => {
+    if (!currentPaymentRow) return;
+    const items = currentPaymentRow.items || [currentPaymentRow];
+    const total = currentPaymentRow.precioVenta;
+
+    currentPaymentRow.pagado = true;
+    currentPaymentRow.montoPagado = total;
+    currentPaymentRow.saldoPendiente = 0;
+
+    const updates = [];
+    items.forEach(it => {
+      it.pagado = true;
+      it.montoPagado = it.precioVenta;
+      it.saldoPendiente = 0;
+
+      const inAll = allSaleRows.find(r => r.saleId === it.saleId && r.code === it.code);
+      if (inAll) {
+        inAll.pagado = true;
+        inAll.montoPagado = inAll.precioVenta;
+        inAll.saldoPendiente = 0;
+      }
+
+      updates.push({
+        saleId: it.saleId,
+        code: it.code,
+        changes: {
+          pagado: true,
+          montoPagado: it.precioVenta,
+          saldoPendiente: 0
+        }
+      });
+    });
+
+    closePaymentModal();
+    applyFilters();
+    showToast(`¡Marcado como Pagado Total (${formatCLP(total)})! ✓`);
+
+    try {
+      await updateMultipleSaleRows(updates);
+      localStorage.setItem("notes_sales_updated", Date.now().toString());
+    } catch (err) {
+      alert("Error al actualizar pago en Firestore: " + err.message);
+    }
+  });
+}
+
+// 2. Guardar Abono / Cuotas
+if (btnSaveAbono) {
+  btnSaveAbono.addEventListener("click", async () => {
+    if (!currentPaymentRow) return;
+    const items = currentPaymentRow.items || [currentPaymentRow];
+    const total = currentPaymentRow.precioVenta;
+    const entered = Number(payInputAbono ? payInputAbono.value : 0) || 0;
+
+    if (entered <= 0) {
+      alert("Por favor ingresa un monto de abono mayor a $0, o presiona 'Marcar como No Pagado'.");
+      return;
+    }
+
+    const isFull = entered >= total;
+    const pendingTotal = Math.max(0, total - entered);
+
+    currentPaymentRow.pagado = isFull;
+    currentPaymentRow.montoPagado = entered;
+    currentPaymentRow.saldoPendiente = pendingTotal;
+
+    // Distribuir el abono entre los ítems (FIFO)
+    let remainingAbono = entered;
+    const updates = [];
+
+    items.forEach((it) => {
+      const itPrice = it.precioVenta || 0;
+      let itPaid = 0;
+
+      if (isFull) {
+        itPaid = itPrice;
+      } else {
+        if (remainingAbono >= itPrice) {
+          itPaid = itPrice;
+          remainingAbono -= itPrice;
+        } else {
+          itPaid = remainingAbono;
+          remainingAbono = 0;
+        }
+      }
+
+      const itPending = Math.max(0, itPrice - itPaid);
+      const itIsPaid = (itPaid >= itPrice && itPrice > 0);
+
+      it.pagado = itIsPaid;
+      it.montoPagado = itPaid;
+      it.saldoPendiente = itPending;
+
+      const inAll = allSaleRows.find(r => r.saleId === it.saleId && r.code === it.code);
+      if (inAll) {
+        inAll.pagado = itIsPaid;
+        inAll.montoPagado = itPaid;
+        inAll.saldoPendiente = itPending;
+      }
+
+      updates.push({
+        saleId: it.saleId,
+        code: it.code,
+        changes: {
+          pagado: itIsPaid,
+          montoPagado: itPaid,
+          saldoPendiente: itPending
+        }
+      });
+    });
+
+    closePaymentModal();
+    applyFilters();
+
+    if (isFull) {
+      showToast(`¡El abono completó el total! Marcado como Pagado (${formatCLP(entered)}) ✓`);
+    } else {
+      showToast(`Abono de ${formatCLP(entered)} registrado. Saldo pendiente: ${formatCLP(pendingTotal)} ✓`);
+    }
+
+    try {
+      await updateMultipleSaleRows(updates);
+      localStorage.setItem("notes_sales_updated", Date.now().toString());
+    } catch (err) {
+      alert("Error al guardar abono en Firestore: " + err.message);
+    }
+  });
+}
+
+// 3. Marcar como No Pagado ($0)
+if (btnResetUnpaid) {
+  btnResetUnpaid.addEventListener("click", async () => {
+    if (!currentPaymentRow) return;
+    const items = currentPaymentRow.items || [currentPaymentRow];
+    const total = currentPaymentRow.precioVenta;
+
+    currentPaymentRow.pagado = false;
+    currentPaymentRow.montoPagado = 0;
+    currentPaymentRow.saldoPendiente = total;
+
+    const updates = [];
+    items.forEach(it => {
+      it.pagado = false;
+      it.montoPagado = 0;
+      it.saldoPendiente = it.precioVenta;
+
+      const inAll = allSaleRows.find(r => r.saleId === it.saleId && r.code === it.code);
+      if (inAll) {
+        inAll.pagado = false;
+        inAll.montoPagado = 0;
+        inAll.saldoPendiente = inAll.precioVenta;
+      }
+
+      updates.push({
+        saleId: it.saleId,
+        code: it.code,
+        changes: {
+          pagado: false,
+          montoPagado: 0,
+          saldoPendiente: it.precioVenta
+        }
+      });
+    });
+
+    closePaymentModal();
+    applyFilters();
+    showToast("Marcado como No Pagado ($0 pagado)");
+
+    try {
+      await updateMultipleSaleRows(updates);
+      localStorage.setItem("notes_sales_updated", Date.now().toString());
+    } catch (err) {
+      alert("Error al actualizar pago en Firestore: " + err.message);
+    }
+  });
+}
+
+// ==========================================================================
 // 7.2 GESTIÓN DE GASTOS, BALANCES Y CONFIGURACIÓN (AJUSTES)
 // ==========================================================================
 const modalBalances = document.getElementById("modalBalances");
@@ -2713,7 +3319,7 @@ function exportToCSV() {
       r.costo,
       r.ganancia,
       `"${r.estado}"`,
-      r.pagado ? "TRUE" : "FALSE"
+      r.pagado ? "PAGADO" : (r.montoPagado > 0 ? `"ABONO ($${r.montoPagado.toLocaleString("es-CL")}, Debe $${r.saldoPendiente.toLocaleString("es-CL")})"` : "PENDIENTE")
     ];
     csvRows.push(rowData.join(";"));
   });
@@ -3492,13 +4098,82 @@ btnDeleteInModal.addEventListener("click", async () => {
   }
 });
 
-// Abrir edición al hacer clic en el botón de edición de la fila
-tableBody.addEventListener("click", e => {
-  const btn = e.target.closest('[data-action="edit-row"]');
-  if (!btn) return;
-  const saleId = btn.dataset.saleId;
-  const code = btn.dataset.code;
-  openEditSaleModal(saleId, code);
+// Abrir edición o gestión de pago al hacer clic en los controles de la fila
+tableBody.addEventListener("click", async e => {
+  const btnEdit = e.target.closest('[data-action="edit-row"]');
+  if (btnEdit) {
+    const saleId = btnEdit.dataset.saleId;
+    const code = btnEdit.dataset.code;
+    openEditSaleModal(saleId, code);
+    return;
+  }
+
+  const btnPay = e.target.closest('[data-action="open-payment-modal"]');
+  if (btnPay) {
+    const saleId = btnPay.dataset.saleId;
+    const code = btnPay.dataset.code;
+    const fusionKey = btnPay.dataset.fusionKey;
+    openPaymentModal(saleId, code, fusionKey);
+    return;
+  }
+
+  const btnMarkPaid = e.target.closest('[data-action="mark-paid-direct"]');
+  if (btnMarkPaid) {
+    const saleId = btnMarkPaid.dataset.saleId;
+    const code = btnMarkPaid.dataset.code;
+    const fusionKey = btnMarkPaid.dataset.fusionKey;
+
+    if (fusionKey && activeFusedRowsMap.has(fusionKey)) {
+      const fused = activeFusedRowsMap.get(fusionKey);
+      const items = fused.items || [];
+      const updates = [];
+      items.forEach(it => {
+        it.pagado = true;
+        it.montoPagado = it.precioVenta;
+        it.saldoPendiente = 0;
+        const inAll = allSaleRows.find(r => r.saleId === it.saleId && r.code === it.code);
+        if (inAll) {
+          inAll.pagado = true;
+          inAll.montoPagado = inAll.precioVenta;
+          inAll.saldoPendiente = 0;
+        }
+        updates.push({
+          saleId: it.saleId,
+          code: it.code,
+          changes: { pagado: true, montoPagado: it.precioVenta, saldoPendiente: 0 }
+        });
+      });
+      fused.pagado = true;
+      fused.montoPagado = fused.precioVenta;
+      fused.saldoPendiente = 0;
+      applyFilters();
+      showToast("¡Venta marcada como Pagada! Retirada de faltantes ✓");
+      try {
+        await updateMultipleSaleRows(updates);
+        localStorage.setItem("notes_sales_updated", Date.now().toString());
+      } catch (err) {
+        alert("Error al actualizar pago en Firestore: " + err.message);
+      }
+      return;
+    }
+
+    allSaleRows.forEach(r => {
+      if (r.saleId === saleId && r.code === code) {
+        r.pagado = true;
+        r.montoPagado = r.precioVenta;
+        r.saldoPendiente = 0;
+      }
+    });
+    applyFilters();
+    showToast("¡Venta marcada como Pagada! Retirada de faltantes ✓");
+    try {
+      await updateSaleRow(saleId, code, { pagado: true, montoPagado: allSaleRows.find(r => r.saleId === saleId && r.code === code)?.precioVenta || 0, saldoPendiente: 0 });
+      localStorage.setItem("notes_sales_updated", Date.now().toString());
+    } catch (err) {
+      alert("Error al actualizar pago en Firestore: " + err.message);
+    }
+    return;
+  }
 });
 
 // Event listeners de controles de búsqueda y sincronización

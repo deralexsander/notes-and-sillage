@@ -64,8 +64,18 @@ function persistTuesdayBatches(batchesSet) {
   } catch (e) {}
 }
 
-// Control de acordeones colapsados por el usuario
-const collapsedOrderCards = new Set();
+// Control de acordeones colapsados / expandidos por interacción del usuario
+const userExpandedCards = new Set();
+const userCollapsedCards = new Set();
+
+function isOrderCardExpanded(orderId) {
+  if (userExpandedCards.has(orderId)) return true;
+  if (userCollapsedCards.has(orderId)) return false;
+
+  // Por defecto: Si está en celular (<= 768px) aparece colapsado, si está en PC (> 768px) aparece abierto
+  const isMobile = window.innerWidth <= 768;
+  return !isMobile;
+}
 
 // Normaliza el slug del estado de cada perfume en la venta
 function getStatusSlug(estado) {
@@ -500,7 +510,7 @@ function renderOrdersView() {
 
     group.orders.forEach((order) => {
       const orderCard = document.createElement("div");
-      const isExpanded = !collapsedOrderCards.has(order.id);
+      const isExpanded = isOrderCardExpanded(order.id);
       orderCard.className = `order-accordion-card ${isExpanded ? 'is-expanded' : ''}`;
       orderCard.dataset.orderId = order.id;
 
@@ -672,6 +682,7 @@ function refreshAllOrders(salesList) {
     window.__hasScrolledToBatch = true;
     const matchOrder = pedidosData.find(o => o.date === targetBatch || o.id.includes(targetBatch));
     if (matchOrder) {
+      userExpandedCards.add(matchOrder.id);
       currentMonthFilter = matchOrder.monthKey;
       renderMonthFilters();
       renderOrdersView();
@@ -776,9 +787,11 @@ document.addEventListener("click", e => {
     const orderId = card.dataset.orderId;
     if (orderId) {
       if (isNowExpanded) {
-        collapsedOrderCards.delete(orderId);
+        userExpandedCards.add(orderId);
+        userCollapsedCards.delete(orderId);
       } else {
-        collapsedOrderCards.add(orderId);
+        userCollapsedCards.add(orderId);
+        userExpandedCards.delete(orderId);
       }
     }
   }

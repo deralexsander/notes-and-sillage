@@ -441,6 +441,8 @@ export async function updateMultipleSaleRows(rowUpdates) {
             }
             return it;
           });
+          const allPaid = updatedItems.every(it => it.pagado === true);
+          rootChanges.pagado = allPaid;
         }
 
         // Aplicar cambios que correspondan a nivel de documento raíz
