@@ -3,6 +3,7 @@ import {
   getSalesHistory,
   recordSale,
   updateSaleRow,
+  updateMultipleSaleRows,
   updateFullSaleRow,
   deleteSaleRow,
   syncCustomerInfoToPastSales,
@@ -127,7 +128,7 @@ function getSupplierBatchTitle(dateStr) {
 // Resuelve de manera exacta a qué lote de proveedor pertenece cada fila de venta
 function resolveSupplierBatch(row) {
   const slug = getStatusSlug(row.estado);
-  if (slug === "pendiente" || slug === "encarrito") {
+  if (slug === "pendiente" || slug === "encarrito" || slug === "faltante") {
     return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES" };
   }
 
@@ -1549,10 +1550,28 @@ tableBody.addEventListener("change", async event => {
 
     let updateFields = { estado: newStatus };
 
+    // Si se pasa a Pedido y no tiene fechaPedidoProveedor, heredar lote de algún ítem hermano de la misma venta
+    if (newSlug === "pedido") {
+      const targetRow = allSaleRows.find(r => r.saleId === saleId && r.code === code);
+      if (targetRow && !targetRow.fechaPedidoProveedor) {
+        const siblingWithBatch = allSaleRows.find(r => r.saleId === saleId && r.fechaPedidoProveedor);
+        if (siblingWithBatch) {
+          targetRow.fechaPedidoProveedor = siblingWithBatch.fechaPedidoProveedor;
+          targetRow.idPedidoProveedor = siblingWithBatch.idPedidoProveedor;
+          updateFields.fechaPedidoProveedor = siblingWithBatch.fechaPedidoProveedor;
+          updateFields.idPedidoProveedor = siblingWithBatch.idPedidoProveedor;
+        }
+      }
+    }
+
     // Actualizar en el modelo local
     allSaleRows.forEach(r => {
       if (r.saleId === saleId && r.code === code) {
         r.estado = newStatus;
+        if (updateFields.fechaPedidoProveedor) {
+          r.fechaPedidoProveedor = updateFields.fechaPedidoProveedor;
+          r.idPedidoProveedor = updateFields.idPedidoProveedor;
+        }
       }
     });
 
@@ -1563,7 +1582,7 @@ tableBody.addEventListener("change", async event => {
 
     try {
       await updateSaleRow(saleId, code, updateFields);
-      showToast(`Estado cambiado a "${newStatus}" ✓`);
+      showToast(newSlug === "faltante" ? `Estado cambiado a "Faltante" (excluido del pedido y mantenido en Pendientes) ✓` : `Estado cambiado a "${newStatus}" ✓`);
       applyFilters();
     } catch (err) {
       alert("Error al actualizar estado en Firestore: " + err.message);
@@ -1693,10 +1712,18 @@ function renderSupplierBatchModal() {
         </div>
       `;
     } else {
-      listEl.innerHTML = summaryItems.map(item => `
+      listEl.innerHTML = summaryItems.map(item => {
+        const isFaltante = item.rows.some(r => getStatusSlug(r.estado) === "faltante");
+        return `
         <div class="batch-item-row ${item.inCart ? 'in-cart' : 'is-pending'}" data-key="${item.key}">
           <div class="batch-col-code">
             <span class="code-chip" title="${item.fragrance}">${item.code}</span>
+          </div>
+          <div class="batch-col-name" style="flex: 1; min-width: 130px;">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+              <strong class="item-name" style="font-size: 0.85rem; color: var(--text-title);" title="${item.fragrance}">${item.fragrance}</strong>
+              ${isFaltante ? `<span class="badge-faltante-item" style="font-size: 0.68rem; color: #dc2626; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); padding: 1px 6px; border-radius: 4px; font-weight: 700;">Faltante anterior</span>` : ''}
+            </div>
           </div>
           <div class="batch-col-size">
             <span class="size-tag">${item.size}</span>
@@ -1718,7 +1745,8 @@ function renderSupplierBatchModal() {
             </button>
           </div>
         </div>
-      `).join("");
+      `;
+      }).join("");
     }
   }
 
@@ -1769,12 +1797,14 @@ document.addEventListener("click", async event => {
   renderSupplierBatchModal();
   applyFilters();
 
-  // Guardar en Firestore asíncronamente
+  // Guardar en Firestore atómicamente por saleId
   try {
-    const updatePromises = targetItem.rows.map(r =>
-      updateSaleRow(r.saleId, r.code, { estado: nextStatus })
-    );
-    await Promise.all(updatePromises);
+    const rowUpdates = targetItem.rows.map(r => ({
+      saleId: r.saleId,
+      code: r.code,
+      changes: { estado: nextStatus }
+    }));
+    await updateMultipleSaleRows(rowUpdates);
   } catch (err) {
     console.error("Error al actualizar estado en Firestore:", err);
     showToast("Error al sincronizar con Firestore: " + err.message);
@@ -1786,13 +1816,17 @@ document.addEventListener("click", async event => {
   if (!event.target.closest("#btnBatchMarkAllCart")) return;
 
   const summaryItems = getPendingSummaryItems();
-  const updatePromises = [];
+  const rowUpdates = [];
 
   summaryItems.forEach(it => {
     it.rows.forEach(r => {
       if (getStatusSlug(r.estado) !== "encarrito") {
         r.estado = "en carrito";
-        updatePromises.push(updateSaleRow(r.saleId, r.code, { estado: "en carrito" }));
+        rowUpdates.push({
+          saleId: r.saleId,
+          code: r.code,
+          changes: { estado: "en carrito" }
+        });
       }
     });
   });
@@ -1800,9 +1834,9 @@ document.addEventListener("click", async event => {
   renderSupplierBatchModal();
   applyFilters();
 
-  if (updatePromises.length > 0) {
+  if (rowUpdates.length > 0) {
     try {
-      await Promise.all(updatePromises);
+      await updateMultipleSaleRows(rowUpdates);
       showToast("Todos los perfumes marcados en Carrito ✓");
     } catch (err) {
       console.error("Error al sincronizar:", err);
@@ -1815,13 +1849,17 @@ document.addEventListener("click", async event => {
   if (!event.target.closest("#btnBatchMarkAllPending")) return;
 
   const summaryItems = getPendingSummaryItems();
-  const updatePromises = [];
+  const rowUpdates = [];
 
   summaryItems.forEach(it => {
     it.rows.forEach(r => {
       if (getStatusSlug(r.estado) === "encarrito") {
         r.estado = "Pendiente";
-        updatePromises.push(updateSaleRow(r.saleId, r.code, { estado: "Pendiente" }));
+        rowUpdates.push({
+          saleId: r.saleId,
+          code: r.code,
+          changes: { estado: "Pendiente" }
+        });
       }
     });
   });
@@ -1829,9 +1867,9 @@ document.addEventListener("click", async event => {
   renderSupplierBatchModal();
   applyFilters();
 
-  if (updatePromises.length > 0) {
+  if (rowUpdates.length > 0) {
     try {
-      await Promise.all(updatePromises);
+      await updateMultipleSaleRows(rowUpdates);
       showToast("Todos los perfumes vueltos a Pendiente ✓");
     } catch (err) {
       console.error("Error al sincronizar:", err);
@@ -1869,7 +1907,7 @@ if (btnConfirmBatch) {
     if (window.lucide) lucide.createIcons();
 
     try {
-      const updatePromises = [];
+      const rowUpdates = [];
       const seenConfirmKeys = new Set();
 
       rowsToFinalize.forEach(r => {
@@ -1882,15 +1920,18 @@ if (btnConfirmBatch) {
         r.fechaPedidoProveedor = chosenDate;
         r.idPedidoProveedor = batchId;
 
-        // Guardar en Firestore
-        updatePromises.push(updateSaleRow(r.saleId, r.code, {
-          estado: "Pedido",
-          fechaPedidoProveedor: chosenDate,
-          idPedidoProveedor: batchId
-        }));
+        rowUpdates.push({
+          saleId: r.saleId,
+          code: r.code,
+          changes: {
+            estado: "Pedido",
+            fechaPedidoProveedor: chosenDate,
+            idPedidoProveedor: batchId
+          }
+        });
       });
 
-      await Promise.all(updatePromises);
+      await updateMultipleSaleRows(rowUpdates);
 
       const m = document.getElementById("modalSupplierBatch");
       if (m) m.hidden = true;

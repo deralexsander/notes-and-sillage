@@ -374,32 +374,82 @@ export async function getSalesSummary() {
   });
 }
 
-// 6. Actualizar campos de una venta en Firestore (estado, pagado, confirmado)
-export async function updateSaleRow(saleId, itemCode, changes) {
+// 6. Actualizar múltiples filas de venta en Firestore de forma atómica y sin carreras
+export async function updateMultipleSaleRows(rowUpdates) {
+  if (!Array.isArray(rowUpdates) || rowUpdates.length === 0) return true;
+
   try {
-    const docRef = doc(db, "ventas", saleId);
-    const snap = await getDoc(docRef);
-    if (!snap.exists()) return false;
+    // Agrupar cambios por saleId para asegurar que cada documento de Firestore
+    // se actualice de forma atómica y sin colisiones entre ítems de la misma venta
+    const bySaleId = new Map();
+    rowUpdates.forEach(({ saleId, code, changes }) => {
+      if (!saleId) return;
+      if (!bySaleId.has(saleId)) bySaleId.set(saleId, new Map());
+      bySaleId.get(saleId).set(code, changes || {});
+    });
 
-    const data = snap.data();
-    const updateObj = { ...changes };
+    const docPromises = [];
 
-    if (Array.isArray(data.items)) {
-      const updatedItems = data.items.map(it => {
-        if (!itemCode || it.code === itemCode) {
-          return { ...it, ...changes };
+    for (const [saleId, codeChangesMap] of bySaleId.entries()) {
+      docPromises.push((async () => {
+        const docRef = doc(db, "ventas", saleId);
+        const snap = await getDoc(docRef);
+        if (!snap.exists()) return false;
+
+        const data = snap.data();
+        let updatedItems = data.items;
+        const rootChanges = {};
+
+        if (Array.isArray(data.items)) {
+          updatedItems = data.items.map(it => {
+            if (codeChangesMap.has(it.code)) {
+              const ch = codeChangesMap.get(it.code);
+              return { ...it, ...ch };
+            }
+            return it;
+          });
         }
-        return it;
-      });
-      updateObj.items = updatedItems;
+
+        // Aplicar cambios que correspondan a nivel de documento raíz
+        for (const ch of codeChangesMap.values()) {
+          if (ch.fechaPedidoProveedor !== undefined) {
+            rootChanges.fechaPedidoProveedor = ch.fechaPedidoProveedor;
+          }
+          if (ch.idPedidoProveedor !== undefined) {
+            rootChanges.idPedidoProveedor = ch.idPedidoProveedor;
+          }
+          if (ch.pagado !== undefined && !Array.isArray(data.items)) {
+            rootChanges.pagado = ch.pagado;
+          }
+          if (ch.confirmado !== undefined && !Array.isArray(data.items)) {
+            rootChanges.confirmado = ch.confirmado;
+          }
+          if (ch.estado !== undefined && !Array.isArray(data.items)) {
+            rootChanges.estado = ch.estado;
+          }
+        }
+
+        const updateObj = {
+          ...rootChanges,
+          ...(Array.isArray(updatedItems) ? { items: updatedItems } : {})
+        };
+
+        await updateDoc(docRef, updateObj);
+        return true;
+      })());
     }
 
-    await updateDoc(docRef, updateObj);
+    await Promise.all(docPromises);
     return true;
   } catch (err) {
-    console.error("Error al actualizar venta en Firestore:", err);
+    console.error("Error al actualizar filas de venta en Firestore:", err);
     throw err;
   }
+}
+
+// 6.1 Actualizar campos de una venta en Firestore (compatibilidad individual)
+export async function updateSaleRow(saleId, itemCode, changes) {
+  return updateMultipleSaleRows([{ saleId, code: itemCode, changes }]);
 }
 
 // 7. Eliminar venta o ítem de venta en Firestore
@@ -851,6 +901,7 @@ window.recordSaleInFirestore = recordSale;
 window.getSalesHistory = getSalesHistory;
 window.getSalesSummary = getSalesSummary;
 window.updateSaleRow = updateSaleRow;
+window.updateMultipleSaleRows = updateMultipleSaleRows;
 window.updateFullSaleRow = updateFullSaleRow;
 window.deleteSaleRow = deleteSaleRow;
 window.syncCustomerInfoToPastSales = syncCustomerInfoToPastSales;
