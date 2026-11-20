@@ -5,6 +5,7 @@ import {
   updateSaleRow,
   updateMultipleSaleRows,
   updateFullSaleRow,
+  updateSaleWithMultipleItems,
   deleteSaleRow,
   syncCustomerInfoToPastSales,
   getUnitFinancials,
@@ -404,6 +405,146 @@ Puedes transferir directamente a los siguientes datos de cuenta:
 Una vez realizada la transferencia, por favor envíanos el comprobante por este medio. ¡Muchas gracias por tu preferencia y que disfrutes muchísimo tus perfumes! ✨`;
 }
 
+function formatWaDigits(phone) {
+  if (!phone) return "";
+  const digits = String(phone).replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("56") && digits.length >= 11) return digits;
+  if (digits.length === 9 && digits.startsWith("9")) return "56" + digits;
+  if (digits.length === 8) return "569" + digits;
+  return digits;
+}
+
+// Obtener todas las líneas de pedidos recepcionados del mismo cliente
+function getCustomerReceivedOrders(targetRow) {
+  if (!targetRow) return [];
+  const pool = Array.isArray(allSaleRows) && allSaleRows.length > 0 ? allSaleRows : [targetRow];
+
+  let matches = pool.filter(r => {
+    const isReceived = getStatusSlug(r.estado) === "recepcionado";
+    return isReceived && isSameCustomer(r, targetRow);
+  });
+
+  if (matches.length === 0 && getStatusSlug(targetRow.estado) === "recepcionado") {
+    matches = [targetRow];
+  }
+
+  // Si targetRow es fused y contiene items recepcionados
+  if (targetRow.isFused && Array.isArray(targetRow.items)) {
+    targetRow.items.forEach(it => {
+      if (getStatusSlug(it.estado) === "recepcionado") {
+        if (!matches.some(m => m.saleId === it.saleId && m.code === it.code)) {
+          matches.push({ ...targetRow, ...it });
+        }
+      }
+    });
+  }
+
+  // Eliminar duplicados
+  const seen = new Set();
+  const uniqueMatches = [];
+  matches.forEach(m => {
+    const key = `${m.saleId || ""}_${m.code || ""}_${m.fragrance || ""}_${m.size || ""}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueMatches.push(m);
+    }
+  });
+
+  return uniqueMatches;
+}
+
+// Construir texto de notificación de pedido recepcionado para WhatsApp
+function buildReceivedOrderMessage(row, receivedList) {
+  const rawName = (row.clientName || "").trim();
+  const firstName = (rawName && rawName.toLowerCase() !== "cliente") ? rawName.split(" ")[0] : "";
+  const greeting = firstName
+    ? `¡Hola ${firstName}! 👋🌸 Te saludamos de Notes & Sillage.`
+    : `¡Hola! 👋🌸 Te saludamos de Notes & Sillage.`;
+
+  const list = (receivedList && receivedList.length > 0) ? receivedList : getCustomerReceivedOrders(row);
+
+  if (list.length <= 1) {
+    const target = list[0] || row;
+    const codeStr = (target.code && target.code !== "-") ? `[${target.code}] ` : "";
+    const sizeStr = target.size ? ` (${target.size})` : "";
+    const qtyStr = (target.qty && target.qty > 1) ? ` x${target.qty}` : "";
+    const perfumeInfo = target.fragrance ? `• ${codeStr}${target.fragrance}${sizeStr}${qtyStr}` : "• Tu perfume solicitado";
+
+    return `${greeting}
+
+Te escribimos con mucho agrado para informarte que tu pedido ya está recepcionado:
+${perfumeInfo}
+
+En el transcurso de la semana nos pondremos en contacto contigo para su entrega. ¡Muchas gracias por tu preferencia! ✨`;
+  }
+
+  // Si hay 2 o más pedidos recepcionados del cliente: detalle agrupado
+  const linesList = list.map(item => {
+    const codeStr = (item.code && item.code !== "-") ? `[${item.code}] ` : "";
+    const sizeStr = item.size ? ` (${item.size})` : "";
+    const qtyStr = (item.qty && item.qty > 1) ? ` x${item.qty}` : "";
+    return `• ${codeStr}${item.fragrance}${sizeStr}${qtyStr}`;
+  }).join("\n");
+
+  return `${greeting}
+
+Te escribimos con mucho agrado para informarte que tus pedidos ya están recepcionados:
+${linesList}
+
+En el transcurso de la semana nos pondremos en contacto contigo para su entrega. ¡Muchas gracias por tu preferencia! ✨`;
+}
+
+// Verificar y guardar si ya se envió el aviso de recepción
+function isItemReceivedNoticeSent(item) {
+  if (!item) return false;
+  if (item.avisoRecepcionEnviado === true) return true;
+  if (item.saleId && item.code) {
+    const key = `notes_wa_received_sent_${item.saleId}_${item.code}`;
+    try {
+      if (localStorage.getItem(key) === "true") return true;
+    } catch (e) {}
+  }
+  return false;
+}
+
+function setItemReceivedNoticeSent(item, sent = true) {
+  if (!item) return;
+  item.avisoRecepcionEnviado = sent;
+  if (Array.isArray(allSaleRows)) {
+    allSaleRows.forEach(r => {
+      if (item.saleId && item.code && r.saleId === item.saleId && r.code === item.code) {
+        r.avisoRecepcionEnviado = sent;
+      }
+    });
+  }
+  if (item.saleId && item.code) {
+    const key = `notes_wa_received_sent_${item.saleId}_${item.code}`;
+    try {
+      if (sent) {
+        localStorage.setItem(key, "true");
+      } else {
+        localStorage.removeItem(key);
+      }
+    } catch (e) {}
+  }
+}
+
+function isRowReceivedNoticeSent(row) {
+  if (!row) return false;
+  if (Array.isArray(row.items) && row.items.length > 0) {
+    const received = row.items.filter(it => getStatusSlug(it.estado) === "recepcionado");
+    if (received.length > 0) {
+      return received.every(it => isItemReceivedNoticeSent(it));
+    }
+  }
+  const custReceived = getCustomerReceivedOrders(row);
+  if (custReceived.length > 0) {
+    return custReceived.every(it => isItemReceivedNoticeSent(it));
+  }
+  return isItemReceivedNoticeSent(row);
+}
+
 function renderPhoneCell(phone, row) {
   if (!phone || !phone.trim()) {
     return `<span class="phone-empty">-</span>`;
@@ -414,12 +555,15 @@ function renderPhoneCell(phone, row) {
     return `<span class="phone-text">${shortDisplay}</span>`;
   }
 
-  const isDeliveredAndUnpaid = row && !row.pagado && (row.estado || "").toLowerCase().trim() === "entregado";
+  const waDigits = formatWaDigits(phone);
+  const statusSlug = getStatusSlug(row?.estado);
 
+  // 1. Caso Pedidos Entregados Pendientes de Pago (Botón Rojo Cobranza)
+  const isDeliveredAndUnpaid = row && !row.pagado && statusSlug === "entregado";
   if (isDeliveredAndUnpaid) {
     const unpaidOrders = getCustomerUnpaidOrders(row);
     const reminderText = buildPaymentReminderText(row, unpaidOrders);
-    const waUrl = `https://wa.me/${cleanDigits}?text=${encodeURIComponent(reminderText)}`;
+    const waUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(reminderText)}`;
 
     let btnTitle = `Cobrar por WhatsApp: faltante de pago entregado (${shortDisplay})`;
     if (unpaidOrders.length >= 2) {
@@ -429,12 +573,48 @@ function renderPhoneCell(phone, row) {
 
     return `
       <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn-wa-reminder" title="${btnTitle}">
-        <i data-lucide="message-circle" aria-hidden="true" style="width: 14px; height: 14px;"></i>
+        <i data-lucide="message-circle" aria-hidden="true"></i>
+        <span>${shortDisplay}</span>
       </a>
     `;
   }
 
-  const waUrl = `https://wa.me/${cleanDigits}`;
+  // 2. Caso Estado "Recepcionado" (Naranjo si pendiente de enviar, Verde si ya enviado)
+  const isReceived = row && (statusSlug === "recepcionado" || (Array.isArray(row.items) && row.items.some(it => getStatusSlug(it.estado) === "recepcionado")));
+  if (isReceived) {
+    const receivedOrders = getCustomerReceivedOrders(row);
+    const noticeText = buildReceivedOrderMessage(row, receivedOrders);
+    const waUrl = `https://wa.me/${waDigits}?text=${encodeURIComponent(noticeText)}`;
+    const isSent = isRowReceivedNoticeSent(row);
+
+    const fusionAttr = row.fusionKey ? `data-fusion-key="${escapeAttr(row.fusionKey)}"` : "";
+    const phoneAttr = `data-phone="${escapeAttr(phone)}"`;
+    const saleIdAttr = row.saleId ? `data-sale-id="${escapeAttr(row.saleId)}"` : "";
+    const codeAttr = row.code ? `data-code="${escapeAttr(row.code)}"` : "";
+
+    if (isSent) {
+      const sentTitle = `Aviso de recepción ya enviado ✓ (Click para volver a abrir WhatsApp con ${phone})`;
+      return `
+        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="phone-link phone-received-green" data-action="send-wa-received" ${saleIdAttr} ${codeAttr} ${fusionAttr} ${phoneAttr} title="${sentTitle}">
+          <i data-lucide="check-check" aria-hidden="true"></i>
+          <span>${shortDisplay}</span>
+        </a>
+      `;
+    } else {
+      const pendingTitle = receivedOrders.length > 1
+        ? `Enviar aviso por WhatsApp: ${receivedOrders.length} pedidos recepcionados (${shortDisplay})`
+        : `Enviar aviso por WhatsApp: pedido recepcionado (${shortDisplay})`;
+      return `
+        <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="phone-link phone-received-orange" data-action="send-wa-received" ${saleIdAttr} ${codeAttr} ${fusionAttr} ${phoneAttr} title="${pendingTitle}">
+          <i data-lucide="message-circle" aria-hidden="true"></i>
+          <span>${shortDisplay}</span>
+        </a>
+      `;
+    }
+  }
+
+  // 3. Caso Normal (Enlace estándar de WhatsApp)
+  const waUrl = `https://wa.me/${waDigits}`;
   return `
     <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="phone-link" title="Abrir WhatsApp con ${phone}">
       <i data-lucide="message-circle" aria-hidden="true"></i>
@@ -652,6 +832,7 @@ async function loadSales() {
           costo: subtotalCosto,
           ganancia: subtotalGanancia,
           estado: item.estado || estadoGeneral,
+          avisoRecepcionEnviado: Boolean(item.avisoRecepcionEnviado === true || isItemReceivedNoticeSent({ saleId: sale.id, code: item.code })),
           pagado: (typeof item.pagado === "boolean" ? item.pagado : pagadoGeneral) || (typeof item.montoPagado === "number" && item.montoPagado >= subtotalVenta && subtotalVenta > 0),
           montoPagado: typeof item.montoPagado === "number" ? item.montoPagado : ((typeof item.pagado === "boolean" ? item.pagado : pagadoGeneral) ? subtotalVenta : 0),
           saldoPendiente: typeof item.saldoPendiente === "number" ? item.saldoPendiente : Math.max(0, subtotalVenta - (typeof item.montoPagado === "number" ? item.montoPagado : ((typeof item.pagado === "boolean" ? item.pagado : pagadoGeneral) ? subtotalVenta : 0))),
@@ -659,6 +840,9 @@ async function loadSales() {
           fechaPedidoProveedor: item.fechaPedidoProveedor || sale.fechaPedidoProveedor || null,
           idPedidoProveedor: item.idPedidoProveedor || sale.idPedidoProveedor || null
         });
+        if (item.avisoRecepcionEnviado === true) {
+          setItemReceivedNoticeSent({ saleId: sale.id, code: item.code }, true);
+        }
       });
     });
 
@@ -832,8 +1016,8 @@ function rowMatchesDirectly(row, rawQuery, allProducts) {
   // 1. Coincidencia directa de código normalizado (ej: "f-12" con "f12", "j00" con "j-00")
   if (codeQuery && normalizeProductCode(row.code) === codeQuery) return true;
 
-  // 2. Coincidencia por texto completo (cliente, fragancia, código, institución, teléfono, código venta)
-  const fullTarget = normalizeSearchText(`${row.clientName} ${row.fragrance} ${row.code} ${row.institution} ${row.clientPhone} ${row.codigoVenta}`);
+  // 2. Coincidencia por texto completo (cliente, fragancia, código, institución, teléfono, código venta, estado)
+  const fullTarget = normalizeSearchText(`${row.clientName} ${row.fragrance} ${row.code} ${row.institution} ${row.clientPhone} ${row.codigoVenta} ${row.estado}`);
   if (fullTarget.includes(query) || fullTarget.replace(/\s+/g, "").includes(compactQuery)) return true;
 
   // 3. Coincidencia de producto usando productMatchesQuery (código, nombre, notas, sub)
@@ -1023,6 +1207,7 @@ function fuseRowsByCustomer(rowsList, batchKey = "") {
           costo: r.costo,
           ganancia: r.ganancia,
           estado: r.estado,
+          avisoRecepcionEnviado: r.avisoRecepcionEnviado,
           pagado: r.pagado,
           montoPagado: r.montoPagado,
           saldoPendiente: r.saldoPendiente
@@ -1050,6 +1235,7 @@ function fuseRowsByCustomer(rowsList, batchKey = "") {
         costo: it.costo,
         ganancia: it.ganancia,
         estado: it.estado,
+        avisoRecepcionEnviado: it.avisoRecepcionEnviado,
         pagado: it.pagado,
         montoPagado: it.montoPagado,
         saldoPendiente: it.saldoPendiente
@@ -1068,7 +1254,8 @@ function fuseRowsByCustomer(rowsList, batchKey = "") {
         montoPagado: totalMontoPagado,
         saldoPendiente: totalSaldoPendiente,
         pagado: isAllPaid,
-        estado: primary.estado
+        estado: primary.estado,
+        avisoRecepcionEnviado: items.every(it => it.avisoRecepcionEnviado)
       };
 
       result.push(fusedObj);
@@ -1190,7 +1377,7 @@ function renderTableRow(row, rowNum, isPending) {
       </td>
       ${!isUnpaidViewActive ? `
         <td class="td-action" style="text-align: center; white-space: nowrap;">
-          <button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" title="Editar venta o eliminar">
+          <button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr} title="Editar venta o eliminar">
             <i data-lucide="pencil" aria-hidden="true"></i>
           </button>
         </td>
@@ -2079,6 +2266,37 @@ tableBody.addEventListener("change", async event => {
     const dot = target.parentElement.querySelector(".status-dot");
     if (dot) dot.className = `status-dot dot-${newSlug}`;
 
+    // Si pasa a Recepcionado, resetear el estado de aviso para que quede en NARANJO
+    if (newSlug === "recepcionado") {
+      if (fusionKey && activeFusedRowsMap.has(fusionKey)) {
+        const fusedGroup = activeFusedRowsMap.get(fusionKey);
+        (fusedGroup.items || []).forEach(it => {
+          setItemReceivedNoticeSent(it, false);
+        });
+      } else {
+        const rowObj = allSaleRows.find(r => r.saleId === saleId && r.code === code);
+        if (rowObj) setItemReceivedNoticeSent(rowObj, false);
+      }
+    }
+
+    const tr = target.closest("tr");
+    if (tr) {
+      const tdPhone = tr.querySelector(".td-phone");
+      if (tdPhone) {
+        const targetRow = (fusionKey && activeFusedRowsMap.has(fusionKey))
+          ? activeFusedRowsMap.get(fusionKey)
+          : allSaleRows.find(r => r.saleId === saleId && r.code === code);
+        if (targetRow) {
+          targetRow.estado = newStatus;
+          if (newSlug === "recepcionado") {
+            targetRow.avisoRecepcionEnviado = false;
+          }
+          tdPhone.innerHTML = renderPhoneCell(targetRow.clientPhone, targetRow);
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    }
+
     if (fusionKey && activeFusedRowsMap.has(fusionKey)) {
       const fusedGroup = activeFusedRowsMap.get(fusionKey);
       const items = fusedGroup.items || [];
@@ -2086,6 +2304,10 @@ tableBody.addEventListener("change", async event => {
 
       items.forEach(it => {
         let updateFields = { estado: newStatus };
+        if (newSlug === "recepcionado") {
+          updateFields.avisoRecepcionEnviado = false;
+          it.avisoRecepcionEnviado = false;
+        }
         if (newSlug === "pedido" && !it.fechaPedidoProveedor) {
           const siblingWithBatch = allSaleRows.find(r => r.saleId === it.saleId && r.fechaPedidoProveedor);
           if (siblingWithBatch) {
@@ -2099,6 +2321,9 @@ tableBody.addEventListener("change", async event => {
         const inAll = allSaleRows.find(r => r.saleId === it.saleId && r.code === it.code);
         if (inAll) {
           inAll.estado = newStatus;
+          if (newSlug === "recepcionado") {
+            inAll.avisoRecepcionEnviado = false;
+          }
           if (updateFields.fechaPedidoProveedor) {
             inAll.fechaPedidoProveedor = updateFields.fechaPedidoProveedor;
             inAll.idPedidoProveedor = updateFields.idPedidoProveedor;
@@ -2127,6 +2352,9 @@ tableBody.addEventListener("change", async event => {
     }
 
     let updateFields = { estado: newStatus };
+    if (newSlug === "recepcionado") {
+      updateFields.avisoRecepcionEnviado = false;
+    }
 
     // Si se pasa a Pedido y no tiene fechaPedidoProveedor, heredar lote de algún ítem hermano de la misma venta
     if (newSlug === "pedido") {
@@ -2146,6 +2374,9 @@ tableBody.addEventListener("change", async event => {
     allSaleRows.forEach(r => {
       if (r.saleId === saleId && r.code === code) {
         r.estado = newStatus;
+        if (newSlug === "recepcionado") {
+          r.avisoRecepcionEnviado = false;
+        }
         if (updateFields.fechaPedidoProveedor) {
           r.fechaPedidoProveedor = updateFields.fechaPedidoProveedor;
           r.idPedidoProveedor = updateFields.idPedidoProveedor;
@@ -3502,17 +3733,56 @@ function updateModalFinancialPreview(forceResetPrice = false) {
   const subtotalCosto = pricing.unitCost * qty;
   const subtotalGanancia = pricing.unitProfit * qty;
 
-  if (calcUnitPrice) calcUnitPrice.textContent = formatCLP(pricing.unitPrice);
-  if (calcTotalPrice) calcTotalPrice.textContent = formatCLP(subtotalVenta);
-  if (calcTotalCost) calcTotalCost.textContent = formatCLP(subtotalCosto);
+  if (modalMode === "edit" && currentModalEditItems && currentModalEditItems.length > 1) {
+    let grandTotalVenta = 0;
+    let grandTotalCosto = 0;
+    let grandTotalGanancia = 0;
+    let grandTotalUnits = 0;
 
-  if (calcTotalProfit) {
-    if (subtotalGanancia > 0) {
-      calcTotalProfit.textContent = `+${formatCLP(subtotalGanancia)}`;
-      calcTotalProfit.classList.remove("profit-zero");
-    } else {
-      calcTotalProfit.textContent = formatCLP(0);
-      calcTotalProfit.classList.add("profit-zero");
+    currentModalEditItems.forEach((it, idx) => {
+      if (idx === currentModalActiveItemIdx) {
+        grandTotalVenta += subtotalVenta;
+        grandTotalCosto += subtotalCosto;
+        grandTotalGanancia += subtotalGanancia;
+        grandTotalUnits += qty;
+      } else {
+        const iq = Number(it.qty) || 1;
+        const iPrice = typeof it.precioVenta === "number" ? it.precioVenta : ((Number(it.unitPrice) || 0) * iq);
+        const iCost = typeof it.costo === "number" ? it.costo : ((Number(it.unitCost) || 0) * iq);
+        const iProfit = typeof it.ganancia === "number" ? it.ganancia : (iPrice - iCost);
+        grandTotalVenta += iPrice;
+        grandTotalCosto += iCost;
+        grandTotalGanancia += iProfit;
+        grandTotalUnits += iq;
+      }
+    });
+
+    if (calcUnitPrice) calcUnitPrice.textContent = formatCLP(pricing.unitPrice);
+    if (calcTotalPrice) calcTotalPrice.textContent = `${formatCLP(grandTotalVenta)} (${grandTotalUnits} un.)`;
+    if (calcTotalCost) calcTotalCost.textContent = formatCLP(grandTotalCosto);
+
+    if (calcTotalProfit) {
+      if (grandTotalGanancia > 0) {
+        calcTotalProfit.textContent = `+${formatCLP(grandTotalGanancia)}`;
+        calcTotalProfit.classList.remove("profit-zero");
+      } else {
+        calcTotalProfit.textContent = formatCLP(grandTotalGanancia);
+        calcTotalProfit.classList.add("profit-zero");
+      }
+    }
+  } else {
+    if (calcUnitPrice) calcUnitPrice.textContent = formatCLP(pricing.unitPrice);
+    if (calcTotalPrice) calcTotalPrice.textContent = formatCLP(subtotalVenta);
+    if (calcTotalCost) calcTotalCost.textContent = formatCLP(subtotalCosto);
+
+    if (calcTotalProfit) {
+      if (subtotalGanancia > 0) {
+        calcTotalProfit.textContent = `+${formatCLP(subtotalGanancia)}`;
+        calcTotalProfit.classList.remove("profit-zero");
+      } else {
+        calcTotalProfit.textContent = formatCLP(0);
+        calcTotalProfit.classList.add("profit-zero");
+      }
     }
   }
 
@@ -3599,10 +3869,157 @@ function toInputDateFormat(dateStr, isoStr) {
 }
 
 // 10. Abrir Modal en Modo "Nueva Venta"
+let currentModalEditItems = [];
+let currentModalActiveItemIdx = 0;
+
+function syncActiveItemFromForm() {
+  if (!currentModalEditItems || !currentModalEditItems[currentModalActiveItemIdx]) return;
+  const it = currentModalEditItems[currentModalActiveItemIdx];
+  const prodVal = manualProductSelect.value;
+  let p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
+  if (p) {
+    it.code = p.code;
+    it.fragrance = p.name;
+  } else {
+    const opt = manualProductSelect.options[manualProductSelect.selectedIndex];
+    it.fragrance = opt ? opt.text.replace(/^\[.*?\]\s*/, "") : (it.fragrance || "Perfume");
+    it.code = prodVal || it.code || "S/C";
+  }
+
+  it.size = manualSizeSelect.value || "100 ml";
+  it.qty = parseInt(manualQty.value, 10) || 1;
+  it.estado = manualStatus.value || "Entregado";
+  it.pagado = manualPaid.checked;
+  if (manualConfirmed) it.confirmado = manualConfirmed.checked;
+
+  const rawUserPrice = manualUnitPrice ? manualUnitPrice.value.trim() : "";
+  const overridePrice = rawUserPrice !== "" ? parseFloat(rawUserPrice) : null;
+  const rawUserCost = manualUnitCost ? manualUnitCost.value.trim() : "";
+  const overrideCost = rawUserCost !== "" ? parseFloat(rawUserCost) : null;
+
+  const fin = calculateItemPricing(it.code, it.size, p, overridePrice, overrideCost);
+  it.unitPrice = fin.unitPrice;
+  it.unitCost = fin.unitCost;
+  it.unitProfit = fin.unitProfit;
+  it.precioVenta = fin.unitPrice * it.qty;
+  it.costo = fin.unitCost * it.qty;
+  it.ganancia = fin.unitProfit * it.qty;
+  it.esCostoCero = (fin.unitCost === 0);
+  it.esRegaloCliente = (fin.unitPrice === 0);
+  it.esAlCosto = (fin.unitProfit === 0 && fin.unitPrice > 0 && fin.unitPrice === fin.unitCost);
+}
+
+function loadModalItemToForm(item) {
+  if (!item) return;
+  modalSaleCodeBadge.textContent = item.code || "-";
+
+  let matchedProduct = catalogProducts.find(x => x.code === item.code || x.id === item.code);
+  if (!matchedProduct) {
+    matchedProduct = catalogProducts.find(x => normalizeProductCode(x.code) === normalizeProductCode(item.code));
+  }
+  if (!matchedProduct) {
+    matchedProduct = catalogProducts.find(x => x.name.toLowerCase() === (item.fragrance || "").toLowerCase());
+  }
+  if (!matchedProduct) {
+    const sug = findSearchSuggestion(item.fragrance, catalogProducts);
+    if (sug) {
+      matchedProduct = catalogProducts.find(x => x.name.toLowerCase() === sug.toLowerCase() || productMatchesQuery(x, sug, catalogProducts));
+    }
+  }
+
+  if (manualProductSearch) {
+    manualProductSearch.value = matchedProduct ? matchedProduct.name : (item.fragrance || "");
+  }
+  if (manualProductMatchBadge) manualProductMatchBadge.hidden = true;
+
+  if (matchedProduct) {
+    manualProductSelect.value = matchedProduct.id;
+    populateSizeSelectForProduct(matchedProduct, item.size);
+  } else {
+    let customOpt = manualProductSelect.querySelector(`option[value="${item.code}"]`);
+    if (!customOpt) {
+      customOpt = document.createElement("option");
+      customOpt.value = item.code;
+      customOpt.textContent = `[${item.code}] ${item.fragrance} (Histórico)`;
+      manualProductSelect.appendChild(customOpt);
+    }
+    manualProductSelect.value = item.code;
+    populateSizeSelectForProduct(null, item.size);
+  }
+
+  manualQty.value = item.qty || 1;
+  manualStatus.value = item.estado || "Entregado";
+  manualPaid.checked = Boolean(item.pagado);
+  if (manualConfirmed) manualConfirmed.checked = Boolean(item.confirmado);
+
+  const unitPriceFromItem = (item.qty > 0) ? Math.round((item.precioVenta || 0) / item.qty) : (item.unitPrice || 0);
+  const unitCostFromItem = (item.qty > 0) ? Math.round((item.costo || 0) / item.qty) : (item.unitCost || 0);
+
+  if (manualUnitPrice) manualUnitPrice.value = unitPriceFromItem;
+  if (manualUnitCost) manualUnitCost.value = unitCostFromItem;
+  if (manualZeroCost) manualZeroCost.checked = (unitCostFromItem === 0);
+  if (manualClientGift) manualClientGift.checked = (unitPriceFromItem === 0);
+  if (manualAtCost) manualAtCost.checked = (item.ganancia === 0 && unitPriceFromItem > 0 && unitPriceFromItem === unitCostFromItem);
+
+  updateModalFinancialPreview(false);
+  renderMultiProductsChips();
+}
+
+function renderMultiProductsChips() {
+  const container = document.getElementById("modalMultiProductsContainer");
+  const listEl = document.getElementById("multiProductsList");
+  const countTitle = document.getElementById("multiProductsCountTitle");
+  const activeLabel = document.getElementById("activeItemEditingLabel");
+
+  if (!container || !listEl || !currentModalEditItems) return;
+
+  const count = currentModalEditItems.length;
+  if (count <= 1) {
+    container.hidden = true;
+    return;
+  }
+
+  container.hidden = false;
+  if (countTitle) countTitle.textContent = `Perfumes de este pedido (${count}):`;
+
+  const activeItem = currentModalEditItems[currentModalActiveItemIdx] || currentModalEditItems[0];
+  if (activeLabel && activeItem) {
+    activeLabel.textContent = `Editando perfume ${currentModalActiveItemIdx + 1} de ${count}: [${activeItem.code || "-"}] ${activeItem.fragrance || "Sin nombre"}`;
+  }
+
+  listEl.innerHTML = currentModalEditItems.map((it, idx) => {
+    const isActive = idx === currentModalActiveItemIdx;
+    const statusSlug = getStatusSlug(it.estado);
+    const priceStr = formatCLP(it.precioVenta || ((it.unitPrice || 0) * (it.qty || 1)) || 0);
+
+    return `
+      <button type="button" class="btn-product-tab ${isActive ? 'is-active' : ''}" data-item-idx="${idx}">
+        <div class="tab-left">
+          <span class="tab-index">#${idx + 1}</span>
+          <span class="tab-code">${escapeAttr(it.code || "-")}</span>
+          <span class="tab-name" title="${escapeAttr(it.fragrance || "")}">${escapeAttr(it.fragrance || "Perfume")}</span>
+        </div>
+        <div class="tab-right">
+          <span class="tab-size">${escapeAttr(it.size || "100 ml")}</span>
+          <span class="tab-qty">x${it.qty || 1}</span>
+          <span class="tab-price">${priceStr}</span>
+          <span class="status-dot dot-${statusSlug}" title="${escapeAttr(it.estado || "")}"></span>
+          ${isActive ? '<span class="tab-badge-active">Editando</span>' : ''}
+        </div>
+      </button>
+    `;
+  }).join("");
+}
+
 function openNewSaleModal() {
   modalMode = "new";
   currentEditSaleId = null;
   currentEditCode = null;
+  currentModalEditItems = [];
+  currentModalActiveItemIdx = 0;
+
+  const multiContainer = document.getElementById("modalMultiProductsContainer");
+  if (multiContainer) multiContainer.hidden = true;
 
   modalSaleTitle.textContent = "Registrar Nueva Venta en Firestore";
   modalSaleCodeBadge.hidden = true;
@@ -3643,97 +4060,92 @@ function openNewSaleModal() {
 }
 
 // 11. Abrir Modal en Modo "Editar Venta"
-function openEditSaleModal(saleId, code) {
+function openEditSaleModal(saleId, code, fusionKey) {
   modalMode = "edit";
   currentEditSaleId = saleId;
   currentEditCode = code;
 
-  const row = allSaleRows.find(r => r.saleId === saleId && r.code === code);
-  if (!row) {
+  // 1. Obtener la fila o grupo
+  const targetRow = (fusionKey && activeFusedRowsMap.has(fusionKey))
+    ? activeFusedRowsMap.get(fusionKey)
+    : allSaleRows.find(r => r.saleId === saleId && r.code === code);
+
+  if (!targetRow) {
     alert("No se encontró el registro seleccionado en la tabla.");
     return;
   }
 
-  modalSaleTitle.textContent = "Editar Venta";
-  modalSaleCodeBadge.textContent = row.code;
+  // 2. Extraer todos los perfumes del pedido / cliente
+  let items = [];
+  if (targetRow.isFused && Array.isArray(targetRow.items) && targetRow.items.length > 0) {
+    items = targetRow.items.map(it => ({ ...it }));
+  } else if (saleId) {
+    const siblings = allSaleRows.filter(r => r.saleId === saleId);
+    if (siblings.length > 0) {
+      items = siblings.map(it => ({ ...it }));
+    }
+  }
+
+  if (items.length === 0) {
+    items = [{ ...targetRow }];
+  }
+
+  currentModalEditItems = items;
+
+  // Seleccionar el índice que coincide con el código clicado
+  const matchedIdx = items.findIndex(it => it.code === code);
+  currentModalActiveItemIdx = matchedIdx >= 0 ? matchedIdx : 0;
+
+  // 3. Encabezados y títulos del Modal
+  const isMulti = items.length > 1;
+  modalSaleTitle.textContent = isMulti ? `Editar Venta (${items.length} perfumes)` : "Editar Venta";
+  modalSaleCodeBadge.textContent = items[currentModalActiveItemIdx].code || "-";
   modalSaleCodeBadge.hidden = false;
   btnDeleteInModal.hidden = false;
   btnSubmitModal.textContent = "Guardar Cambios";
 
-  manualDate.value = toInputDateFormat(row.fecha, row.fechaISO);
-  manualCustomerName.value = row.clientName || "";
-  manualCustomerPhone.value = row.clientPhone || "";
-  manualInstitution.value = row.institution || "";
+  // 4. Datos generales del cliente (comunes a todos sus perfumes)
+  manualDate.value = toInputDateFormat(targetRow.fecha, targetRow.fechaISO);
+  manualCustomerName.value = targetRow.clientName || "";
+  manualCustomerPhone.value = targetRow.clientPhone || "";
+  manualInstitution.value = targetRow.institution || "";
   lastAutoFilledPhone = "";
   lastAutoFilledInst = "";
 
   handleCustomerNameAutoRecognition();
 
-  let matchedProduct = catalogProducts.find(x => x.code === row.code || x.id === row.code);
-  if (!matchedProduct) {
-    matchedProduct = catalogProducts.find(x => normalizeProductCode(x.code) === normalizeProductCode(row.code));
-  }
-  if (!matchedProduct) {
-    matchedProduct = catalogProducts.find(x => x.name.toLowerCase() === row.fragrance.toLowerCase());
-  }
-  if (!matchedProduct) {
-    const sug = findSearchSuggestion(row.fragrance, catalogProducts);
-    if (sug) {
-      matchedProduct = catalogProducts.find(x => x.name.toLowerCase() === sug.toLowerCase() || productMatchesQuery(x, sug, catalogProducts));
+  // 5. Mostrar o esconder el gestor de múltiples perfumes
+  const multiContainer = document.getElementById("modalMultiProductsContainer");
+  if (multiContainer) {
+    multiContainer.hidden = !isMulti;
+    if (isMulti) {
+      renderMultiProductsChips();
     }
   }
 
-  if (manualProductSearch) {
-    manualProductSearch.value = matchedProduct ? matchedProduct.name : (row.fragrance || "");
-  }
-  if (manualProductMatchBadge) manualProductMatchBadge.hidden = true;
+  // 6. Cargar el ítem activo en los controles del formulario
+  loadModalItemToForm(items[currentModalActiveItemIdx]);
 
-  if (matchedProduct) {
-    manualProductSelect.value = matchedProduct.id;
-    populateSizeSelectForProduct(matchedProduct, row.size);
-  } else {
-    let customOpt = manualProductSelect.querySelector(`option[value="${row.code}"]`);
-    if (!customOpt) {
-      customOpt = document.createElement("option");
-      customOpt.value = row.code;
-      customOpt.textContent = `[${row.code}] ${row.fragrance} (Histórico)`;
-      manualProductSelect.appendChild(customOpt);
-    }
-    manualProductSelect.value = row.code;
-    populateSizeSelectForProduct(null, row.size);
-  }
-
-  manualQty.value = row.qty || 1;
-  manualStatus.value = row.estado || "Entregado";
-  manualPaid.checked = Boolean(row.pagado);
-  if (manualConfirmed) manualConfirmed.checked = Boolean(row.confirmado);
-
-  const unitPriceFromRow = (row.qty > 0) ? Math.round(row.precioVenta / row.qty) : row.precioVenta;
-  const unitCostFromRow = (row.qty > 0) ? Math.round(row.costo / row.qty) : row.costo;
-
-  if (manualUnitPrice) {
-    manualUnitPrice.value = unitPriceFromRow;
-  }
-  if (manualUnitCost) {
-    manualUnitCost.value = unitCostFromRow;
-  }
-  if (manualZeroCost) {
-    manualZeroCost.checked = (unitCostFromRow === 0);
-  }
-  if (manualClientGift) {
-    manualClientGift.checked = (unitPriceFromRow === 0);
-  }
-  if (manualAtCost) {
-    manualAtCost.checked = (row.ganancia === 0 && unitPriceFromRow > 0 && unitPriceFromRow === unitCostFromRow);
-  }
-
-  updateModalFinancialPreview(false);
   modalNewSale.hidden = false;
   if (window.lucide) lucide.createIcons();
 }
 
 if (btnNewManualSale) {
   btnNewManualSale.addEventListener("click", openNewSaleModal);
+}
+
+const multiProductsList = document.getElementById("multiProductsList");
+if (multiProductsList) {
+  multiProductsList.addEventListener("click", e => {
+    const btnTab = e.target.closest('[data-item-idx]');
+    if (!btnTab) return;
+    const targetIdx = parseInt(btnTab.dataset.itemIdx, 10);
+    if (isNaN(targetIdx) || targetIdx === currentModalActiveItemIdx) return;
+
+    syncActiveItemFromForm();
+    currentModalActiveItemIdx = targetIdx;
+    loadModalItemToForm(currentModalEditItems[targetIdx]);
+  });
 }
 
 manualProductSelect.addEventListener("change", () => {
@@ -4008,21 +4420,37 @@ newSaleForm.addEventListener("submit", async e => {
       btnSubmitModal.disabled = true;
       btnSubmitModal.textContent = "Guardando cambios...";
 
-      await updateFullSaleRow(currentEditSaleId, currentEditCode, {
-        dateVal,
-        customerName,
-        customerPhone,
-        institution,
-        product: p,
-        size,
-        qty,
-        unitPrice,
-        unitCost,
-        unitProfit,
-        estado,
-        pagado,
-        confirmado
-      });
+      if (currentModalEditItems && currentModalEditItems.length > 1) {
+        syncActiveItemFromForm();
+
+        // Agrupar por saleId para guardar
+        const salesMap = new Map();
+        currentModalEditItems.forEach(it => {
+          const sId = it.saleId || currentEditSaleId;
+          if (!salesMap.has(sId)) salesMap.set(sId, []);
+          salesMap.get(sId).push(it);
+        });
+
+        for (const [sId, sItems] of salesMap.entries()) {
+          await updateSaleWithMultipleItems(sId, { dateVal, customerName, customerPhone, institution }, sItems);
+        }
+      } else {
+        await updateFullSaleRow(currentEditSaleId, currentEditCode, {
+          dateVal,
+          customerName,
+          customerPhone,
+          institution,
+          product: p,
+          size,
+          qty,
+          unitPrice,
+          unitCost,
+          unitProfit,
+          estado,
+          pagado,
+          confirmado
+        });
+      }
 
       // Sincronizar y actualizar retroactivamente pedidos anteriores si faltaba teléfono o institución
       let backfillCount = 0;
@@ -4117,6 +4545,39 @@ manualCustomerName.addEventListener("change", handleCustomerNameAutoRecognition)
 btnDeleteInModal.addEventListener("click", async () => {
   if (!currentEditSaleId) return;
 
+  if (currentModalEditItems && currentModalEditItems.length > 1) {
+    const activeItem = currentModalEditItems[currentModalActiveItemIdx];
+    const itemDesc = `[${activeItem.code || "-"}] ${activeItem.fragrance || "Perfume"}`;
+    if (!confirm(`¿Deseas eliminar SOLO el perfume seleccionado (${itemDesc}) de este pedido?`)) return;
+
+    try {
+      btnDeleteInModal.disabled = true;
+      btnDeleteInModal.textContent = "Eliminando...";
+
+      await deleteSaleRow(activeItem.saleId || currentEditSaleId, activeItem.code);
+      showToast(`Perfume ${itemDesc} eliminado del pedido ✓`);
+
+      currentModalEditItems.splice(currentModalActiveItemIdx, 1);
+      currentModalActiveItemIdx = Math.max(0, currentModalActiveItemIdx - 1);
+
+      if (currentModalEditItems.length <= 1) {
+        const multiContainer = document.getElementById("modalMultiProductsContainer");
+        if (multiContainer) multiContainer.hidden = true;
+      }
+
+      loadModalItemToForm(currentModalEditItems[currentModalActiveItemIdx]);
+      renderMultiProductsChips();
+      await loadSales();
+    } catch (err) {
+      alert("Error al eliminar perfume: " + err.message);
+    } finally {
+      btnDeleteInModal.disabled = false;
+      btnDeleteInModal.innerHTML = `<i data-lucide="trash-2" aria-hidden="true"></i><span>Eliminar Venta</span>`;
+      if (window.lucide) lucide.createIcons();
+    }
+    return;
+  }
+
   const row = allSaleRows.find(r => r.saleId === currentEditSaleId && r.code === currentEditCode);
   const desc = row ? `[${row.code}] ${row.fragrance} para ${row.clientName}` : "esta venta";
 
@@ -4141,11 +4602,140 @@ btnDeleteInModal.addEventListener("click", async () => {
 
 // Abrir edición o gestión de pago al hacer clic en los controles de la fila
 tableBody.addEventListener("click", async e => {
+  const btnReceived = e.target.closest('[data-action="send-wa-received"]');
+  if (btnReceived) {
+    const isCurrentlyGreen = btnReceived.classList.contains("phone-received-green");
+
+    // Si el usuario hace Alt+Click o Shift+Click sobre el botón verde para deshacer (volver a naranjo):
+    if (isCurrentlyGreen && (e.altKey || e.shiftKey)) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const saleId = btnReceived.dataset.saleId;
+      const code = btnReceived.dataset.code;
+      const fusionKey = btnReceived.dataset.fusionKey;
+      const phone = btnReceived.dataset.phone;
+
+      const targetRow = (fusionKey && activeFusedRowsMap.has(fusionKey))
+        ? activeFusedRowsMap.get(fusionKey)
+        : allSaleRows.find(r => r.saleId === saleId && r.code === code);
+
+      const itemsToReset = targetRow ? getCustomerReceivedOrders(targetRow) : [];
+      if (itemsToReset.length === 0 && targetRow) itemsToReset.push(targetRow);
+
+      const resetUpdates = [];
+      itemsToReset.forEach(it => {
+        setItemReceivedNoticeSent(it, false);
+        if (it.saleId && it.code) {
+          resetUpdates.push({
+            saleId: it.saleId,
+            code: it.code,
+            changes: { avisoRecepcionEnviado: false }
+          });
+        }
+      });
+
+      // Actualizar visualmente a naranjo
+      const allReceivedBtns = tableBody.querySelectorAll('[data-action="send-wa-received"]');
+      allReceivedBtns.forEach(btn => {
+        const bSaleId = btn.dataset.saleId;
+        const bCode = btn.dataset.code;
+        const bPhone = btn.dataset.phone;
+        if (itemsToReset.some(it => it.saleId === bSaleId && it.code === bCode) || (phone && bPhone === phone)) {
+          btn.classList.remove("phone-received-green");
+          btn.classList.add("phone-received-orange");
+          btn.title = `Enviar aviso por WhatsApp: pedido recepcionado (${btn.querySelector("span")?.textContent || ""})`;
+          const oldIcon = btn.querySelector("svg, i");
+          if (oldIcon) {
+            const newI = document.createElement("i");
+            newI.setAttribute("data-lucide", "message-circle");
+            newI.setAttribute("aria-hidden", "true");
+            oldIcon.replaceWith(newI);
+          }
+        }
+      });
+      if (window.lucide) lucide.createIcons();
+
+      showToast("Aviso por WhatsApp desmarcado (vuelve a naranjo) ✓");
+      if (resetUpdates.length > 0) {
+        updateMultipleSaleRows(resetUpdates).catch(console.warn);
+      }
+      return;
+    }
+
+    // Flujo normal: El usuario hace clic para enviar el WhatsApp
+    // No llamamos e.preventDefault() para que el navegador abra el enlace waUrl nativamente en una pestaña nueva
+    btnReceived.classList.remove("phone-received-orange");
+    btnReceived.classList.add("phone-received-green");
+    btnReceived.title = "Aviso de recepción ya enviado ✓ (Click para volver a abrir WhatsApp)";
+    const oldIcon = btnReceived.querySelector("svg, i");
+    if (oldIcon) {
+      const newI = document.createElement("i");
+      newI.setAttribute("data-lucide", "check-check");
+      newI.setAttribute("aria-hidden", "true");
+      oldIcon.replaceWith(newI);
+    }
+
+    const saleId = btnReceived.dataset.saleId;
+    const code = btnReceived.dataset.code;
+    const fusionKey = btnReceived.dataset.fusionKey;
+    const phone = btnReceived.dataset.phone;
+
+    const targetRow = (fusionKey && activeFusedRowsMap.has(fusionKey))
+      ? activeFusedRowsMap.get(fusionKey)
+      : allSaleRows.find(r => r.saleId === saleId && r.code === code);
+
+    const receivedOrders = targetRow ? getCustomerReceivedOrders(targetRow) : [];
+    if (receivedOrders.length === 0 && targetRow) receivedOrders.push(targetRow);
+
+    const updates = [];
+    receivedOrders.forEach(item => {
+      setItemReceivedNoticeSent(item, true);
+      if (item.saleId && item.code) {
+        updates.push({
+          saleId: item.saleId,
+          code: item.code,
+          changes: { avisoRecepcionEnviado: true }
+        });
+      }
+    });
+
+    // Actualizar visualmente cualquier otra fila del mismo cliente en la tabla
+    const allReceivedBtns = tableBody.querySelectorAll('[data-action="send-wa-received"]');
+    allReceivedBtns.forEach(btn => {
+      const bSaleId = btn.dataset.saleId;
+      const bCode = btn.dataset.code;
+      const bPhone = btn.dataset.phone;
+      if (receivedOrders.some(it => it.saleId === bSaleId && it.code === bCode) || (phone && bPhone === phone)) {
+        btn.classList.remove("phone-received-orange");
+        btn.classList.add("phone-received-green");
+        btn.title = "Aviso de recepción ya enviado ✓ (Click para volver a abrir WhatsApp)";
+        const bIcon = btn.querySelector("svg, i");
+        if (bIcon) {
+          const newI = document.createElement("i");
+          newI.setAttribute("data-lucide", "check-check");
+          newI.setAttribute("aria-hidden", "true");
+          bIcon.replaceWith(newI);
+        }
+      }
+    });
+    if (window.lucide) lucide.createIcons();
+
+    showToast("¡Aviso por WhatsApp registrado como enviado! ✓");
+
+    if (updates.length > 0) {
+      updateMultipleSaleRows(updates).catch(err => {
+        console.warn("No se pudo actualizar avisoRecepcionEnviado en Firestore:", err);
+      });
+    }
+  }
+
   const btnEdit = e.target.closest('[data-action="edit-row"]');
   if (btnEdit) {
     const saleId = btnEdit.dataset.saleId;
     const code = btnEdit.dataset.code;
-    openEditSaleModal(saleId, code);
+    const fusionKey = btnEdit.dataset.fusionKey;
+    openEditSaleModal(saleId, code, fusionKey);
     return;
   }
 

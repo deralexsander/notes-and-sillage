@@ -462,6 +462,9 @@ export async function updateMultipleSaleRows(rowUpdates) {
           if (ch.estado !== undefined && !Array.isArray(data.items)) {
             rootChanges.estado = ch.estado;
           }
+          if (ch.avisoRecepcionEnviado !== undefined && !Array.isArray(data.items)) {
+            rootChanges.avisoRecepcionEnviado = ch.avisoRecepcionEnviado;
+          }
         }
 
         const updateObj = {
@@ -607,6 +610,9 @@ export async function updateFullSaleRow(saleId, oldCode, updatedData) {
           esCostoCero: unitCost === 0,
           esRegaloCliente: unitPrice === 0,
           estado: estado,
+          avisoRecepcionEnviado: ((it.estado || "").toLowerCase().trim() !== "recepcionado" && (estado || "").toLowerCase().trim() === "recepcionado")
+            ? false
+            : (it.avisoRecepcionEnviado || false),
           pagado: pagado,
           confirmado: confirmado
         };
@@ -679,6 +685,107 @@ export async function updateFullSaleRow(saleId, oldCode, updatedData) {
     return true;
   } catch (err) {
     console.error("Error al actualizar venta completa en Firestore:", err);
+    throw err;
+  }
+}
+
+// 8.1 Actualizar venta completa con múltiples ítems editados
+export async function updateSaleWithMultipleItems(saleId, customerData, itemsList) {
+  try {
+    const docRef = doc(db, "ventas", saleId);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      throw new Error(`La venta ${saleId} no existe en Firestore`);
+    }
+
+    const currentData = snap.data();
+    const { dateVal, customerName, customerPhone = "", institution = "" } = customerData;
+
+    const fechaISO = dateVal ? new Date(`${dateVal}T12:00:00.000Z`).toISOString() : (currentData.fechaISO || new Date().toISOString());
+    let fechaLegible = currentData.fechaLegible || "";
+    if (dateVal && dateVal.includes("-")) {
+      const parts = dateVal.split("-");
+      if (parts.length === 3) {
+        fechaLegible = `${parts[2]}-${parts[1]}-${parts[0]}`;
+      }
+    }
+
+    const cliente = {
+      nombre: customerName,
+      telefono: customerPhone || "",
+      institucion: institution || ""
+    };
+
+    const origen = institution ? `Venta Directa (${institution})` : (currentData.origen || "Venta Directa");
+    const notes = institution ? `Institución: ${institution}` : (currentData.notes || "");
+
+    let totalVenta = 0;
+    let totalCosto = 0;
+    let totalGanancia = 0;
+    let totalUnidades = 0;
+    let allPagado = true;
+    let allConfirmado = true;
+
+    const enrichedItems = itemsList.map(it => {
+      const qty = Number(it.qty) || 1;
+      const unitPrice = Number(it.unitPrice) || 0;
+      const unitCost = Number(it.unitCost) || 0;
+      const unitProfit = typeof it.unitProfit === "number" ? it.unitProfit : Math.max(0, unitPrice - unitCost);
+      const subtotal = unitPrice * qty;
+      const subtotalCosto = unitCost * qty;
+      const subtotalGanancia = unitProfit * qty;
+
+      totalVenta += subtotal;
+      totalCosto += subtotalCosto;
+      totalGanancia += subtotalGanancia;
+      totalUnidades += qty;
+
+      if (!it.pagado) allPagado = false;
+      if (!it.confirmado) allConfirmado = false;
+
+      return {
+        code: it.code || "S/C",
+        name: it.fragrance || it.name || "Perfume",
+        size: it.size || "100 ml",
+        qty: qty,
+        unitPrice: unitPrice,
+        unitCost: unitCost,
+        unitProfit: unitProfit,
+        subtotal: subtotal,
+        subtotalCosto: subtotalCosto,
+        subtotalGanancia: subtotalGanancia,
+        esCostoCero: unitCost === 0,
+        esRegaloCliente: unitPrice === 0,
+        estado: it.estado || "Entregado",
+        pagado: it.pagado !== false,
+        confirmado: it.confirmado !== false,
+        avisoRecepcionEnviado: it.avisoRecepcionEnviado || false
+      };
+    });
+
+    const margenPorcentaje = totalVenta > 0 ? Number(((totalGanancia / totalVenta) * 100).toFixed(1)) : 50.0;
+
+    await updateDoc(docRef, {
+      fechaISO,
+      fechaLegible,
+      cliente,
+      origen,
+      notes,
+      items: enrichedItems,
+      totales: {
+        totalVenta,
+        totalCosto,
+        totalGanancia,
+        totalUnidades,
+        margenPorcentaje
+      },
+      pagado: allPagado,
+      confirmado: allConfirmado
+    });
+
+    return true;
+  } catch (err) {
+    console.error("Error al actualizar venta con múltiples ítems:", err);
     throw err;
   }
 }
@@ -943,6 +1050,7 @@ window.getSalesSummary = getSalesSummary;
 window.updateSaleRow = updateSaleRow;
 window.updateMultipleSaleRows = updateMultipleSaleRows;
 window.updateFullSaleRow = updateFullSaleRow;
+window.updateSaleWithMultipleItems = updateSaleWithMultipleItems;
 window.deleteSaleRow = deleteSaleRow;
 window.syncCustomerInfoToPastSales = syncCustomerInfoToPastSales;
 window.getUnitFinancials = getUnitFinancials;

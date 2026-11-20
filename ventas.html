@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css?v=20261118_font_and_icons_scale">
+  <link rel="stylesheet" href="css/ventas.css?v=20261120_edit_multiple_perfumes">
   <script>
     (function() {
       try {
@@ -302,6 +302,24 @@
             <div class="form-group">
               <label for="manualInstitution">Institución / Referencia</label>
               <input type="text" id="manualInstitution" placeholder="Ej. Enjoy, Altazor, SSCC, Familia">
+            </div>
+          </div>
+
+          <!-- Selector y lista de perfumes cuando el cliente tiene más de un producto -->
+          <div id="modalMultiProductsContainer" class="modal-multi-products-container" hidden>
+            <div class="multi-products-header">
+              <span class="multi-products-title">
+                <i data-lucide="layers" style="width: 14px; height: 14px; color: var(--gold-primary);"></i>
+                <span id="multiProductsCountTitle">Perfumes de este pedido:</span>
+              </span>
+              <span class="multi-products-hint">Haz clic en un perfume para seleccionarlo y editar sus detalles:</span>
+            </div>
+            <div id="multiProductsList" class="multi-products-list">
+              <!-- Botones interactivos de cada perfume generados dinámicamente -->
+            </div>
+            <div class="active-item-editing-banner">
+              <i data-lucide="pencil" style="width: 12px; height: 12px;"></i>
+              <span id="activeItemEditingLabel">Editando perfume:</span>
             </div>
           </div>
 
@@ -875,8 +893,8 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
-  <script type="module" src="js/firebase-config.js?v=20261118_fuzzy_search"></script>
-  <script type="module" src="js/settings-modal.js?v=20261118_font_and_icons_scale"></script>
-  <script type="module" src="js/ventas.js?v=20261118_font_and_icons_scale"></script>
+  <script type="module" src="js/firebase-config.js?v=20261120_edit_multiple_perfumes"></script>
+  <script type="module" src="js/settings-modal.js?v=20261120_edit_multiple_perfumes"></script>
+  <script type="module" src="js/ventas.js?v=20261120_edit_multiple_perfumes"></script>
 </body>
 </html>
