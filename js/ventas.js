@@ -37,6 +37,31 @@ let isUnpaidViewActive = false;
 let currentBalancesConfig = { ...DEFAULT_BALANCES_CONFIG };
 let currentExpenses = [];
 
+// Renderizado seguro y resiliente de iconos Lucide con soporte de aliases para versiones cacheadas
+export function ensureLucideIconsReady() {
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    if (window.lucide.icons) {
+      if (!window.lucide.icons.CheckCheck && window.lucide.icons.Check) {
+        window.lucide.icons.CheckCheck = window.lucide.icons.Check;
+      }
+      if (!window.lucide.icons.Pencil && window.lucide.icons.Edit3) {
+        window.lucide.icons.Pencil = window.lucide.icons.Edit3;
+      } else if (!window.lucide.icons.Pencil && window.lucide.icons.Edit) {
+        window.lucide.icons.Pencil = window.lucide.icons.Edit;
+      }
+      if (!window.lucide.icons.Layers && window.lucide.icons.Square) {
+        window.lucide.icons.Layers = window.lucide.icons.Square;
+      }
+    }
+    try {
+      window.lucide.createIcons();
+    } catch (e) {
+      console.warn("Lucide createIcons warning:", e);
+    }
+  }
+}
+ensureLucideIconsReady();
+
 // Carga y guardado persistente de lotes colapsados en el navegador (localStorage)
 function getSavedCollapsedBatches() {
   try {
@@ -722,7 +747,7 @@ function handleCustomerNameAutoRecognition() {
       textSpan.textContent = `Cliente reconocido (${match.count} ${orderWord})`;
     }
     badge.hidden = false;
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
   }
 
   // Si el cliente es el dueño (Alexander Muñoz), autoconfigurar al costo por defecto
@@ -756,7 +781,7 @@ async function loadSales() {
     const isMobile = window.innerWidth <= 768;
     const initialColspan = isMobile ? 6 : 15;
     tableBody.innerHTML = `<tr><td colspan="${initialColspan}" style="text-align:center; padding:35px; color:var(--text-muted);"><i data-lucide="loader" class="spin"></i> Sincronizando ventas desde Firestore...</td></tr>`;
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
 
     const [sales, balancesCfg, expensesList] = await Promise.all([
       getSalesHistory(),
@@ -1103,7 +1128,7 @@ function applyFilters() {
           </button>
         `;
         searchSuggestionBanner.hidden = false;
-        if (window.lucide) lucide.createIcons();
+        ensureLucideIconsReady();
       }
 
       renderTable(currentFilteredRows);
@@ -1435,7 +1460,7 @@ function renderTable(rows) {
       html += renderTableRow(r, idx--, false);
     });
     tableBody.innerHTML = html;
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
     return;
   }
 
@@ -1669,7 +1694,7 @@ function renderTable(rows) {
   });
 
   tableBody.innerHTML = html;
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 }
 
 // 6. Actualizar métricas totales
@@ -2179,7 +2204,7 @@ function initAnalyticsControls() {
       if (iconToggleAnalytics) {
         iconToggleAnalytics.setAttribute("data-lucide", collapsed ? "chevron-down" : "chevron-up");
       }
-      if (window.lucide) lucide.createIcons();
+      ensureLucideIconsReady();
     };
 
     applyCollapseState(isCollapsedInitially);
@@ -2292,7 +2317,7 @@ tableBody.addEventListener("change", async event => {
             targetRow.avisoRecepcionEnviado = false;
           }
           tdPhone.innerHTML = renderPhoneCell(targetRow.clientPhone, targetRow);
-          if (window.lucide) lucide.createIcons();
+          ensureLucideIconsReady();
         }
       }
     }
@@ -2611,7 +2636,7 @@ function renderSupplierBatchModal() {
     }
   }
 
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 }
 
 // Abrir modal de resumen al presionar el botón "Pasar a Pedido Proveedor"
@@ -2634,7 +2659,7 @@ document.addEventListener("click", event => {
 
   const modalEl = document.getElementById("modalSupplierBatch");
   if (modalEl) modalEl.hidden = false;
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 });
 
 // Mostrar detalle de flete y envío gratis al hacer clic/tap en la insignia móvil
@@ -2787,7 +2812,7 @@ if (btnConfirmBatch) {
 
     btnConfirmBatch.disabled = true;
     btnConfirmBatch.innerHTML = `<i data-lucide="loader" class="spin"></i> Guardando nuevo pedido...`;
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
 
     try {
       const rowUpdates = [];
@@ -2835,7 +2860,7 @@ if (btnConfirmBatch) {
     } finally {
       btnConfirmBatch.disabled = false;
       btnConfirmBatch.innerHTML = `<i data-lucide="check" aria-hidden="true"></i> <span id="btnConfirmBatchText">Finalizar</span>`;
-      if (window.lucide) lucide.createIcons();
+      ensureLucideIconsReady();
     }
   });
 }
@@ -2938,7 +2963,7 @@ function openPaymentModal(saleId, code, fusionKey = null) {
   updateLivePaymentBalance();
 
   if (modalPayment) modalPayment.hidden = false;
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 }
 
 function updateLivePaymentBalance() {
@@ -3191,7 +3216,7 @@ function openSettingsModal() {
   syncBalancesModalInputs();
   updateOctoberBalances();
   renderExpensesTable();
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 }
 
 if (btnOpenBalances) btnOpenBalances.addEventListener("click", openSettingsModal);
@@ -3228,7 +3253,7 @@ document.addEventListener("click", event => {
   document.querySelectorAll(".balance-tab-content").forEach(content => {
     content.hidden = (content.id !== targetId);
   });
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 });
 
 // ==========================================================================
@@ -3487,7 +3512,7 @@ if (formNewExpense) {
       renderExpensesTable();
       updateOctoberBalances();
       showToast("Gasto registrado exitosamente ✓");
-      if (window.lucide) lucide.createIcons();
+      ensureLucideIconsReady();
     } catch (err) {
       alert("Error al registrar gasto: " + err.message);
     }
@@ -3507,7 +3532,7 @@ document.addEventListener("click", async event => {
     renderExpensesTable();
     updateOctoberBalances();
     showToast("Gasto eliminado ✓");
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
   } catch (err) {
     alert("Error al eliminar gasto: " + err.message);
   }
@@ -3536,7 +3561,7 @@ document.addEventListener("click", event => {
     <i data-lucide="${isNowCollapsed ? 'chevron-right' : 'chevron-down'}" style="width: 14px; height: 14px;"></i>
     <span>${isNowCollapsed ? 'Desplegar' : 'Contraer'}</span>
   `;
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 });
 
 // Mostrar detalle de flete y envío gratis al hacer clic/tap en la insignia móvil
@@ -4056,7 +4081,7 @@ function openNewSaleModal() {
 
   updateModalFinancialPreview(true);
   modalNewSale.hidden = false;
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 }
 
 // 11. Abrir Modal en Modo "Editar Venta"
@@ -4127,7 +4152,7 @@ function openEditSaleModal(saleId, code, fusionKey) {
   loadModalItemToForm(items[currentModalActiveItemIdx]);
 
   modalNewSale.hidden = false;
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 }
 
 if (btnNewManualSale) {
@@ -4573,7 +4598,7 @@ btnDeleteInModal.addEventListener("click", async () => {
     } finally {
       btnDeleteInModal.disabled = false;
       btnDeleteInModal.innerHTML = `<i data-lucide="trash-2" aria-hidden="true"></i><span>Eliminar Venta</span>`;
-      if (window.lucide) lucide.createIcons();
+      ensureLucideIconsReady();
     }
     return;
   }
@@ -4596,7 +4621,7 @@ btnDeleteInModal.addEventListener("click", async () => {
   } finally {
     btnDeleteInModal.disabled = false;
     btnDeleteInModal.innerHTML = `<i data-lucide="trash-2" aria-hidden="true"></i><span>Eliminar Venta</span>`;
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
   }
 });
 
@@ -4654,7 +4679,7 @@ tableBody.addEventListener("click", async e => {
           }
         }
       });
-      if (window.lucide) lucide.createIcons();
+      ensureLucideIconsReady();
 
       showToast("Aviso por WhatsApp desmarcado (vuelve a naranjo) ✓");
       if (resetUpdates.length > 0) {
@@ -4719,7 +4744,7 @@ tableBody.addEventListener("click", async e => {
         }
       }
     });
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
 
     showToast("¡Aviso por WhatsApp registrado como enviado! ✓");
 
@@ -4865,7 +4890,7 @@ let isVentasAuthenticated = false;
 function showVentasAuthError(msg) {
   if (ventasAuthErrorMsg) ventasAuthErrorMsg.textContent = msg;
   if (ventasAuthErrorAlert) ventasAuthErrorAlert.hidden = false;
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 }
 
 function clearVentasAuthError() {
@@ -4892,7 +4917,7 @@ function setVentasAuthState(user) {
     // Cargar datos una vez validada la autenticación
     initCatalog();
     loadSales();
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
   } else {
     isVentasAuthenticated = false;
     // Si intenta ingresar por la URL sin sesión activa, redirige inmediatamente al inicio
@@ -4910,7 +4935,7 @@ if (btnToggleVentasAuthPassword && ventasAuthPassword) {
       ventasEyeClosed.style.display = isPass ? "" : "none";
     }
     btnToggleVentasAuthPassword.setAttribute("title", isPass ? "Ocultar contraseña" : "Mostrar contraseña");
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
   });
 }
 
@@ -4947,7 +4972,7 @@ if (ventasAuthForm) {
       if (btnSubmitVentasAuth) btnSubmitVentasAuth.disabled = false;
       if (ventasAuthSpinner) ventasAuthSpinner.hidden = true;
       if (ventasAuthBtnText) ventasAuthBtnText.textContent = "Ingresar";
-      if (window.lucide) lucide.createIcons();
+      ensureLucideIconsReady();
     }
   });
 }
@@ -4987,7 +5012,7 @@ function initVentasTheme() {
       localStorage.setItem("notes_theme", "dark");
     }
     updateToggleLabels();
-    if (window.lucide) lucide.createIcons();
+    ensureLucideIconsReady();
   });
 }
 

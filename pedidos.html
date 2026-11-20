@@ -121,7 +121,17 @@
   </div>
 
   <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="js/lucide.min.js?v=20261120_v1"></script>
+  <script>
+    if (!window.lucide) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"><\/script>');
+    }
+  </script>
+  <script>
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      try { lucide.createIcons(); } catch (e) { console.warn("Lucide init error:", e); }
+    }
+  </script>
   <!-- Dataset de Pedidos Base -->
   <script src="js/pedidos-data.js?v=20261118_01"></script>
   <!-- Firebase Config (Firestore & Auth) -->

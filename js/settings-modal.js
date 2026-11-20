@@ -14,6 +14,29 @@ import {
 const FONT_SIZE_STORAGE_KEY = "notes_font_size";
 const FONT_SCALE_STORAGE_KEY = "notes_font_scale";
 
+function ensureLucideIconsReady() {
+  if (window.lucide && typeof window.lucide.createIcons === "function") {
+    if (window.lucide.icons) {
+      if (!window.lucide.icons.CheckCheck && window.lucide.icons.Check) {
+        window.lucide.icons.CheckCheck = window.lucide.icons.Check;
+      }
+      if (!window.lucide.icons.Pencil && window.lucide.icons.Edit3) {
+        window.lucide.icons.Pencil = window.lucide.icons.Edit3;
+      } else if (!window.lucide.icons.Pencil && window.lucide.icons.Edit) {
+        window.lucide.icons.Pencil = window.lucide.icons.Edit;
+      }
+      if (!window.lucide.icons.Layers && window.lucide.icons.Square) {
+        window.lucide.icons.Layers = window.lucide.icons.Square;
+      }
+    }
+    try {
+      window.lucide.createIcons();
+    } catch (e) {
+      console.warn("Lucide warning:", e);
+    }
+  }
+}
+
 function getScaleDescription(scale) {
   if (scale <= 92) return "Pequeño";
   if (scale <= 105) return "Normal (Predeterminado)";
@@ -356,7 +379,7 @@ export function openSettingsModal() {
   } catch (e) {}
   applyAppFontSize(savedScale, false);
 
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 }
 
 export function closeSettingsModal() {
@@ -367,7 +390,7 @@ export function closeSettingsModal() {
 function ensureSettingsModalDOM() {
   if (document.getElementById("modalBalances")) return;
   document.body.insertAdjacentHTML("beforeend", SETTINGS_MODAL_HTML);
-  if (window.lucide) lucide.createIcons();
+  ensureLucideIconsReady();
 }
 
 function initSettingsModal() {
@@ -425,7 +448,7 @@ function initSettingsModal() {
       document.querySelectorAll(".balance-tab-content").forEach(content => {
         content.hidden = content.id !== targetId;
       });
-      if (window.lucide) lucide.createIcons();
+      ensureLucideIconsReady();
       return;
     }
 
@@ -516,7 +539,7 @@ function initSettingsModal() {
           setTimeout(() => {
             saveBtn.disabled = false;
             saveBtn.innerHTML = originalText;
-            if (window.lucide) lucide.createIcons();
+            ensureLucideIconsReady();
           }, 2000);
         }
       } catch (err) {
@@ -566,7 +589,7 @@ function initSettingsModal() {
           setTimeout(() => {
             saveBtn.disabled = false;
             saveBtn.innerHTML = originalText;
-            if (window.lucide) lucide.createIcons();
+            ensureLucideIconsReady();
           }, 2000);
         }
       } catch (err) {

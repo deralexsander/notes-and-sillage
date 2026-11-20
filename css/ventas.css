@@ -658,9 +658,18 @@ body.auth-checking .container-fluid {
   color: var(--text-title);
 }
 
-.phone-link i {
+i[data-lucide] {
+  font-style: normal;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.phone-link i,
+.phone-link svg {
   width: 11px;
   height: 11px;
+  flex-shrink: 0;
 }
 
 /* Estado Recepcionado: Pendiente de aviso WhatsApp (Naranjo) */

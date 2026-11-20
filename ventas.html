@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css?v=20261120_edit_multiple_perfumes">
+  <link rel="stylesheet" href="css/ventas.css?v=20261120_icons_fix">
   <script>
     (function() {
       try {
@@ -890,11 +890,21 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="js/lucide.min.js?v=20261120_v1"></script>
+  <script>
+    if (!window.lucide) {
+      document.write('<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"><\/script>');
+    }
+  </script>
+  <script>
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      try { lucide.createIcons(); } catch (e) { console.warn("Lucide init error:", e); }
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
   <script src="js/pedidos-data.js?v=20261108_01"></script>
-  <script type="module" src="js/firebase-config.js?v=20261120_edit_multiple_perfumes"></script>
-  <script type="module" src="js/settings-modal.js?v=20261120_edit_multiple_perfumes"></script>
-  <script type="module" src="js/ventas.js?v=20261120_edit_multiple_perfumes"></script>
+  <script type="module" src="js/firebase-config.js?v=20261120_icons_fix"></script>
+  <script type="module" src="js/settings-modal.js?v=20261120_icons_fix"></script>
+  <script type="module" src="js/ventas.js?v=20261120_icons_fix"></script>
 </body>
 </html>
