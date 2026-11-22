@@ -1129,6 +1129,15 @@
       border-radius: 12px;
     }
 
+    .help-bubble-actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .help-bubble-whatsapp {
+      background: var(--whatsapp);
+    }
+
     .help-bubble-link svg {
       width: 18px;
       height: 18px;

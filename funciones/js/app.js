@@ -146,21 +146,22 @@ let selectedSizes = {};
 let malePresentationVisible = {};
 let femalePresentationVisible = {};
 let otherPresentationVisible = {};
-const maleAromaImageBase = "img/Fragancias%20Masculinas/Inspiraci%C3%B3n%20visual%20por%20aroma";
-const malePresentationImageBase = "img/Fragancias%20Masculinas/Presentaci%C3%B3n%20general";
+const productImageBase = "../productos";
+const maleAromaImageBase = `${productImageBase}/perfumes/Fragancias%20Masculinas/Inspiraci%C3%B3n%20visual%20por%20aroma`;
+const malePresentationImageBase = `${productImageBase}/perfumes/Fragancias%20Masculinas/Presentaci%C3%B3n%20general`;
 const malePresentationImages = {
   "100ml": "perfume-parfums-d-parfums-hombre-100ml-eau-de-toilette-essenciel.webp",
   "50ml": "perfume-parfums-d-parfums-hombre-50ml-eau-de-toilette-essenciel.webp",
   "20ml": "perfume-parfums-d-parfums-hombre-20ml-eau-de-toilette-essenciel.webp"
 };
-const femaleAromaImageBase = "img/Fragancias%20Femeninas/Inspiraci%C3%B3n%20visual%20por%20aroma";
-const femalePresentationImageBase = "img/Fragancias%20Femeninas/Presentaci%C3%B3n%20general";
+const femaleAromaImageBase = `${productImageBase}/perfumes/Fragancias%20Femeninas/Inspiraci%C3%B3n%20visual%20por%20aroma`;
+const femalePresentationImageBase = `${productImageBase}/perfumes/Fragancias%20Femeninas/Presentaci%C3%B3n%20general`;
 const femalePresentationImages = {
   "100ml": "perfume-parfums-d-parfums-mujer-100ml-eau-de-toilette-essenciel.webp",
   "50ml": "perfume-parfums-d-parfums-mujer-50ml-eau-de-toilette-essenciel.webp",
   "20ml": "perfume-parfums-d-parfums-mujer-20ml-eau-de-toilette-essenciel.webp"
 };
-const missingImageSrc = "img/no-img/no-encontrado.webp";
+const missingImageSrc = `${productImageBase}/no-img/no-encontrado.webp`;
 
 function getAromaImagePath(product) {
   const code = product.code.split("/")[0].trim();
@@ -176,20 +177,20 @@ function getAromaImagePath(product) {
   if (product.cat === "red-black") {
     const number = normalizedCode.slice(1);
     const folder = product.badge === "BLACK" ? "Black%20parfums" : "Red%20parfums";
-    return `img/${folder}/Inspiraci%C3%B3n%20visual%20por%20aroma/Q-${number}/parfums_${normalizedCode.toLowerCase()}.webp`;
+    return `${productImageBase}/black%20and%20red/${folder}/Inspiraci%C3%B3n%20visual%20por%20aroma/Q-${number}/parfums_${normalizedCode.toLowerCase()}.webp`;
   }
   if (product.cat === "teen") {
-    const number = normalizedCode.slice(1);
+    const number = normalizedCode.replace(/^J-?/, "");
     const folder = Number(number) <= 6 ? "girl" : "boy";
-    return `img/teen/${folder}/Inspiraci%C3%B3n%20visual%20por%20aroma/J-${number}/parfums_${normalizedCode.toLowerCase()}.webp`;
+    return `${productImageBase}/perfumes/teen/${folder}/Inspiraci%C3%B3n%20visual%20por%20aroma/J-${number}/parfums_j${number.toLowerCase()}.webp`;
   }
   if (product.cat === "colonia-h" || product.cat === "colonia-m") {
-    const number = normalizedCode.slice(1);
+    const number = normalizedCode.replace(/^S-?/, "");
     const folder = product.cat === "colonia-h" ? "Colonias%20Hombre" : "colonias%20mujer";
-    return `img/${folder}/Inspiraci%C3%B3n%20visual%20por%20aroma/S-${number}/parfums_${normalizedCode.toLowerCase()}.webp`;
+    return `${productImageBase}/colonias/${folder}/Inspiraci%C3%B3n%20visual%20por%20aroma/S-${number}/parfums_s${number.toLowerCase()}.webp`;
   }
   if (product.cat === "splash") {
-    return "img/colonia%20splash/Inspiraci%C3%B3n%20visual%20por%20aroma/B-101/parfums_b101.webp";
+    return `${productImageBase}/colonias/colonia%20splash/Inspiraci%C3%B3n%20visual%20por%20aroma/B-101/parfums_b101.webp`;
   }
   return "";
 }
@@ -197,15 +198,17 @@ function getAromaImagePath(product) {
 function getPresentationImage(product) {
   if (product.cat === "red-black") {
     return product.badge === "BLACK"
-      ? { src: "img/Black%20parfums/Presentaci%C3%B3n%20general/black-parfums-empaque.webp", alt: "Envase y empaque Black Parfums" }
-      : { src: "img/Red%20parfums/Presentaci%C3%B3n%20general/red-parfums-empaque.webp", alt: "Envase y empaque Red Parfums" };
+      ? { src: `${productImageBase}/black%20and%20red/Black%20parfums/Presentaci%C3%B3n%20general/black-parfums-empaque.webp`, alt: "Envase y empaque Black Parfums" }
+      : { src: `${productImageBase}/black%20and%20red/Red%20parfums/Presentaci%C3%B3n%20general/red-parfums-empaque.webp`, alt: "Envase y empaque Red Parfums" };
   }
   if (product.cat === "teen") {
-    if (/^J0[0-6]$/.test(product.code)) {
-      return { src: `img/teen/girl/Presentaci%C3%B3n%20general/${product.code.replace("J", "J-")}.webp`, alt: `Perfume ${product.name} de la línea Teen` };
+    const normalizedTeenCode = (product.code || "").replace(/[\s-]/g, "").toUpperCase();
+    if (/^J0[0-6]$/.test(normalizedTeenCode)) {
+      const presentationCode = `J-${normalizedTeenCode.slice(1)}`;
+      return { src: `${productImageBase}/perfumes/teen/girl/Presentaci%C3%B3n%20general/${presentationCode}.webp`, alt: `Perfume ${product.name} de la línea Teen` };
     }
-    if (/^J0[7-9]$/.test(product.code)) {
-      return { src: "img/teen/boy/Presentaci%C3%B3n%20general/teen-boy.webp", alt: "Empaque de la línea Teen masculina" };
+    if (/^J0[7-9]$/.test(normalizedTeenCode)) {
+      return { src: `${productImageBase}/perfumes/teen/boy/Presentaci%C3%B3n%20general/teen-boy.webp`, alt: "Empaque de la línea Teen masculina" };
     }
     return null;
   }
@@ -218,23 +221,23 @@ function getPresentationImage(product) {
     return { src: `${femalePresentationImageBase}/${femalePresentationImages[size]}`, alt: `Presentación general de ${size} para la línea femenina` };
   }
   if (product.cat === "colonia-h") {
-    return { src: "img/Colonias%20Hombre/Presentaci%C3%B3n%20general/colonia-parfums-d-parfums-hombre-400ml-eau-de-cologne-essenciel.webp", alt: "Envase de colonia masculina de 400 ml" };
+    return { src: `${productImageBase}/colonias/Colonias%20Hombre/Presentaci%C3%B3n%20general/colonia-parfums-d-parfums-hombre-400ml-eau-de-cologne-essenciel.webp`, alt: "Envase de colonia masculina de 400 ml" };
   }
   if (product.cat === "colonia-m") {
-    return { src: "img/colonias%20mujer/Presentaci%C3%B3n%20general/colonia-parfums-d-parfums-mujer-400ml-eau-de-cologne-essenciel.webp", alt: "Envase de colonia femenina de 400 ml" };
+    return { src: `${productImageBase}/colonias/colonias%20mujer/Presentaci%C3%B3n%20general/colonia-parfums-d-parfums-mujer-400ml-eau-de-cologne-essenciel.webp`, alt: "Envase de colonia femenina de 400 ml" };
   }
   if (product.cat === "splash") {
-    return { src: "img/colonia%20splash/Presentaci%C3%B3n%20general/colonia-splash-parfums-b101-500ml.webp", alt: "Envase de colonia Splash de 500 ml" };
+    return { src: `${productImageBase}/colonias/colonia%20splash/Presentaci%C3%B3n%20general/colonia-splash-parfums-b101-500ml.webp`, alt: "Envase de colonia Splash de 500 ml" };
   }
   if (product.cat === "crema") {
     const code = (product.code || "").toUpperCase().replace(/\s+/g, "");
     if (code.includes("T-03") || code.includes("T03")) {
-      return { src: "img/cremas/Presentaci%C3%B3n%20general/crema-perfection-t03-50ml.webp", alt: "Crema Perfection Essien 50 ml" };
+      return { src: `${productImageBase}/cremas/Presentaci%C3%B3n%20general/crema-perfection-t03-50ml.webp`, alt: "Crema Perfection Essien 50 ml" };
     }
     if (code.includes("T-04") || code.includes("T04")) {
-      return { src: "img/cremas/Presentaci%C3%B3n%20general/crema-propoleo-t04-50ml.webp", alt: "Crema de Propóleo Essien 50 ml" };
+      return { src: `${productImageBase}/cremas/Presentaci%C3%B3n%20general/crema-propoleo-t04-50ml.webp`, alt: "Crema de Propóleo Essien 50 ml" };
     }
-    return { src: "img/cremas/Presentaci%C3%B3n%20general/crema-perfection-t03-50ml.webp", alt: "Crema y tratamiento facial 50 ml" };
+    return { src: `${productImageBase}/cremas/Presentaci%C3%B3n%20general/crema-perfection-t03-50ml.webp`, alt: "Crema y tratamiento facial 50 ml" };
   }
   return null;
 }
@@ -466,8 +469,8 @@ function appendRedBlackProducts(container, items) {
 
 function appendTeenProducts(container, items) {
   [
-    { title: "FEMENINO", matches: product => /^J0[0-6]$/.test(product.code) },
-    { title: "MASCULINO", matches: product => !/^J0[0-6]$/.test(product.code) }
+    { title: "FEMENINO", matches: product => /^J0[0-6]$/.test((product.code || "").replace(/[\s-]/g, "").toUpperCase()) },
+    { title: "MASCULINO", matches: product => !/^J0[0-6]$/.test((product.code || "").replace(/[\s-]/g, "").toUpperCase()) }
   ].forEach(({ title, matches }) => {
     const group = items.filter(matches);
     if (group.length === 0) return;
@@ -1584,6 +1587,12 @@ function openChangeFlow() {
   refreshAddButtons();
 }
 
+function openSupportWhatsApp() {
+  const message = "Hola, necesito ayuda con el catálogo Notes & Sillage.";
+  const phone = String(VENDEDOR_WHATSAPP).replace(/\D/g, "");
+  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+}
+
 // Cierra el asistente por completo y vuelve al catálogo normal
 function exitChangeFlow() {
   document.getElementById("changeOverlay").hidden = true;
@@ -1898,6 +1907,9 @@ document.addEventListener("click", event => {
       break;
     case "open-change":
       openChangeFlow();
+      break;
+    case "open-support":
+      openSupportWhatsApp();
       break;
     case "close-change":
       showCatalogForChange();

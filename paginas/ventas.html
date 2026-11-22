@@ -8,10 +8,10 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="Planilla de Ventas | Notes & Sillage">
   <meta property="og:description" content="Control de ventas y pedidos en tiempo real con Firestore.">
-  <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="css/ventas.css?v=20261120_icons_fix">
+  <meta property="og:image" content="https://notes.cl/docs/imagenes/imagenes%20promocional/logo-notes-and-sillage-hd.webp">
+  <link rel="icon" type="image/x-icon" href="../docs/imagenes/imagenes promocional/favicon.ico">
+  <link rel="icon" type="image/webp" href="../docs/imagenes/imagenes promocional/logo-notes-and-sillage-hd.webp">
+  <link rel="stylesheet" href="../funciones/css/ventas.css?v=20261120_icons_fix">
   <script>
     (function() {
       try {
@@ -38,8 +38,8 @@
     <!-- Encabezado -->
     <header class="dashboard-header">
       <div class="brand-section">
-        <a href="index.html" class="brand-logo-link" title="Ir al Catálogo de Perfumes">
-          <img src="img/logo-notes-and-sillage-hd.webp" alt="Notes & Sillage" class="brand-logo" onerror="this.src='favicon.ico'">
+        <a href="catalogo.html" class="brand-logo-link" title="Ir al Catálogo de Perfumes">
+          <img src="../docs/imagenes/imagenes promocional/logo-notes-and-sillage-hd.webp" alt="Notes & Sillage" class="brand-logo" onerror="this.src='../docs/imagenes/imagenes promocional/favicon.ico'">
         </a>
         <div class="brand-title">
           <h1>Planilla y Registro de Ventas</h1>
@@ -466,7 +466,7 @@
         <span class="badge-code" style="background: var(--gold-muted); color: var(--gold-primary); border: 1px solid rgba(212, 175, 55, 0.3);">
           <i data-lucide="shield-check" aria-hidden="true" style="width: 14px; height: 14px;"></i> Acceso Privado
         </span>
-        <a href="index.html" class="modal-close" title="Volver al Catálogo">
+        <a href="catalogo.html" class="modal-close" title="Volver al Catálogo">
           <i data-lucide="x" aria-hidden="true"></i>
         </a>
       </div>
@@ -497,7 +497,7 @@
           </div>
         </div>
         <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center;">
-          <a href="index.html" class="btn-secondary" style="text-decoration: none;">Volver al Catálogo</a>
+          <a href="catalogo.html" class="btn-secondary" style="text-decoration: none;">Volver al Catálogo</a>
           <button type="submit" id="btnSubmitVentasAuth" class="btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
             <span id="ventasAuthSpinner" hidden style="width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.3); border-top-color: #000; border-radius: 50%; display: inline-block; animation: authSpin 0.7s linear infinite;"></span>
             <span id="ventasAuthBtnText">Ingresar</span>
@@ -890,7 +890,7 @@
     </div>
   </div>
 
-  <script src="js/lucide.min.js?v=20261120_v1"></script>
+  <script src="../funciones/js/lucide.min.js?v=20261120_v1"></script>
   <script>
     if (!window.lucide) {
       document.write('<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"><\/script>');
@@ -902,9 +902,9 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
-  <script src="js/pedidos-data.js?v=20261108_01"></script>
-  <script type="module" src="js/firebase-config.js?v=20261120_icons_fix"></script>
-  <script type="module" src="js/settings-modal.js?v=20261120_icons_fix"></script>
-  <script type="module" src="js/ventas.js?v=20261120_icons_fix"></script>
+  <script src="../funciones/js/pedidos-data.js?v=20261108_01"></script>
+  <script type="module" src="../funciones/js/firebase-config.js?v=20261120_icons_fix"></script>
+  <script type="module" src="../funciones/js/settings-modal.js?v=20261120_icons_fix"></script>
+  <script type="module" src="../funciones/js/ventas.js?v=20261120_icons_fix"></script>
 </body>
 </html>

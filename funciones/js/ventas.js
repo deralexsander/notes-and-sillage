@@ -1107,7 +1107,7 @@ function applyFilters() {
     return;
   }
 
-  // 2. Si no hay coincidencias directas, buscar si el perfume o término está mal escrito (función de index.html)
+  // 2. Si no hay coincidencias directas, buscar si el perfume o término está mal escrito (función de catalogo.html)
   const suggestion = findSearchSuggestion(rawQuery, allProds);
 
   if (suggestion) {
@@ -4184,7 +4184,7 @@ manualProductSelect.addEventListener("change", () => {
   updateModalFinancialPreview(true);
 });
 
-// Autocompletado inteligente de perfume en el modal con tolerancia a errores tipográficos (index.html)
+// Autocompletado inteligente de perfume en el modal con tolerancia a errores tipográficos (catalogo.html)
 if (manualProductSearch) {
   manualProductSearch.addEventListener("input", () => {
     const term = manualProductSearch.value.trim();
@@ -4199,7 +4199,7 @@ if (manualProductSearch) {
     let matched = allProds.find(p => productMatchesQuery(p, term, allProds));
     let isTypo = false;
 
-    // 2. Si no encuentra directo, buscar por sugerencia (editDistance / Levenshtein de index.html)
+    // 2. Si no encuentra directo, buscar por sugerencia (editDistance / Levenshtein de catalogo.html)
     if (!matched) {
       const sug = findSearchSuggestion(term, allProds);
       if (sug) {
@@ -4921,7 +4921,7 @@ function setVentasAuthState(user) {
   } else {
     isVentasAuthenticated = false;
     // Si intenta ingresar por la URL sin sesión activa, redirige inmediatamente al inicio
-    window.location.replace("index.html");
+    window.location.replace("catalogo.html");
   }
 }
 
@@ -5022,7 +5022,7 @@ initFontSizeControls();
 // Timeout de resguardo: si en 2.5 segundos no hay sesión activa, redirigir al inicio
 const authRedirectTimer = setTimeout(() => {
   if (!isVentasAuthenticated) {
-    window.location.replace("index.html");
+    window.location.replace("catalogo.html");
   }
 }, 2500);
 

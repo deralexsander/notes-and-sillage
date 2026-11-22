@@ -609,10 +609,10 @@ function initSettingsModal() {
     logoutBtn.addEventListener("click", async () => {
       try {
         await logoutUser();
-        window.location.replace("index.html");
+        window.location.replace("catalogo.html");
       } catch (err) {
         console.error("Error al cerrar sesión:", err);
-        window.location.replace("index.html");
+        window.location.replace("catalogo.html");
       }
     });
   }

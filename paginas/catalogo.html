@@ -13,29 +13,29 @@
   <meta property="og:site_name" content="Notes & Sillage">
   <meta property="og:title" content="Notes & Sillage | Notas que cautivan, una estela que perdura.">
   <meta property="og:description" content="Notas que cautivan, una estela que perdura. Catálogo interactivo de perfumería fina de inspiración y body care en Chile.">
-  <meta property="og:image" content="https://notes.cl/img/og-preview.jpg">
-  <meta property="og:image:secure_url" content="https://notes.cl/img/og-preview.jpg">
+  <meta property="og:image" content="https://notes.cl/docs/imagenes/imagenes%20promocional/logo-notes-and-sillage-hd.webp">
+  <meta property="og:image:secure_url" content="https://notes.cl/docs/imagenes/imagenes%20promocional/logo-notes-and-sillage-hd.webp">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="800">
   <meta property="og:image:height" content="800">
   <meta property="og:image:alt" content="Logo oficial Notes & Sillage">
   <meta property="og:locale" content="es_CL">
-  <link rel="image_src" href="https://notes.cl/img/og-preview.jpg">
+  <link rel="image_src" href="https://notes.cl/docs/imagenes/imagenes%20promocional/logo-notes-and-sillage-hd.webp">
 
   <!-- Twitter / X -->
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:url" content="https://notes.cl/">
   <meta name="twitter:title" content="Notes & Sillage | Notas que cautivan, una estela que perdura.">
   <meta name="twitter:description" content="Notas que cautivan, una estela que perdura. Catálogo interactivo de perfumería fina de inspiración.">
-  <meta name="twitter:image" content="https://notes.cl/img/og-preview.jpg">
+  <meta name="twitter:image" content="https://notes.cl/docs/imagenes/imagenes%20promocional/logo-notes-and-sillage-hd.webp">
 
   <!-- Favicon / Logo en pestaña -->
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <link rel="icon" type="image/webp" href="img/logo-notes-and-sillage-hd.webp">
-  <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
-  <link rel="apple-touch-icon" sizes="192x192" href="img/favicon-192.png">
+  <link rel="icon" type="image/x-icon" href="../docs/imagenes/imagenes promocional/favicon.ico">
+  <link rel="icon" type="image/webp" href="../docs/imagenes/imagenes promocional/logo-notes-and-sillage-hd.webp">
+  <link rel="icon" type="image/png" sizes="32x32" href="../docs/imagenes/imagenes promocional/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="192x192" href="../docs/imagenes/imagenes promocional/favicon-192.png">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/estilos.css?v=20261108_12">
+  <link rel="stylesheet" href="../funciones/css/estilos.css?v=20261108_12">
   <script>
     (function() {
       try {
@@ -55,7 +55,7 @@
   <header>
     <div class="brand-row">
       <div class="brand-identity">
-        <img src="img/logo-notes-and-sillage-hd.webp" alt="Logo Notes & Sillage" class="brand-logo-header" width="44" height="44">
+        <img src="../docs/imagenes/imagenes promocional/logo-notes-and-sillage-hd.webp" alt="Logo Notes & Sillage" class="brand-logo-header" width="44" height="44">
         <div class="brand-text">
           <div class="brand-title">Notes & Sillage</div>
           <div class="brand-tagline">Notas que cautivan, una estela que perdura.</div>
@@ -150,10 +150,16 @@
       </button>
       <p class="help-bubble-title" id="helpBubbleTitle">¿Ya hiciste tu pedido?</p>
       <p class="help-bubble-text">Si quieres cambiar algún perfume o cancelar tu pedido, te guiamos paso a paso y enviamos tu solicitud por WhatsApp.</p>
-      <button class="help-bubble-link" type="button" data-action="open-change">
-        <i data-lucide="refresh-cw" aria-hidden="true"></i>
-        Cambiar o cancelar pedido
-      </button>
+      <div class="help-bubble-actions">
+        <button class="help-bubble-link" type="button" data-action="open-change">
+          <i data-lucide="refresh-cw" aria-hidden="true"></i>
+          Cambiar o cancelar pedido
+        </button>
+        <button class="help-bubble-link help-bubble-whatsapp" type="button" data-action="open-support">
+          <i data-lucide="message-circle" aria-hidden="true"></i>
+          Ayuda por WhatsApp
+        </button>
+      </div>
     </div>
     <button class="help-fab" type="button" id="helpFab" data-action="toggle-help" aria-expanded="false" aria-controls="helpBubble" aria-label="Información sobre cambios y cancelaciones" title="¿Cambios o cancelaciones?">
       <i data-lucide="info" aria-hidden="true"></i>
@@ -531,8 +537,8 @@
     </div>
   </div>
 
-  <script type="module" src="js/firebase-config.js?v=20261110_01"></script>
-  <script src="js/lucide.min.js?v=20261120_v1"></script>
+  <script type="module" src="../funciones/js/firebase-config.js?v=20261110_01"></script>
+  <script src="../funciones/js/lucide.min.js?v=20261120_v1"></script>
   <script>
     if (!window.lucide) {
       document.write('<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"><\/script>');
@@ -543,6 +549,6 @@
       try { lucide.createIcons(); } catch (e) { console.warn("Lucide init error:", e); }
     }
   </script>
-  <script src="js/app.js?v=20261110_01"></script>
+  <script src="../funciones/js/app.js?v=20261110_01"></script>
 </body>
 </html>
