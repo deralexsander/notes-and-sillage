@@ -259,7 +259,7 @@ function appendMissingHistoricalOrderRows(rows) {
         pricing.unitPrice,
         pricing.unitCost,
         `Faltante historial (Pedido #${oct5Order.webOrderId || "863113"})`,
-        removableAdjustmentCodes.has(codeKey)
+        true
       ));
     });
   }
