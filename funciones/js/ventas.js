@@ -148,48 +148,8 @@ function getHistoricalSupplierTotalPaid(batchKey) {
     : null;
 }
 
-/**
- * Construye una fila sintética de solo lectura sincronizada desde pedidos-data.js
- * para ítems de pedidos históricos cuyo costo ya forma parte de Total Prov.
- */
-function buildHistoricalOrderSyncRow(order, item, qty, unitSalePrice, unitCost, clientLabel, canRemoveFromSalesSheet = false) {
-  const safeQty = Math.max(1, Number(qty) || 1);
-  const totalSale = unitSalePrice * safeQty;
-  const totalCost = unitCost * safeQty;
-  const [year, month, day] = String(order.date || "2026-10-31").split("-");
-  const legibleDate = `${day}-${month}-${year}`;
-  const isoStr = `${order.date}T${order.time || "12:00"}:00.000Z`;
-  const normCode = normalizeProductCode(item.code);
 
-  return {
-    saleId: `HIST-${order.id || order.date}-${normCode}`,
-    codigoVenta: order.webOrderId ? `Web #${order.webOrderId}` : (order.id || order.date),
-    fecha: legibleDate,
-    fechaISO: isoStr,
-    createdAtDate: new Date(isoStr),
-    code: item.code || "-",
-    fragrance: item.name || "Producto pedido",
-    size: item.size || "Estándar",
-    qty: safeQty,
-    clientName: clientLabel,
-    clientPhone: "",
-    institution: "-",
-    precioVenta: totalSale,
-    costo: totalCost,
-    ganancia: totalSale - totalCost,
-    estado: "Entregado",
-    avisoRecepcionEnviado: true,
-    pagado: true,
-    montoPagado: totalSale,
-    saldoPendiente: 0,
-    confirmado: true,
-    fechaPedidoProveedor: order.date,
-    idPedidoProveedor: order.id || null,
-    isReadOnly: true,
-    isHistoricalOrderAdjustment: true,
-    canRemoveFromSalesSheet
-  };
-}
+
 
 
 // Monto de compra mayorista al proveedor
