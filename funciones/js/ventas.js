@@ -191,81 +191,6 @@ function buildHistoricalOrderSyncRow(order, item, qty, unitSalePrice, unitCost, 
   };
 }
 
-/**
- * Incluye en memoria ítems faltantes de pedidos históricos (08-11-2026 Z-34 al costo,
- * y faltantes de 31-10-2026) cuando ya están en Total Prov pero aún no existen en Firestore.
- * Los regalos del proveedor ($0 venta, $0 costo, $0 ganancia) no se agregan ni suman gastos.
- */
-function appendMissingHistoricalOrderRows(rows) {
-  if (!Array.isArray(rows) || !Array.isArray(window.HISTORIAL_PEDIDOS)) return rows;
-  const removedAdjustments = getRemovedHistoricalAdjustments();
-
-  const getExistingQtyByCode = (batchKey) => {
-    const qtyMap = new Map();
-    rows.forEach(r => {
-      if (resolveSupplierBatch(r).batchKey !== batchKey) return;
-      const key = normalizeProductCode(r.code);
-      if (!key) return;
-      qtyMap.set(key, (qtyMap.get(key) || 0) + (Number(r.qty) || 1));
-    });
-    return qtyMap;
-  };
-
-  // 1. Pedido 08-11-2026 (Web #865454): Z-34 vendido al costo ($3.900 venta, $3.900 costo, $0 ganancia)
-  const novOrder = window.HISTORIAL_PEDIDOS.find(item => item.date === "2026-11-08");
-  if (novOrder && Array.isArray(novOrder.items)) {
-    const novExisting = getExistingQtyByCode("2026-11-08");
-    const z34Item = novOrder.items.find(it => normalizeProductCode(it.code) === "z34" && !it.isGift);
-    const z34SaleId = `HIST-${novOrder.id || novOrder.date}-z34`;
-    if (z34Item && !(novExisting.get("z34") > 0) && !removedAdjustments.has(z34SaleId)) {
-      const unitCost = Number(z34Item.unitPrice) || 3900;
-      rows.push(buildHistoricalOrderSyncRow(
-        novOrder,
-        z34Item,
-        Number(z34Item.qty) || 1,
-        unitCost,
-        unitCost,
-        `Venta al costo (Pedido #${novOrder.webOrderId || "865454"})`,
-        true
-      ));
-    }
-  }
-
-  // 2. Pedido 31-10-2026 (Web #863113): agregar ítems facturados faltantes del historial
-  const oct5Order = window.HISTORIAL_PEDIDOS.find(item => item.date === "2026-10-31");
-  if (oct5Order && Array.isArray(oct5Order.items)) {
-    const oct5Existing = getExistingQtyByCode("2026-10-31");
-    const removableAdjustmentCodes = new Set(["q58", "q52", "h41", "q51"]);
-    oct5Order.items.forEach(it => {
-      if (it.isGift) return;
-      const codeKey = normalizeProductCode(it.code);
-      if (!codeKey) return;
-
-      const adjustmentSaleId = `HIST-${oct5Order.id || oct5Order.date}-${codeKey}`;
-      if (removedAdjustments.has(adjustmentSaleId)) return;
-
-      const orderedQty = Math.max(1, Number(it.qty) || 1);
-      const alreadyPresent = oct5Existing.get(codeKey) || 0;
-      const missingQty = Math.max(0, orderedQty - alreadyPresent);
-      oct5Existing.set(codeKey, Math.max(0, alreadyPresent - orderedQty));
-      if (missingQty <= 0) return;
-
-      const unitCost = Number(it.unitPrice) || 0;
-      const pricing = calculateItemPricing(it.code, it.size, null, null, unitCost);
-      rows.push(buildHistoricalOrderSyncRow(
-        oct5Order,
-        it,
-        missingQty,
-        pricing.unitPrice,
-        pricing.unitCost,
-        `Faltante historial (Pedido #${oct5Order.webOrderId || "863113"})`,
-        true
-      ));
-    });
-  }
-
-  return rows;
-}
 
 // Monto de compra mayorista al proveedor
 function getNumericConfigValue(val, fallback) {
@@ -1012,8 +937,6 @@ async function loadSales() {
       });
     });
 
-    // Incorporar ítems faltantes/al costo de pedidos históricos si aún no están en Firestore
-    appendMissingHistoricalOrderRows(rows);
 
     // Ordenar de más reciente a más antigua
     rows.sort((a, b) => b.createdAtDate - a.createdAtDate);
