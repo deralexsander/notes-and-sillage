@@ -565,7 +565,7 @@ function buildProductCard(p, rankNumber) {
     : "";
 
   return `
-      <div class="card${p.cat === "hombre" ? " card-male" : p.cat === "mujer" ? " card-female" : ""}" data-product-card="${p.id}">
+      <div class="card${p.cat === "hombre" ? " card-male" : p.cat === "mujer" ? " card-female" : ""}${rankNumber ? " card-top-selling" : ""}" data-product-card="${p.id}">
       <div>
         <div class="card-top">
           <div class="card-identity">

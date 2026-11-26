@@ -11,7 +11,7 @@
   <!-- Estilos del Sistema -->
   <link rel="stylesheet" href="../funciones/css/ventas.css?v=20261118_font_and_icons_scale">
   <link rel="stylesheet" href="../funciones/css/pedidos.css?v=20261118_font_and_icons_scale">
-  <link rel="stylesheet" href="../funciones/css/gastos.css?v=20261118_font_and_icons_scale">
+  <link rel="stylesheet" href="../funciones/css/gastos.css?v=20261126_partner_distribution">
 
   <!-- Restaurar Tema Claro / Oscuro y tamaño de letra antes de pintar -->
   <script>
@@ -35,7 +35,7 @@
     })();
   </script>
 </head>
-<body class="sales-table-view gastos-dashboard-view">
+<body class="sales-table-view gastos-dashboard-view auth-checking">
   <div class="container-fluid">
 
     <!-- Encabezado Principal -->
@@ -92,6 +92,14 @@
         <span class="metric-label">Ganancia Líquida Final</span>
         <span class="metric-value highlight-green" style="font-size: 1.35rem;" id="kpiGananciaLiquida">$0</span>
       </div>
+    </section>
+
+    <section class="monthly-outstanding-card" aria-live="polite">
+      <div>
+        <h2>Ganancia de pedidos con pago pendiente</h2>
+        <p id="monthlyOutstandingOrdersDescription">Calculando saldos pendientes...</p>
+      </div>
+      <strong id="monthlyOutstandingOrdersValue">$0</strong>
     </section>
 
     <!-- Barra de Período y Acciones -->
@@ -187,6 +195,41 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section class="partner-distribution-section" aria-labelledby="partnerDistributionTitle">
+      <div class="partner-distribution-header">
+        <div>
+          <h2 id="partnerDistributionTitle">Reparto de ganancias entre socios</h2>
+          <p>La ganancia de ventas menos devoluciones y gastos operacionales se divide en partes iguales. Después se descuentan los retiros personales.</p>
+        </div>
+        <span class="partner-split-badge">50% cada uno</span>
+      </div>
+      <div class="partner-distribution-grid">
+        <article class="partner-share-card">
+          <h3>Christian</h3>
+          <dl>
+            <div><dt>Parte de la ganancia compartida</dt><dd id="partnerBaseShare">$0</dd></div>
+            <div><dt>Retiros personales</dt><dd class="partner-deduction" id="christianWithdrawals">-$0</dd></div>
+          </dl>
+          <div class="partner-share-total">
+            <span>Saldo para Christian</span>
+            <strong id="christianFinalShare">$0</strong>
+          </div>
+        </article>
+        <article class="partner-share-card">
+          <h3>Alexsander</h3>
+          <dl>
+            <div><dt>Parte de la ganancia compartida</dt><dd id="partnerBaseShareAlex">$0</dd></div>
+            <div><dt>Retiros personales</dt><dd class="partner-deduction" id="alexsanderWithdrawals">-$0</dd></div>
+          </dl>
+          <div class="partner-share-total">
+            <span>Saldo para Alexsander</span>
+            <strong id="alexsanderFinalShare">$0</strong>
+          </div>
+        </article>
+      </div>
+      <p class="partner-unassigned-notice" id="unassignedWithdrawalsNotice" hidden></p>
     </section>
 
     <!-- Sección de Tabla de Movimientos / Gastos -->
@@ -382,7 +425,9 @@
   </script>
   <script src="../funciones/js/pedidos-data.js?v=20261108_01"></script>
   <script type="module" src="../funciones/js/firebase-config.js"></script>
+  <!-- Protección: exige una sesión registrada -->
+  <script type="module" src="../funciones/js/private-page-guard.js"></script>
   <script type="module" src="../funciones/js/settings-modal.js?v=20261118_font_and_icons_scale"></script>
-  <script type="module" src="../funciones/js/gastos.js"></script>
+  <script type="module" src="../funciones/js/gastos.js?v=20261126_pending_supplier_batches4"></script>
 </body>
 </html>

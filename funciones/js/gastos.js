@@ -7,6 +7,8 @@ import {
   db,
   auth,
   getSalesHistory,
+  getBalancesConfig,
+  DEFAULT_BALANCES_CONFIG,
   onAuthStatusChange,
   logoutUser
 } from "./firebase-config.js";
@@ -82,6 +84,7 @@ let currentMonthFilter = "2026-11"; // Mes actual por defecto
 let currentTypeFilter = "ALL";
 let searchQuery = "";
 let salesRows = [];
+let balancesConfig = { ...DEFAULT_BALANCES_CONFIG };
 
 // Formateador CLP
 function formatCLP(val) {
@@ -177,39 +180,184 @@ async function deleteMovementFromFirestore(id) {
 // Cargar ventas de Firestore / pedidos locales para cálculo automático
 async function loadSales() {
   try {
-    if (typeof getSalesHistory === "function") {
-      salesRows = await getSalesHistory();
-    }
+    const [history, config] = await Promise.all([
+      typeof getSalesHistory === "function" ? getSalesHistory() : [],
+      getBalancesConfig()
+    ]);
+    salesRows = history;
+    balancesConfig = config;
   } catch (e) {
     console.warn("Error cargando ventas para cálculo automático:", e);
     salesRows = [];
   }
 }
 
-// Calcular ganancia de ventas de un mes específico desde las ventas registradas
-function getSalesProfitForMonth(monthKey) {
-  if (!salesRows || salesRows.length === 0) {
-    // Si no han cargado aún las filas de Firestore, usar estimaciones de respaldo
-    if (monthKey === "2026-10") return 904750;
-    if (monthKey === "2026-11") return 119000;
-    return 0;
+function getSavedTuesdayBatches() {
+  const defaultBatches = ["2026-11-18", "2026-11-17"];
+  try {
+    const raw = localStorage.getItem("notes_tuesday_batches");
+    const parsed = raw ? JSON.parse(raw) : defaultBatches;
+    return new Set(Array.isArray(parsed) ? parsed : defaultBatches);
+  } catch (e) {
+    console.warn("No se pudieron leer los lotes con descuento de martes:", e);
+    return new Set(defaultBatches);
+  }
+}
+
+function getSaleMonthKey(sale) {
+  const dateValues = [sale.fechaISO, sale.createdAtDate, sale.createdAt, sale.fechaLegible, sale.fecha];
+
+  for (const value of dateValues) {
+    if (!value) continue;
+
+    let date = null;
+    if (value instanceof Date) {
+      date = value;
+    } else if (typeof value?.toDate === "function") {
+      date = value.toDate();
+    } else if (typeof value === "string") {
+      const isoMonth = value.match(/^(\d{4}-\d{2})/);
+      if (isoMonth) return isoMonth[1];
+
+      const localizedDate = value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+      if (localizedDate) {
+        return `${localizedDate[3]}-${localizedDate[2].padStart(2, "0")}`;
+      }
+      date = new Date(value);
+    }
+
+    if (date && !Number.isNaN(date.getTime())) {
+      return date.toISOString().slice(0, 7);
+    }
   }
 
-  const matchingRows = salesRows.filter(r => {
-    let dateStr = "";
-    if (r.fechaISO) dateStr = r.fechaISO.slice(0, 7);
-    else if (r.fecha) {
-      const parts = String(r.fecha).replace(/\//g, "-").split("-");
-      if (parts.length === 3 && parts[2].length === 4) {
-        dateStr = `${parts[2]}-${parts[1].padStart(2, "0")}`;
-      } else {
-        dateStr = String(r.fecha).slice(0, 7);
+  return "";
+}
+
+function getSaleLines(sale) {
+  if (Array.isArray(sale.items) && sale.items.length > 0) {
+    return sale.items.map(item => ({
+      ...item,
+      estado: item.estado || sale.estado || "",
+      pagado: typeof item.pagado === "boolean" ? item.pagado : sale.pagado,
+      fechaPedidoProveedor: item.fechaPedidoProveedor || sale.fechaPedidoProveedor || "",
+      saleId: sale.id || ""
+    }));
+  }
+
+  return [{
+    ...sale,
+    subtotal: sale.totales?.totalVenta ?? sale.totalVenta,
+    subtotalGanancia: sale.totales?.totalGanancia ?? sale.ganancia,
+    saldoPendiente: sale.saldoPendiente ?? sale.totales?.saldoPendiente,
+    estado: sale.estado || "",
+    pagado: sale.pagado,
+    fechaPedidoProveedor: sale.fechaPedidoProveedor || "",
+    saleId: sale.id || ""
+  }];
+}
+
+function getFiniteNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function getLineSaleAmount(line) {
+  const subtotal = getFiniteNumber(line.subtotal);
+  if (subtotal !== null) return subtotal;
+
+  const salePrice = getFiniteNumber(line.precioVenta);
+  if (salePrice !== null) return salePrice;
+
+  const quantity = getFiniteNumber(line.qty) || 1;
+  return (getFiniteNumber(line.unitPrice) || 0) * quantity;
+}
+
+function getLineSupplierCost(line) {
+  const subtotalCost = getFiniteNumber(line.subtotalCosto ?? line.subtotalCost ?? line.costo);
+  if (subtotalCost !== null) return subtotalCost;
+
+  const quantity = getFiniteNumber(line.qty) || 1;
+  return (getFiniteNumber(line.unitCost) || 0) * quantity;
+}
+
+function isProfitEligibleLine(line) {
+  return line.pagado === true;
+}
+
+function isSupplierOrderPlacedLine(line) {
+  const status = String(line.estado || "").toLowerCase().trim();
+  return ["pedido", "entregado", "recib", "recep", "camino", "despach", "enviado", "solicit", "comprad"]
+    .some(statusPart => status.includes(statusPart));
+}
+
+function getLineProfit(line) {
+  const subtotalProfit = getFiniteNumber(line.subtotalGanancia);
+  if (subtotalProfit !== null) return subtotalProfit;
+
+  const profit = getFiniteNumber(line.ganancia);
+  if (profit !== null) return profit;
+
+  const quantity = getFiniteNumber(line.qty) || 1;
+  const unitProfit = getFiniteNumber(line.unitProfit);
+  if (unitProfit !== null) return unitProfit * quantity;
+
+  const unitPrice = getFiniteNumber(line.unitPrice) || 0;
+  const unitCost = getFiniteNumber(line.unitCost) || 0;
+  return (unitPrice - unitCost) * quantity;
+}
+
+function getMonthlySalesSummary(monthKey) {
+  const tuesdayBatches = getSavedTuesdayBatches();
+  const summary = salesRows.reduce((result, sale) => {
+    if (monthKey !== "ALL" && getSaleMonthKey(sale) !== monthKey) return result;
+
+    getSaleLines(sale).forEach(line => {
+      const batchKey = line.fechaPedidoProveedor || line.saleId;
+      if (isSupplierOrderPlacedLine(line) && batchKey) {
+        if (!result.supplierBatches.has(batchKey)) {
+          result.supplierBatches.set(batchKey, { hasUnpaidLine: false, sales: 0, baseCost: 0 });
+        }
+        const batch = result.supplierBatches.get(batchKey);
+        batch.sales += getLineSaleAmount(line);
+        batch.baseCost += getLineSupplierCost(line);
+        if (line.pagado !== true) batch.hasUnpaidLine = true;
       }
-    }
-    return monthKey === "ALL" || dateStr === monthKey;
+
+      if (isProfitEligibleLine(line)) result.paidProfit += getLineProfit(line);
+    });
+
+    return result;
+  }, {
+    paidProfit: 0,
+    outstandingAmount: 0,
+    ordersWithBalance: 0,
+    supplierBatches: new Map()
   });
 
-  return matchingRows.reduce((sum, r) => sum + (Number(r.ganancia) || 0), 0);
+  for (const [batchKey, batch] of summary.supplierBatches) {
+    if (!batch.hasUnpaidLine) continue;
+    const discountPct = getFiniteNumber(balancesConfig.descuentoMartesPorcentaje) ?? 10;
+    const discount = tuesdayBatches.has(batchKey)
+      ? Math.round(batch.baseCost * discountPct / 100)
+      : 0;
+    const costAfterDiscount = batch.baseCost - discount;
+    const minShipping = getFiniteNumber(balancesConfig.envioGratisMinimo) ?? 120000;
+    const shippingFee = batch.baseCost > 0 && costAfterDiscount < minShipping
+      ? (getFiniteNumber(balancesConfig.costoEnvioFijo) ?? 6000)
+      : 0;
+    summary.outstandingAmount += batch.sales - costAfterDiscount - shippingFee;
+    summary.ordersWithBalance += 1;
+  }
+
+  delete summary.supplierBatches;
+  return summary;
+}
+
+// Solo cuenta la ganancia de ventas con el check de pagado activo en el mes seleccionado.
+function getSalesProfitForMonth(monthKey) {
+  return getMonthlySalesSummary(monthKey).paidProfit;
 }
 
 // Obtener la ganancia base para el mes actual (respetando modo manual si existe)
@@ -229,6 +377,22 @@ function resolveBaseProfit(monthKey) {
     isManual: false,
     notes: "Calculada automáticamente de ventas"
   };
+}
+
+function getPartnerKey(persona) {
+  const normalized = String(persona || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+  if (["christian", "cristian", "chanchis", "chanchito", "chanchi"].some(alias => normalized.includes(alias))) {
+    return "christian";
+  }
+  if (["alexsander", "alexander", "alex"].some(alias => normalized.includes(alias))) {
+    return "alexsander";
+  }
+  return "";
 }
 
 // Calcular totales y balance del período filtrado
@@ -265,6 +429,15 @@ function calculatePeriodBalance() {
 
   const baseProfitInfo = resolveBaseProfit(currentMonthFilter);
   const baseProfit = baseProfitInfo.profit;
+  const partnerBaseShare = (baseProfit - totalDevoluciones - totalGastos) / 2;
+  const partnerWithdrawals = { christian: 0, alexsander: 0 };
+  let unassignedPartnerWithdrawals = 0;
+
+  currentMovs.filter(m => m.tipo === "retiro").forEach(m => {
+    const partner = getPartnerKey(m.persona);
+    if (partner) partnerWithdrawals[partner] += Number(m.monto) || 0;
+    else unassignedPartnerWithdrawals += Number(m.monto) || 0;
+  });
 
   // Ganancia Líquida = Ganancia Base - Retiros - Devoluciones - Gastos + Ingresos
   const gananciaLiquida = baseProfit - totalRetiros - totalDevoluciones - totalGastos + totalIngresos;
@@ -278,6 +451,12 @@ function calculatePeriodBalance() {
     totalGastos,
     totalIngresos,
     gananciaLiquida,
+    partnerBaseShare,
+    christianWithdrawals: partnerWithdrawals.christian,
+    alexsanderWithdrawals: partnerWithdrawals.alexsander,
+    christianFinalShare: partnerBaseShare - partnerWithdrawals.christian,
+    alexsanderFinalShare: partnerBaseShare - partnerWithdrawals.alexsander,
+    unassignedPartnerWithdrawals,
     movementCount: currentMovs.length
   };
 }
@@ -332,6 +511,7 @@ function getTypeBadge(type) {
 // Renderizado de la UI
 function renderUI() {
   const balance = calculatePeriodBalance();
+  const salesSummary = getMonthlySalesSummary(currentMonthFilter);
 
   // 1. Barra de Métricas Superiores
   const kpiBaseProfit = document.getElementById("kpiBaseProfit");
@@ -354,6 +534,38 @@ function renderUI() {
       kpiGananciaLiquida.classList.add("highlight-green");
       kpiGananciaLiquida.classList.remove("highlight-red");
     }
+  }
+
+  const outstandingOrdersValue = document.getElementById("monthlyOutstandingOrdersValue");
+  const outstandingOrdersDescription = document.getElementById("monthlyOutstandingOrdersDescription");
+  if (outstandingOrdersValue) {
+    outstandingOrdersValue.textContent = formatCLP(salesSummary.outstandingAmount);
+  }
+  if (outstandingOrdersDescription) {
+    const orderLabel = salesSummary.ordersWithBalance === 1 ? "pedido de proveedor" : "pedidos de proveedor";
+    outstandingOrdersDescription.textContent = salesSummary.ordersWithBalance > 0
+      ? `${salesSummary.ordersWithBalance} ${orderLabel} con al menos una venta impaga. Se excluyen perfumes aún no pedidos.`
+      : "No hay pedidos de proveedor con ventas impagas en este período.";
+  }
+
+  const partnerBaseShare = document.getElementById("partnerBaseShare");
+  const partnerBaseShareAlex = document.getElementById("partnerBaseShareAlex");
+  const christianWithdrawals = document.getElementById("christianWithdrawals");
+  const alexsanderWithdrawals = document.getElementById("alexsanderWithdrawals");
+  const christianFinalShare = document.getElementById("christianFinalShare");
+  const alexsanderFinalShare = document.getElementById("alexsanderFinalShare");
+  const unassignedWithdrawalsNotice = document.getElementById("unassignedWithdrawalsNotice");
+  if (partnerBaseShare) partnerBaseShare.textContent = formatCLP(balance.partnerBaseShare);
+  if (partnerBaseShareAlex) partnerBaseShareAlex.textContent = formatCLP(balance.partnerBaseShare);
+  if (christianWithdrawals) christianWithdrawals.textContent = `-${formatCLP(balance.christianWithdrawals)}`;
+  if (alexsanderWithdrawals) alexsanderWithdrawals.textContent = `-${formatCLP(balance.alexsanderWithdrawals)}`;
+  if (christianFinalShare) christianFinalShare.textContent = formatCLP(balance.christianFinalShare);
+  if (alexsanderFinalShare) alexsanderFinalShare.textContent = formatCLP(balance.alexsanderFinalShare);
+  if (unassignedWithdrawalsNotice) {
+    unassignedWithdrawalsNotice.hidden = balance.unassignedPartnerWithdrawals <= 0;
+    unassignedWithdrawalsNotice.textContent = balance.unassignedPartnerWithdrawals > 0
+      ? `${formatCLP(balance.unassignedPartnerWithdrawals)} en retiros no se asignaron a ningún socio. Completa el campo Persona para reflejarlos en el saldo individual.`
+      : "";
   }
 
   // 2. Tarjeta de Liquidación y Desglose Visual

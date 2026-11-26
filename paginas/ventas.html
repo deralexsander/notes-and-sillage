@@ -11,7 +11,7 @@
   <meta property="og:image" content="https://notes.cl/docs/imagenes/imagenes%20promocional/logo-notes-and-sillage-hd.webp">
   <link rel="icon" type="image/x-icon" href="../docs/imagenes/imagenes promocional/favicon.ico">
   <link rel="icon" type="image/webp" href="../docs/imagenes/imagenes promocional/logo-notes-and-sillage-hd.webp">
-  <link rel="stylesheet" href="../funciones/css/ventas.css?v=20261120_icons_fix">
+  <link rel="stylesheet" href="../funciones/css/ventas.css?v=20261121_supplier_batch_layout4">
   <script>
     (function() {
       try {
@@ -358,7 +358,6 @@
                 <option value="Entregado" selected>Entregado</option>
                 <option value="Cancelado">Cancelado</option>
                 <option value="Faltante">Faltante</option>
-                <option value="en carrito">en carrito</option>
               </select>
             </div>
           </div>
@@ -399,21 +398,6 @@
                 <input type="number" id="manualUnitCost" placeholder="Costo proveedor (ej: 0 o 4000)" min="0" step="500">
               </div>
             </div>
-
-            <div style="display: flex; gap: 12px; flex-wrap: wrap; padding-top: 4px; border-top: 1px dashed var(--border-color);">
-              <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.80rem; cursor: pointer; margin: 0;">
-                <input type="checkbox" id="manualZeroCost">
-                <span style="font-weight: 600; color: #16a34a;">Sin costo para nosotros (Canje / Puntos / Regalo $0)</span>
-              </label>
-              <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.80rem; cursor: pointer; margin: 0;">
-                <input type="checkbox" id="manualClientGift">
-                <span style="font-weight: 600; color: #9333ea;">Regalo al cliente ($0 Venta)</span>
-              </label>
-              <label class="checkbox-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.80rem; cursor: pointer; margin: 0;">
-                <input type="checkbox" id="manualAtCost">
-                <span style="font-weight: 600;">Venta al Costo (Uso personal)</span>
-              </label>
-            </div>
           </div>
 
           <!-- Panel de Cálculos Financieros en Tiempo Real -->
@@ -434,14 +418,6 @@
               <span class="calc-label">Ganancia Neta</span>
               <span class="calc-val profit" id="calcTotalProfit">+$8.500</span>
             </div>
-          </div>
-
-          <!-- Check de Pagado -->
-          <div class="modal-checks-bar">
-            <label class="checkbox-label">
-              <input type="checkbox" id="manualPaid" checked>
-              <span>¿Pagado por cliente? (True)</span>
-            </label>
           </div>
 
           <div class="modal-footer">
@@ -566,9 +542,10 @@
           </div>
         </div>
 
-        <!-- Cabecera de la lista de resumen (Código, Formato/ml, Cantidad, Estado) -->
+        <!-- Cabecera de la lista de resumen -->
         <div class="batch-items-table-header">
           <span class="batch-col-code">Código</span>
+          <span class="batch-col-name">Perfume</span>
           <span class="batch-col-size">Formato</span>
           <span class="batch-col-qty">Cantidad</span>
           <span class="batch-col-action">Estado</span>
@@ -905,6 +882,6 @@
   <script src="../funciones/js/pedidos-data.js?v=20261108_01"></script>
   <script type="module" src="../funciones/js/firebase-config.js?v=20261120_icons_fix"></script>
   <script type="module" src="../funciones/js/settings-modal.js?v=20261120_icons_fix"></script>
-  <script type="module" src="../funciones/js/ventas.js?v=20261120_icons_fix"></script>
+  <script type="module" src="../funciones/js/ventas.js?v=20261126_hide_supplier_cart_status"></script>
 </body>
 </html>

@@ -141,6 +141,12 @@ const HISTORICAL_SUPPLIER_BATCHES = [
 ];
 
 // Monto de compra mayorista al proveedor
+function getNumericConfigValue(val, fallback) {
+  if (val === undefined || val === null || val === "") return fallback;
+  const parsed = Number(val);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function getSupplierBatchTitle(dateStr) {
   if (!dateStr || dateStr === "ANTERIOR") return "Pedidos Anteriores / Sin fecha lote";
 
@@ -257,13 +263,9 @@ const manualProductSelect = document.getElementById("manualProductSelect");
 const manualSizeSelect = document.getElementById("manualSizeSelect");
 const manualQty = document.getElementById("manualQty");
 const manualStatus = document.getElementById("manualStatus");
-const manualPaid = document.getElementById("manualPaid");
 const manualConfirmed = document.getElementById("manualConfirmed");
 const manualUnitPrice = document.getElementById("manualUnitPrice");
 const manualUnitCost = document.getElementById("manualUnitCost");
-const manualAtCost = document.getElementById("manualAtCost");
-const manualZeroCost = document.getElementById("manualZeroCost");
-const manualClientGift = document.getElementById("manualClientGift");
 const btnSetAtCost = document.getElementById("btnSetAtCost");
 const btnSetZeroCost = document.getElementById("btnSetZeroCost");
 const btnSetClientGift = document.getElementById("btnSetClientGift");
@@ -753,8 +755,12 @@ function handleCustomerNameAutoRecognition() {
   // Si el cliente es el dueño (Alexander Muñoz), autoconfigurar al costo por defecto
   const isOwner = norm.includes("alexander") || (match.phone && match.phone.replace(/\D/g, "").includes("68787862"));
   if (isOwner && modalMode === "new") {
-    if (manualAtCost && !manualAtCost.checked) {
-      manualAtCost.checked = true;
+    if (btnSetAtCost && !btnSetAtCost.classList.contains("active")) {
+      btnSetAtCost.classList.add("active");
+      const currentCost = (manualUnitCost && manualUnitCost.value !== "") ? manualUnitCost.value : null;
+      if (currentCost !== null && manualUnitPrice) {
+        manualUnitPrice.value = currentCost;
+      }
       updateModalFinancialPreview(false);
     }
   }
@@ -898,6 +904,11 @@ function getStatusSlug(estado) {
   if (e.includes("faltante")) return "faltante";
   if (e.includes("pedido")) return "pedido";
   return "entregado";
+}
+
+function getVisibleStatusSlug(estado) {
+  const statusSlug = getStatusSlug(estado);
+  return statusSlug === "encarrito" ? "pendiente" : statusSlug;
 }
 
 // ==========================================================================
@@ -1296,7 +1307,7 @@ function fuseRowsByCustomer(rowsList, batchKey = "") {
 
 // Helper para renderizar una fila individual
 function renderTableRow(row, rowNum, isPending) {
-  const statusSlug = getStatusSlug(row.estado);
+  const statusSlug = getVisibleStatusSlug(row.estado);
   const hasAbono = !row.pagado && (row.montoPagado > 0) && (row.montoPagado < row.precioVenta);
   const products = row.products && row.products.length > 0 ? row.products : [{
     code: row.code,
@@ -1391,7 +1402,6 @@ function renderTableRow(row, rowNum, isPending) {
             <option value="Entregado" ${statusSlug === "entregado" ? "selected" : ""}>Entregado</option>
             <option value="Cancelado" ${statusSlug === "cancelado" ? "selected" : ""}>Cancelado</option>
             <option value="Faltante" ${statusSlug === "faltante" ? "selected" : ""}>Faltante</option>
-            <option value="en carrito" ${statusSlug === "encarrito" ? "selected" : ""}>en carrito</option>
           </select>
         </div>
       </td>
@@ -1504,20 +1514,24 @@ function renderTable(rows) {
   // 1. Sección PENDIENTES POR PEDIR AL PROVEEDOR
   if (pendingRows.length > 0) {
     const pendingUnits = pendingRows.reduce((sum, r) => sum + r.qty, 0);
-    const pendingCost = pendingRows.reduce((sum, r) => sum + r.costo, 0);
+    const pendingBaseCost = pendingRows.reduce((sum, r) => sum + r.costo, 0);
     const pendingSale = pendingRows.reduce((sum, r) => sum + r.precioVenta, 0);
-    const pendingProfit = pendingSale - pendingCost;
 
-    const minShipping = Number(currentBalancesConfig?.envioGratisMinimo) || 120000;
-    const shippingFeeAmt = Number(currentBalancesConfig?.costoEnvioFijo) || 6000;
-    const diffShipping = Math.max(0, minShipping - pendingCost);
-    const progressShipping = Math.min(100, Math.round((pendingCost / minShipping) * 100));
+    const minShipping = getNumericConfigValue(currentBalancesConfig?.envioGratisMinimo, 120000);
+    const shippingFeeAmt = getNumericConfigValue(currentBalancesConfig?.costoEnvioFijo, 6000);
+    const hasFreeShipping = pendingBaseCost >= minShipping;
+    const pendingShippingFee = (pendingBaseCost > 0 && !hasFreeShipping) ? shippingFeeAmt : 0;
+    const pendingTotalCost = pendingBaseCost + pendingShippingFee;
+    const pendingProfit = pendingSale - pendingTotalCost;
+
+    const diffShipping = Math.max(0, minShipping - pendingBaseCost);
+    const progressShipping = minShipping > 0 ? Math.min(100, Math.round((pendingBaseCost / minShipping) * 100)) : 100;
     const isPendingCollapsed = collapsedSupplierBatches.has("PENDIENTE");
     const shippingTag = diffShipping > 0
       ? `<span class="badge-supplier-tag tag-shipping-pending" title="Meta para envío gratis: ${formatCLP(minShipping)} (Falta: ${formatCLP(diffShipping)} - ${progressShipping}%. Flete: ${formatCLP(shippingFeeAmt)})" data-action="show-shipping-info" data-shipping-info="🚚 Falta ${formatCLP(diffShipping)} para envío gratis (Meta: ${formatCLP(minShipping)}). Flete: ${formatCLP(shippingFeeAmt)}" style="cursor: pointer;">
            <i data-lucide="truck" style="width: 13px; height: 13px;"></i>
          </span>`
-      : `<span class="badge-supplier-tag tag-shipping-reached" title="¡Meta de envío gratis superada! (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})" data-action="show-shipping-info" data-shipping-info="🎉 ¡Envío gratis alcanzado! (${formatCLP(pendingCost)} / ${formatCLP(minShipping)})" style="cursor: pointer;">
+      : `<span class="badge-supplier-tag tag-shipping-reached" title="¡Meta de envío gratis superada! (${formatCLP(pendingBaseCost)} / ${formatCLP(minShipping)})" data-action="show-shipping-info" data-shipping-info="🎉 ¡Envío gratis alcanzado! (${formatCLP(pendingBaseCost)} / ${formatCLP(minShipping)})" style="cursor: pointer;">
            <i data-lucide="check-circle" style="width: 13px; height: 13px;"></i>
          </span>`;
 
@@ -1567,11 +1581,11 @@ function renderTable(rows) {
                 <span class="stat-label">Venta</span>
                 <span class="stat-value">${formatCLP(pendingSale)}</span>
               </div>
-              <div class="batch-mobile-stat" title="Costo estimado a pagar al proveedor">
+              <div class="batch-mobile-stat" title="Costo estimado a pagar al proveedor (${pendingShippingFee > 0 ? `Flete: +${formatCLP(pendingShippingFee)}. ` : (hasFreeShipping ? 'Envío Gratis. ' : '')}Costo base: ${formatCLP(pendingBaseCost)})">
                 <span class="stat-label">Costo Est.</span>
-                <span class="stat-value val-cost">${formatCLP(pendingCost)}</span>
+                <span class="stat-value val-cost">${formatCLP(pendingTotalCost)}</span>
               </div>
-              <div class="batch-mobile-stat stat-highlight" title="Ganancia Real (Venta - Costo)">
+              <div class="batch-mobile-stat stat-highlight" title="Ganancia Real Estimada (Venta - Costo Est. ${pendingShippingFee > 0 ? 'incluyendo flete' : ''})">
                 <span class="stat-label">Ganancia</span>
                 <span class="stat-value val-profit">${pendingProfit > 0 ? '+' : ''}${formatCLP(pendingProfit)}</span>
               </div>
@@ -1623,12 +1637,12 @@ function renderTable(rows) {
 
     // Cálculos de Descuento Martes (10%) y Costo de Envío ($6.000 si < meta $120.000)
     const isTuesdayDiscountActive = tuesdayBatches.has(batchKey);
-    const discountPct = Number(currentBalancesConfig?.descuentoMartesPorcentaje) || 10;
+    const discountPct = getNumericConfigValue(currentBalancesConfig?.descuentoMartesPorcentaje, 10);
     const discountAmt = isTuesdayDiscountActive ? Math.round(bCost * (discountPct / 100)) : 0;
     const costAfterDiscount = bCost - discountAmt;
 
-    const minShipping = Number(currentBalancesConfig?.envioGratisMinimo) || 120000;
-    const shippingFeeAmt = Number(currentBalancesConfig?.costoEnvioFijo) || 6000;
+    const minShipping = getNumericConfigValue(currentBalancesConfig?.envioGratisMinimo, 120000);
+    const shippingFeeAmt = getNumericConfigValue(currentBalancesConfig?.costoEnvioFijo, 6000);
     const hasFreeShipping = costAfterDiscount >= minShipping;
     const shippingFee = (bCost > 0 && !hasFreeShipping) ? shippingFeeAmt : 0;
 
@@ -2605,7 +2619,7 @@ function renderSupplierBatchModal() {
           <div class="batch-col-code">
             <span class="code-chip" title="${item.fragrance}">${item.code}</span>
           </div>
-          <div class="batch-col-name" style="flex: 1; min-width: 130px;">
+          <div class="batch-col-name">
             <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
               <strong class="item-name" style="font-size: 0.85rem; color: var(--text-title);" title="${item.fragrance}">${item.fragrance}</strong>
               ${isFaltante ? `<span class="badge-faltante-item" style="font-size: 0.68rem; color: #dc2626; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); padding: 1px 6px; border-radius: 4px; font-weight: 700;">Faltante anterior</span>` : ''}
@@ -3358,13 +3372,13 @@ function initFontSizeControls() {
 function syncBalancesModalInputs() {
   const cfg = currentBalancesConfig || DEFAULT_BALANCES_CONFIG;
   const inputShipping = document.getElementById("cfgEnvioGratisMinimo");
-  if (inputShipping) inputShipping.value = cfg.envioGratisMinimo || 120000;
+  if (inputShipping) inputShipping.value = getNumericConfigValue(cfg.envioGratisMinimo, 120000);
 
   const inputCostoEnvio = document.getElementById("cfgCostoEnvioFijo");
-  if (inputCostoEnvio) inputCostoEnvio.value = (cfg.costoEnvioFijo !== undefined) ? cfg.costoEnvioFijo : 6000;
+  if (inputCostoEnvio) inputCostoEnvio.value = getNumericConfigValue(cfg.costoEnvioFijo, 6000);
 
   const inputDescuentoMartes = document.getElementById("cfgDescuentoMartes");
-  if (inputDescuentoMartes) inputDescuentoMartes.value = (cfg.descuentoMartesPorcentaje !== undefined) ? cfg.descuentoMartesPorcentaje : 10;
+  if (inputDescuentoMartes) inputDescuentoMartes.value = getNumericConfigValue(cfg.descuentoMartesPorcentaje, 10);
 
   const bank = cfg.datosBancarios || DEFAULT_BALANCES_CONFIG.datosBancarios;
   const bankTitular = document.getElementById("bankTitular");
@@ -3445,9 +3459,9 @@ const formShippingConfig = document.getElementById("formShippingConfig");
 if (formShippingConfig) {
   formShippingConfig.addEventListener("submit", async e => {
     e.preventDefault();
-    const val = Number(document.getElementById("cfgEnvioGratisMinimo").value) || 120000;
-    const costoEnvioFijo = Number(document.getElementById("cfgCostoEnvioFijo")?.value) ?? 6000;
-    const descuentoMartesPorcentaje = Number(document.getElementById("cfgDescuentoMartes")?.value) ?? 10;
+    const val = getNumericConfigValue(document.getElementById("cfgEnvioGratisMinimo")?.value, 120000);
+    const costoEnvioFijo = getNumericConfigValue(document.getElementById("cfgCostoEnvioFijo")?.value, 6000);
+    const descuentoMartesPorcentaje = getNumericConfigValue(document.getElementById("cfgDescuentoMartes")?.value, 10);
     try {
       await saveBalancesConfig({
         envioGratisMinimo: val,
@@ -3713,18 +3727,21 @@ function updateModalFinancialPreview(forceResetPrice = false) {
 
   // Precios y costos base sin override
   const basePricing = calculateItemPricing(code, size, p);
+  const keepZeroCost = Boolean(btnSetZeroCost && btnSetZeroCost.classList.contains("active"));
+  const keepClientGift = Boolean(btnSetClientGift && btnSetClientGift.classList.contains("active"));
+  const keepAtCost = Boolean(btnSetAtCost && btnSetAtCost.classList.contains("active"));
 
   // Manejo de valores forzados o restablecidos
   if (forceResetPrice) {
-    if (manualZeroCost && manualZeroCost.checked) {
+    if (keepZeroCost) {
       if (manualUnitCost) manualUnitCost.value = 0;
     } else {
       if (manualUnitCost) manualUnitCost.value = basePricing.defaultCost;
     }
 
-    if (manualClientGift && manualClientGift.checked) {
+    if (keepClientGift) {
       if (manualUnitPrice) manualUnitPrice.value = 0;
-    } else if (manualAtCost && manualAtCost.checked) {
+    } else if (keepAtCost) {
       const currentCost = (manualUnitCost && manualUnitCost.value !== "") ? Number(manualUnitCost.value) : basePricing.defaultCost;
       if (manualUnitPrice) manualUnitPrice.value = currentCost;
     } else {
@@ -3733,12 +3750,12 @@ function updateModalFinancialPreview(forceResetPrice = false) {
   } else {
     // Si los inputs están vacíos, rellenar con valores base según corresponda
     if (manualUnitCost && manualUnitCost.value === "") {
-      manualUnitCost.value = (manualZeroCost && manualZeroCost.checked) ? 0 : basePricing.defaultCost;
+      manualUnitCost.value = keepZeroCost ? 0 : basePricing.defaultCost;
     }
     if (manualUnitPrice && manualUnitPrice.value === "") {
-      if (manualClientGift && manualClientGift.checked) {
+      if (keepClientGift) {
         manualUnitPrice.value = 0;
-      } else if (manualAtCost && manualAtCost.checked) {
+      } else if (keepAtCost) {
         manualUnitPrice.value = manualUnitCost ? manualUnitCost.value : basePricing.defaultCost;
       } else {
         manualUnitPrice.value = basePricing.defaultPrice;
@@ -3814,14 +3831,11 @@ function updateModalFinancialPreview(forceResetPrice = false) {
   // Sincronizar botones de acceso rápido y visualización
   const isZeroCost = pricing.unitCost === 0;
   const isClientGift = pricing.unitPrice === 0;
-  const isAtCost = (manualAtCost && manualAtCost.checked) || (pricing.unitProfit === 0 && !isZeroCost && !isClientGift);
+  const isAtCost = (pricing.unitProfit === 0 && !isZeroCost && !isClientGift);
 
   if (btnSetZeroCost) btnSetZeroCost.classList.toggle("active", isZeroCost);
   if (btnSetClientGift) btnSetClientGift.classList.toggle("active", isClientGift);
   if (btnSetAtCost) btnSetAtCost.classList.toggle("active", isAtCost);
-
-  if (manualZeroCost) manualZeroCost.checked = isZeroCost;
-  if (manualClientGift) manualClientGift.checked = isClientGift;
 }
 
 function populateSizeSelectForProduct(p, currentSelectedSize) {
@@ -3913,8 +3927,11 @@ function syncActiveItemFromForm() {
 
   it.size = manualSizeSelect.value || "100 ml";
   it.qty = parseInt(manualQty.value, 10) || 1;
-  it.estado = manualStatus.value || "Entregado";
-  it.pagado = manualPaid.checked;
+  const selectedStatus = manualStatus.value || "Entregado";
+  it.estado = getStatusSlug(it.estado) === "encarrito" && selectedStatus === "Pendiente"
+    ? it.estado
+    : selectedStatus;
+  if (typeof it.pagado !== "boolean") it.pagado = true;
   if (manualConfirmed) it.confirmado = manualConfirmed.checked;
 
   const rawUserPrice = manualUnitPrice ? manualUnitPrice.value.trim() : "";
@@ -3973,8 +3990,9 @@ function loadModalItemToForm(item) {
   }
 
   manualQty.value = item.qty || 1;
-  manualStatus.value = item.estado || "Entregado";
-  manualPaid.checked = Boolean(item.pagado);
+  manualStatus.value = getStatusSlug(item.estado) === "encarrito"
+    ? "Pendiente"
+    : (item.estado || "Entregado");
   if (manualConfirmed) manualConfirmed.checked = Boolean(item.confirmado);
 
   const unitPriceFromItem = (item.qty > 0) ? Math.round((item.precioVenta || 0) / item.qty) : (item.unitPrice || 0);
@@ -3982,9 +4000,9 @@ function loadModalItemToForm(item) {
 
   if (manualUnitPrice) manualUnitPrice.value = unitPriceFromItem;
   if (manualUnitCost) manualUnitCost.value = unitCostFromItem;
-  if (manualZeroCost) manualZeroCost.checked = (unitCostFromItem === 0);
-  if (manualClientGift) manualClientGift.checked = (unitPriceFromItem === 0);
-  if (manualAtCost) manualAtCost.checked = (item.ganancia === 0 && unitPriceFromItem > 0 && unitPriceFromItem === unitCostFromItem);
+  if (btnSetZeroCost) btnSetZeroCost.classList.toggle("active", unitCostFromItem === 0);
+  if (btnSetClientGift) btnSetClientGift.classList.toggle("active", unitPriceFromItem === 0);
+  if (btnSetAtCost) btnSetAtCost.classList.toggle("active", item.ganancia === 0 && unitPriceFromItem > 0 && unitPriceFromItem === unitCostFromItem);
 
   updateModalFinancialPreview(false);
   renderMultiProductsChips();
@@ -4014,7 +4032,7 @@ function renderMultiProductsChips() {
 
   listEl.innerHTML = currentModalEditItems.map((it, idx) => {
     const isActive = idx === currentModalActiveItemIdx;
-    const statusSlug = getStatusSlug(it.estado);
+    const statusSlug = getVisibleStatusSlug(it.estado);
     const priceStr = formatCLP(it.precioVenta || ((it.unitPrice || 0) * (it.qty || 1)) || 0);
 
     return `
@@ -4028,7 +4046,7 @@ function renderMultiProductsChips() {
           <span class="tab-size">${escapeAttr(it.size || "100 ml")}</span>
           <span class="tab-qty">x${it.qty || 1}</span>
           <span class="tab-price">${priceStr}</span>
-          <span class="status-dot dot-${statusSlug}" title="${escapeAttr(it.estado || "")}"></span>
+          <span class="status-dot dot-${statusSlug}" title="${escapeAttr(statusSlug === "pendiente" && getStatusSlug(it.estado) === "encarrito" ? "Pendiente" : (it.estado || ""))}"></span>
           ${isActive ? '<span class="tab-badge-active">Editando</span>' : ''}
         </div>
       </button>
@@ -4069,11 +4087,10 @@ function openNewSaleModal() {
 
   manualQty.value = "1";
   manualStatus.value = "Entregado";
-  manualPaid.checked = true;
   if (manualConfirmed) manualConfirmed.checked = true;
-  if (manualAtCost) manualAtCost.checked = false;
-  if (manualZeroCost) manualZeroCost.checked = false;
-  if (manualClientGift) manualClientGift.checked = false;
+  if (btnSetAtCost) btnSetAtCost.classList.remove("active");
+  if (btnSetZeroCost) btnSetZeroCost.classList.remove("active");
+  if (btnSetClientGift) btnSetClientGift.classList.remove("active");
   if (manualUnitPrice) manualUnitPrice.value = "";
   if (manualUnitCost) manualUnitCost.value = "";
   if (manualProductSearch) manualProductSearch.value = "";
@@ -4259,11 +4276,10 @@ manualQty.addEventListener("change", () => updateModalFinancialPreview(false));
 if (manualUnitPrice) {
   manualUnitPrice.addEventListener("input", () => {
     const val = Number(manualUnitPrice.value);
-    if (manualClientGift) manualClientGift.checked = (val === 0 && manualUnitPrice.value !== "");
-    if (manualAtCost && manualAtCost.checked) {
+    if (btnSetAtCost && btnSetAtCost.classList.contains("active")) {
       const currentCost = manualUnitCost ? Number(manualUnitCost.value) : null;
       if (currentCost !== null && val !== currentCost) {
-        manualAtCost.checked = false;
+        btnSetAtCost.classList.remove("active");
       }
     }
     updateModalFinancialPreview(false);
@@ -4273,55 +4289,8 @@ if (manualUnitPrice) {
 if (manualUnitCost) {
   manualUnitCost.addEventListener("input", () => {
     const val = Number(manualUnitCost.value);
-    if (manualZeroCost) manualZeroCost.checked = (val === 0 && manualUnitCost.value !== "");
-    if (manualAtCost && manualAtCost.checked) {
+    if (btnSetAtCost && btnSetAtCost.classList.contains("active")) {
       if (manualUnitPrice) manualUnitPrice.value = val;
-    }
-    updateModalFinancialPreview(false);
-  });
-}
-
-if (manualZeroCost) {
-  manualZeroCost.addEventListener("change", () => {
-    if (manualZeroCost.checked) {
-      if (manualUnitCost) manualUnitCost.value = 0;
-    } else {
-      const prodVal = manualProductSelect.value;
-      const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
-      const size = manualSizeSelect.value || "100 ml";
-      const code = p ? p.code : (prodVal || "");
-      const base = calculateItemPricing(code, size, p);
-      if (manualUnitCost) manualUnitCost.value = base.defaultCost;
-    }
-    updateModalFinancialPreview(false);
-  });
-}
-
-if (manualClientGift) {
-  manualClientGift.addEventListener("change", () => {
-    if (manualClientGift.checked) {
-      if (manualUnitPrice) manualUnitPrice.value = 0;
-      if (manualAtCost) manualAtCost.checked = false;
-    } else {
-      const prodVal = manualProductSelect.value;
-      const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
-      const size = manualSizeSelect.value || "100 ml";
-      const code = p ? p.code : (prodVal || "");
-      const base = calculateItemPricing(code, size, p);
-      if (manualUnitPrice) manualUnitPrice.value = base.defaultPrice;
-    }
-    updateModalFinancialPreview(false);
-  });
-}
-
-if (manualAtCost) {
-  manualAtCost.addEventListener("change", () => {
-    if (manualAtCost.checked) {
-      if (manualClientGift) manualClientGift.checked = false;
-      const currentCost = (manualUnitCost && manualUnitCost.value !== "") ? manualUnitCost.value : null;
-      if (currentCost !== null) {
-        if (manualUnitPrice) manualUnitPrice.value = currentCost;
-      }
     }
     updateModalFinancialPreview(false);
   });
@@ -4337,10 +4306,8 @@ if (btnSetZeroCost) {
       const code = p ? p.code : (prodVal || "");
       const base = calculateItemPricing(code, size, p);
       if (manualUnitCost) manualUnitCost.value = base.defaultCost;
-      if (manualZeroCost) manualZeroCost.checked = false;
     } else {
       if (manualUnitCost) manualUnitCost.value = 0;
-      if (manualZeroCost) manualZeroCost.checked = true;
     }
     updateModalFinancialPreview(false);
   });
@@ -4356,11 +4323,9 @@ if (btnSetClientGift) {
       const code = p ? p.code : (prodVal || "");
       const base = calculateItemPricing(code, size, p);
       if (manualUnitPrice) manualUnitPrice.value = base.defaultPrice;
-      if (manualClientGift) manualClientGift.checked = false;
     } else {
       if (manualUnitPrice) manualUnitPrice.value = 0;
-      if (manualClientGift) manualClientGift.checked = true;
-      if (manualAtCost) manualAtCost.checked = false;
+      if (btnSetAtCost) btnSetAtCost.classList.remove("active");
     }
     updateModalFinancialPreview(false);
   });
@@ -4368,9 +4333,9 @@ if (btnSetClientGift) {
 
 if (btnSetAtCost) {
   btnSetAtCost.addEventListener("click", () => {
-    const isCurrentlyAtCost = (manualAtCost && manualAtCost.checked);
+    const isCurrentlyAtCost = btnSetAtCost.classList.contains("active");
     if (isCurrentlyAtCost) {
-      if (manualAtCost) manualAtCost.checked = false;
+      btnSetAtCost.classList.remove("active");
       const prodVal = manualProductSelect.value;
       const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
       const size = manualSizeSelect.value || "100 ml";
@@ -4378,8 +4343,8 @@ if (btnSetAtCost) {
       const base = calculateItemPricing(code, size, p);
       if (manualUnitPrice) manualUnitPrice.value = base.defaultPrice;
     } else {
-      if (manualAtCost) manualAtCost.checked = true;
-      if (manualClientGift) manualClientGift.checked = false;
+      btnSetAtCost.classList.add("active");
+      if (btnSetClientGift) btnSetClientGift.classList.remove("active");
       const prodVal = manualProductSelect.value;
       const p = catalogProducts.find(x => x.id === prodVal || x.code === prodVal);
       const size = manualSizeSelect.value || "100 ml";
@@ -4394,9 +4359,9 @@ if (btnSetAtCost) {
 
 if (btnResetCost) {
   btnResetCost.addEventListener("click", () => {
-    if (manualZeroCost) manualZeroCost.checked = false;
-    if (manualClientGift) manualClientGift.checked = false;
-    if (manualAtCost) manualAtCost.checked = false;
+    if (btnSetZeroCost) btnSetZeroCost.classList.remove("active");
+    if (btnSetClientGift) btnSetClientGift.classList.remove("active");
+    if (btnSetAtCost) btnSetAtCost.classList.remove("active");
     updateModalFinancialPreview(true);
   });
 }
@@ -4415,7 +4380,10 @@ newSaleForm.addEventListener("submit", async e => {
   const size = manualSizeSelect.value;
   const qty = parseInt(document.getElementById("manualQty").value, 10) || 1;
   const estado = document.getElementById("manualStatus").value;
-  const pagado = document.getElementById("manualPaid")?.checked || false;
+  const existingPaid = modalMode === "edit"
+    ? currentModalEditItems?.[currentModalActiveItemIdx]?.pagado
+    : true;
+  const pagado = typeof existingPaid === "boolean" ? existingPaid : true;
   const confirmado = document.getElementById("manualConfirmed")?.checked || true;
 
   if (!customerName) {

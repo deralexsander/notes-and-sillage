@@ -759,7 +759,12 @@ export async function updateSaleWithMultipleItems(saleId, customerData, itemsLis
         estado: it.estado || "Entregado",
         pagado: it.pagado !== false,
         confirmado: it.confirmado !== false,
-        avisoRecepcionEnviado: it.avisoRecepcionEnviado || false
+        avisoRecepcionEnviado: it.avisoRecepcionEnviado || false,
+        ...(it.fechaPedidoProveedor ? { fechaPedidoProveedor: it.fechaPedidoProveedor } : {}),
+        ...(it.idPedidoProveedor ? { idPedidoProveedor: it.idPedidoProveedor } : {}),
+        ...(typeof it.montoPagado === "number" ? { montoPagado: it.montoPagado } : {}),
+        ...(typeof it.saldoPendiente === "number" ? { saldoPendiente: it.saldoPendiente } : {}),
+        ...(it.isGift !== undefined ? { isGift: Boolean(it.isGift) } : {})
       };
     });
 
@@ -890,6 +895,20 @@ export async function getBalancesConfig() {
     const snap = await getDoc(cfgRef);
     if (snap.exists()) {
       const data = snap.data();
+      const missingDefaults = {};
+      if (data.envioGratisMinimo === undefined) missingDefaults.envioGratisMinimo = DEFAULT_BALANCES_CONFIG.envioGratisMinimo;
+      if (data.costoEnvioFijo === undefined) missingDefaults.costoEnvioFijo = DEFAULT_BALANCES_CONFIG.costoEnvioFijo;
+      if (data.descuentoMartesPorcentaje === undefined) missingDefaults.descuentoMartesPorcentaje = DEFAULT_BALANCES_CONFIG.descuentoMartesPorcentaje;
+      if (data.capitalOctubre === undefined) missingDefaults.capitalOctubre = DEFAULT_BALANCES_CONFIG.capitalOctubre;
+
+      if (auth.currentUser && Object.keys(missingDefaults).length > 0) {
+        try {
+          await setDoc(cfgRef, missingDefaults, { merge: true });
+        } catch (e) {
+          console.warn("No se pudo completar campos faltantes en config/balances:", e);
+        }
+      }
+
       return {
         ...DEFAULT_BALANCES_CONFIG,
         ...data,
