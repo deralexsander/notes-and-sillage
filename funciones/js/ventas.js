@@ -1791,21 +1791,15 @@ function renderTable(rows) {
     const bTitle = batchObj.title || getSupplierBatchTitle(batchKey);
     const isCollapsed = collapsedSupplierBatches.has(batchKey);
 
-    // Costo de proveedor más envío, si no se alcanza el mínimo.
+// Costo dinámico basado exactamente en los productos actuales del lote
     const minShipping = getNumericConfigValue(currentBalancesConfig?.envioGratisMinimo, 120000);
     const shippingFeeAmt = getNumericConfigValue(currentBalancesConfig?.costoEnvioFijo, 6000);
-    const historicalSupplierTotal = getHistoricalSupplierTotalPaid(batchKey);
-    const shippingThresholdTotal = historicalSupplierTotal ?? bCost;
-    const hasFreeShipping = shippingThresholdTotal >= minShipping;
+    const hasFreeShipping = bCost >= minShipping;
     const shippingFee = (bCost > 0 && !hasFreeShipping) ? shippingFeeAmt : 0;
 
-    const totalCostoFinal = historicalSupplierTotal !== null
-      ? Math.max(0, historicalSupplierTotal - shippingFee)
-      : bCost;
+    const totalCostoFinal = bCost;
     const bProfit = bSale - totalCostoFinal;
-    const supplierTotalTitle = historicalSupplierTotal !== null
-      ? `Pago registrado en Pedidos: ${formatCLP(historicalSupplierTotal)}${shippingFee > 0 ? `; sin envío: ${formatCLP(totalCostoFinal)}` : ''}`
-      : `Total proveedor sin envío (${hasFreeShipping ? 'Envío gratis. ' : ''}Costo base: ${formatCLP(bCost)})`;
+    const supplierTotalTitle = `Total proveedor sin envío (${hasFreeShipping ? 'Envío gratis. ' : ''}Costo base: ${formatCLP(bCost)})`;
 
     html += `
       <tr class="tr-supplier-header group-ordered" data-batch-key="${batchKey}">
