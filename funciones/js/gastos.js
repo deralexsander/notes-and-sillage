@@ -234,6 +234,57 @@ function getSaleMonthKey(sale) {
   return "";
 }
 
+function getSaleTimestamp(sale) {
+  const dateValues = [sale.createdAtDate, sale.fechaISO, sale.createdAt, sale.fechaLegible, sale.fecha];
+
+  for (const value of dateValues) {
+    if (!value) continue;
+
+    let date = null;
+    if (value instanceof Date) {
+      date = value;
+    } else if (typeof value?.toDate === "function") {
+      date = value.toDate();
+    } else if (typeof value === "string") {
+      date = new Date(value);
+      if (Number.isNaN(date.getTime())) {
+        const localizedDate = value.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+        if (localizedDate) {
+          date = new Date(Number(localizedDate[3]), Number(localizedDate[2]) - 1, Number(localizedDate[1]));
+        }
+      }
+    }
+
+    if (date && !Number.isNaN(date.getTime())) return date.getTime();
+  }
+
+  return null;
+}
+
+function getNextMonthKey(monthKey) {
+  const match = monthKey.match(/^(\d{4})-(\d{2})$/);
+  if (!match) return monthKey;
+
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]), 1)).toISOString().slice(0, 7);
+}
+
+function getLastSaleByMonth() {
+  const latestByMonth = new Map();
+
+  salesRows.forEach(sale => {
+    const monthKey = getSaleMonthKey(sale);
+    const timestamp = getSaleTimestamp(sale);
+    if (!monthKey || timestamp === null) return;
+
+    const currentLatest = latestByMonth.get(monthKey);
+    if (!currentLatest || timestamp >= currentLatest.timestamp) {
+      latestByMonth.set(monthKey, { sale, timestamp });
+    }
+  });
+
+  return latestByMonth;
+}
+
 function getSaleLines(sale) {
   if (Array.isArray(sale.items) && sale.items.length > 0) {
     return sale.items.map(item => ({
@@ -310,22 +361,30 @@ function getLineProfit(line) {
 
 function getMonthlySalesSummary(monthKey) {
   const tuesdayBatches = getSavedTuesdayBatches();
+  const lastSaleByMonth = getLastSaleByMonth();
   const summary = salesRows.reduce((result, sale) => {
-    if (monthKey !== "ALL" && getSaleMonthKey(sale) !== monthKey) return result;
+    const saleMonth = getSaleMonthKey(sale);
+    const isLastSaleOfMonth = lastSaleByMonth.get(saleMonth)?.sale === sale;
+    const profitMonth = isLastSaleOfMonth ? getNextMonthKey(saleMonth) : saleMonth;
+    if (monthKey !== "ALL" && saleMonth !== monthKey && profitMonth !== monthKey) return result;
 
     getSaleLines(sale).forEach(line => {
-      const batchKey = line.fechaPedidoProveedor || line.saleId;
-      if (isSupplierOrderPlacedLine(line) && batchKey) {
-        if (!result.supplierBatches.has(batchKey)) {
-          result.supplierBatches.set(batchKey, { hasUnpaidLine: false, sales: 0, baseCost: 0 });
+      if (monthKey === "ALL" || saleMonth === monthKey) {
+        const batchKey = line.fechaPedidoProveedor || line.saleId;
+        if (isSupplierOrderPlacedLine(line) && batchKey) {
+          if (!result.supplierBatches.has(batchKey)) {
+            result.supplierBatches.set(batchKey, { hasUnpaidLine: false, sales: 0, baseCost: 0 });
+          }
+          const batch = result.supplierBatches.get(batchKey);
+          batch.sales += getLineSaleAmount(line);
+          batch.baseCost += getLineSupplierCost(line);
+          if (line.pagado !== true) batch.hasUnpaidLine = true;
         }
-        const batch = result.supplierBatches.get(batchKey);
-        batch.sales += getLineSaleAmount(line);
-        batch.baseCost += getLineSupplierCost(line);
-        if (line.pagado !== true) batch.hasUnpaidLine = true;
       }
 
-      if (isProfitEligibleLine(line)) result.paidProfit += getLineProfit(line);
+      if ((monthKey === "ALL" || profitMonth === monthKey) && isProfitEligibleLine(line)) {
+        result.paidProfit += getLineProfit(line);
+      }
     });
 
     return result;
