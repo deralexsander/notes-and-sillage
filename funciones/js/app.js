@@ -1,5 +1,7 @@
 let products = window.CatalogData?.products || [];
 let standardPrices = window.CatalogData?.standardPrices || { "100ml": 17000, "50ml": 11000, "20ml": 6500 };
+let linePrices = window.CatalogData?.linePrices || {};
+let specialPrices = window.CatalogData?.specialPrices || {};
 let VENDEDOR_WHATSAPP = window.CatalogData?.vendedorWhatsApp || "56968787862";
 
 function syncCatalogData() {
@@ -10,10 +12,32 @@ function syncCatalogData() {
     if (window.CatalogData.standardPrices) {
       standardPrices = window.CatalogData.standardPrices;
     }
+    if (window.CatalogData.linePrices) {
+      linePrices = window.CatalogData.linePrices;
+    }
+    if (window.CatalogData.specialPrices) {
+      specialPrices = window.CatalogData.specialPrices;
+    }
     if (window.CatalogData.vendedorWhatsApp) {
       VENDEDOR_WHATSAPP = window.CatalogData.vendedorWhatsApp;
     }
   }
+}
+
+function getConfiguredProductPrice(product, size = "100ml") {
+  if (product?.tiered) {
+    return standardPrices[size] ?? product.price;
+  }
+  const normCode = (product?.code || "").toUpperCase().trim();
+  const hyphenCode = normCode.replace(/^([A-Z]+)-?(\d+)$/, "$1-$2");
+  if (typeof specialPrices[normCode] === "number") return specialPrices[normCode];
+  if (typeof specialPrices[hyphenCode] === "number") return specialPrices[hyphenCode];
+  if (normCode.startsWith("SPLASH") && typeof specialPrices.SPLASH === "number") return specialPrices.SPLASH;
+  const cleanSize = String(size || "").toLowerCase().replace(/\s+/g, "");
+  if (normCode.startsWith("Q") && typeof linePrices.Q?.[cleanSize] === "number") return linePrices.Q[cleanSize];
+  if (normCode.startsWith("J") && typeof linePrices.J?.[cleanSize] === "number") return linePrices.J[cleanSize];
+  if (/^S-?\d+/.test(normCode) && typeof linePrices.S?.[cleanSize] === "number") return linePrices.S[cleanSize];
+  return product?.price;
 }
 
 // Metadatos y encabezados visuales para separar cada categoría
@@ -525,12 +549,12 @@ function buildProductCard(p, rankNumber) {
     : escapeHTML(p.notes || "");
 
   let selectorHtml = "";
-  let price = p.price;
   let currentSize = p.fixedSize || "100ml";
+  let price = getConfiguredProductPrice(p, currentSize);
 
   if (p.tiered) {
     currentSize = selectedSizes[p.id] || "100ml";
-    price = standardPrices[currentSize];
+    price = getConfiguredProductPrice(p, currentSize);
 
     selectorHtml = `
       <div class="size-selector">
@@ -940,7 +964,7 @@ function addToCart(productId) {
   const p = products.find(x => x.id === productId);
   if (p.tiered && !selectedSizes[productId]) selectSize(productId, "100ml");
   const size = p.tiered ? (selectedSizes[productId] || "100ml") : p.fixedSize;
-  const price = p.tiered ? standardPrices[size] : p.price;
+  const price = getConfiguredProductPrice(p, size);
   const itemKey = `${p.id}_${size}`;
 
   const existingIndex = cart.findIndex(item => item.itemKey === itemKey);

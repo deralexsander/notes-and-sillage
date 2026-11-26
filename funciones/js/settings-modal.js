@@ -151,16 +151,6 @@ const SETTINGS_MODAL_HTML = `
               </small>
             </div>
 
-            <div class="form-group" style="margin-bottom: 16px;">
-              <label for="cfgDescuentoMartes" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 5px;">
-                Descuento Proveedor los días Martes (%):
-              </label>
-              <input type="number" id="cfgDescuentoMartes" class="form-control" value="10" min="0" max="100" step="1" required>
-              <small style="color: var(--text-muted); font-size: 0.78rem; display: block; margin-top: 4px; line-height: 1.4;">
-                Porcentaje de descuento sobre el costo aplicado cuando se realiza el pedido un día martes (Predeterminado: 10%).
-              </small>
-            </div>
-
             <div class="modal-form-actions">
               <button type="submit" class="btn-primary" id="btnSaveShippingConfig">
                 <i data-lucide="save"></i> Guardar Configuración
@@ -330,9 +320,6 @@ async function syncBalancesModalInputs() {
 
   const inputCostoEnvio = document.getElementById("cfgCostoEnvioFijo");
   if (inputCostoEnvio) inputCostoEnvio.value = getNumCfg(cfg.costoEnvioFijo, 6000);
-
-  const inputDescuentoMartes = document.getElementById("cfgDescuentoMartes");
-  if (inputDescuentoMartes) inputDescuentoMartes.value = getNumCfg(cfg.descuentoMartesPorcentaje, 10);
 
   const bank = cfg.datosBancarios || DEFAULT_BALANCES_CONFIG.datosBancarios;
   const bankTitular = document.getElementById("bankTitular");
@@ -521,19 +508,15 @@ function initSettingsModal() {
         const parseNum = (v, fb) => (v !== undefined && v !== null && v !== "" && Number.isFinite(Number(v))) ? Number(v) : fb;
         const valEnvioGratis = parseNum(document.getElementById("cfgEnvioGratisMinimo")?.value, 120000);
         const valCostoEnvio = parseNum(document.getElementById("cfgCostoEnvioFijo")?.value, 6000);
-        const valDescMartes = parseNum(document.getElementById("cfgDescuentoMartes")?.value, 10);
-
         await saveBalancesConfig({
           envioGratisMinimo: valEnvioGratis,
-          costoEnvioFijo: valCostoEnvio,
-          descuentoMartesPorcentaje: valDescMartes
+          costoEnvioFijo: valCostoEnvio
         });
 
         currentLoadedBalancesConfig = {
           ...currentLoadedBalancesConfig,
           envioGratisMinimo: valEnvioGratis,
-          costoEnvioFijo: valCostoEnvio,
-          descuentoMartesPorcentaje: valDescMartes
+          costoEnvioFijo: valCostoEnvio
         };
 
         if (saveBtn) {

@@ -1615,5 +1615,182 @@ window.HISTORIAL_PEDIDOS = [
         "status": "Regalo ($0)"
       }
     ]
+  },
+  {
+    "id": "PED-NOV-02",
+    "orderNumber": 2,
+    "webOrderId": "867989",
+    "monthKey": "2026-11",
+    "monthName": "Noviembre 2026",
+    "title": "Pedido #2 de Noviembre (Web #867989)",
+    "date": "2026-11-17",
+    "time": "12:00",
+    "dateFull": "Martes, 17 de Noviembre 2026",
+    "method": "Portal Web Parfums",
+    "totalCostBase": 62100,
+    "shippingFee": 6000,
+    "totalPaid": 68100,
+    "totalItems": 15,
+    "giftItems": 3,
+    "status": "Pago aceptado / Procesando envío",
+    "notes": "Descuento martes 10% aplicado por Parfums. Incluye $6.000 de envío, 1 regalo (F-12 20ml) y 2 canjes por puntos (J-00).",
+    "items": [
+      {
+        "sku": "Q-57",
+        "code": "Q-57",
+        "fullName": "Q-57 ERBA PURA XERJOFF 100 ML",
+        "name": "Erba Pura (Xerjoff)",
+        "size": "100 ML",
+        "qty": 1,
+        "unitPrice": 11700,
+        "subtotal": 11700,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "U-42",
+        "code": "H-42",
+        "fullName": "H-42 STRONGER W.YOU INTEN. 20 ML.",
+        "name": "Stronger With You Intensely",
+        "size": "20 ML",
+        "qty": 1,
+        "unitPrice": 2925,
+        "subtotal": 2925,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "G-06",
+        "code": "H-06",
+        "fullName": "H-06 POLO BLUE 50 ML C/AT",
+        "name": "Polo Blue Men",
+        "size": "50 ML",
+        "qty": 2,
+        "unitPrice": 4950,
+        "subtotal": 9900,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "U-05",
+        "code": "H-05",
+        "fullName": "H-05 INVICTUS PLATINUM 20 ML",
+        "name": "Invictus Platinum",
+        "size": "20 ML",
+        "qty": 1,
+        "unitPrice": 2925,
+        "subtotal": 2925,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "N-60",
+        "code": "F-60",
+        "fullName": "F-60 ACQUA DI GIOIA (ARMANI) 50",
+        "name": "Acqua di Gioia",
+        "size": "50 ML",
+        "qty": 1,
+        "unitPrice": 4950,
+        "subtotal": 4950,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "E-48",
+        "code": "F-48",
+        "fullName": "F-48 DUENDE (J.DEL POZO) 20 ML.",
+        "name": "Duende",
+        "size": "20 ML",
+        "qty": 1,
+        "unitPrice": 2925,
+        "subtotal": 2925,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "E-46",
+        "code": "F-46",
+        "fullName": "F-46 212 SEXY C.HERERA 20 ML",
+        "name": "212 Sexy",
+        "size": "20 ML",
+        "qty": 1,
+        "unitPrice": 2925,
+        "subtotal": 2925,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "N-40",
+        "code": "F-40",
+        "fullName": "F-40 AMOR AMOR 50",
+        "name": "Amor Amor",
+        "size": "50 ML",
+        "qty": 1,
+        "unitPrice": 4950,
+        "subtotal": 4950,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "D-38",
+        "code": "F-38",
+        "fullName": "F-38 JADORE 100 ML.",
+        "name": "J'Adore",
+        "size": "100 ML",
+        "qty": 1,
+        "unitPrice": 7650,
+        "subtotal": 7650,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "D-08",
+        "code": "F-08",
+        "fullName": "F-08 PARADOX (PRADA) 100 ML.",
+        "name": "Paradoxe",
+        "size": "100 ML",
+        "qty": 1,
+        "unitPrice": 7650,
+        "subtotal": 7650,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "J-04",
+        "code": "J-04",
+        "fullName": "J-04 TEEN THANK U NEXT (A. GRANDE)",
+        "name": "Thank U, Next (Ariana Grande)",
+        "size": "50 ML",
+        "qty": 1,
+        "unitPrice": 3600,
+        "subtotal": 3600,
+        "isGift": false,
+        "status": "Facturado"
+      },
+      {
+        "sku": "E-12",
+        "code": "F-12",
+        "fullName": "[REGALO] F-12 BLACK OPIUM (YSL) 20 ML",
+        "name": "Black Opium",
+        "size": "20 ML",
+        "qty": 1,
+        "unitPrice": 0,
+        "subtotal": 0,
+        "isGift": true,
+        "status": "Regalo ($0)"
+      },
+      {
+        "sku": "J-00",
+        "code": "J-00",
+        "fullName": "[PUNTOS] J-00 TEEN CLOUD (ARIANA GRANDE)",
+        "name": "Cloud (Ariana Grande)",
+        "size": "50 ML",
+        "qty": 2,
+        "unitPrice": 0,
+        "subtotal": 0,
+        "isGift": true,
+        "status": "Puntos ($0)"
+      }
+    ]
   }
 ];

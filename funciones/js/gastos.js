@@ -192,18 +192,6 @@ async function loadSales() {
   }
 }
 
-function getSavedTuesdayBatches() {
-  const defaultBatches = ["2026-11-18", "2026-11-17"];
-  try {
-    const raw = localStorage.getItem("notes_tuesday_batches");
-    const parsed = raw ? JSON.parse(raw) : defaultBatches;
-    return new Set(Array.isArray(parsed) ? parsed : defaultBatches);
-  } catch (e) {
-    console.warn("No se pudieron leer los lotes con descuento de martes:", e);
-    return new Set(defaultBatches);
-  }
-}
-
 function getSaleMonthKey(sale) {
   const dateValues = [sale.fechaISO, sale.createdAtDate, sale.createdAt, sale.fechaLegible, sale.fecha];
 
@@ -360,7 +348,6 @@ function getLineProfit(line) {
 }
 
 function getMonthlySalesSummary(monthKey) {
-  const tuesdayBatches = getSavedTuesdayBatches();
   const lastSaleByMonth = getLastSaleByMonth();
   const summary = salesRows.reduce((result, sale) => {
     const saleMonth = getSaleMonthKey(sale);
@@ -397,16 +384,11 @@ function getMonthlySalesSummary(monthKey) {
 
   for (const [batchKey, batch] of summary.supplierBatches) {
     if (!batch.hasUnpaidLine) continue;
-    const discountPct = getFiniteNumber(balancesConfig.descuentoMartesPorcentaje) ?? 10;
-    const discount = tuesdayBatches.has(batchKey)
-      ? Math.round(batch.baseCost * discountPct / 100)
-      : 0;
-    const costAfterDiscount = batch.baseCost - discount;
     const minShipping = getFiniteNumber(balancesConfig.envioGratisMinimo) ?? 120000;
-    const shippingFee = batch.baseCost > 0 && costAfterDiscount < minShipping
+    const shippingFee = batch.baseCost > 0 && batch.baseCost < minShipping
       ? (getFiniteNumber(balancesConfig.costoEnvioFijo) ?? 6000)
       : 0;
-    summary.outstandingAmount += batch.sales - costAfterDiscount - shippingFee;
+    summary.outstandingAmount += batch.sales - batch.baseCost - shippingFee;
     summary.ordersWithBalance += 1;
   }
 

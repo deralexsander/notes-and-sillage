@@ -9,6 +9,7 @@ import {
   deleteSaleRow,
   syncCustomerInfoToPastSales,
   getUnitFinancials,
+  getCatalogPricingConfig,
   loadCatalogFromFirestore,
   loginWithEmail,
   logoutUser,
@@ -82,24 +83,6 @@ function persistCollapsedBatches() {
 
 const collapsedSupplierBatches = getSavedCollapsedBatches();
 
-// Control de lotes con Descuento de Proveedor los Martes (10%)
-function getSavedTuesdayBatches() {
-  try {
-    const raw = localStorage.getItem("notes_tuesday_batches");
-    return new Set(raw ? JSON.parse(raw) : ["2026-11-18", "2026-11-17"]);
-  } catch (e) {
-    return new Set(["2026-11-18", "2026-11-17"]);
-  }
-}
-
-function persistTuesdayBatches() {
-  try {
-    localStorage.setItem("notes_tuesday_batches", JSON.stringify([...tuesdayBatches]));
-  } catch (e) {}
-}
-
-const tuesdayBatches = getSavedTuesdayBatches();
-
 // Definición exacta de los 6 Pedidos Proveedor Históricos de PEDIDOS.TXT
 const HISTORICAL_SUPPLIER_BATCHES = [
   {
@@ -140,6 +123,22 @@ const HISTORICAL_SUPPLIER_BATCHES = [
   }
 ];
 
+const REMOVED_HISTORICAL_ADJUSTMENTS_KEY = "notes_removed_historical_adjustments_v1";
+
+function getRemovedHistoricalAdjustments() {
+  const raw = localStorage.getItem(REMOVED_HISTORICAL_ADJUSTMENTS_KEY);
+  if (!raw) return new Set();
+  const parsed = JSON.parse(raw);
+  if (!Array.isArray(parsed)) {
+    throw new Error("La lista de ajustes históricos quitados no tiene un formato válido.");
+  }
+  return new Set(parsed.filter(id => typeof id === "string"));
+}
+
+function persistRemovedHistoricalAdjustments(ids) {
+  localStorage.setItem(REMOVED_HISTORICAL_ADJUSTMENTS_KEY, JSON.stringify([...ids]));
+}
+
 function getHistoricalSupplierTotalPaid(batchKey) {
   if (!Array.isArray(window.HISTORIAL_PEDIDOS)) return null;
 
@@ -147,6 +146,125 @@ function getHistoricalSupplierTotalPaid(batchKey) {
   return typeof order?.totalPaid === "number" && Number.isFinite(order.totalPaid)
     ? order.totalPaid
     : null;
+}
+
+/**
+ * Construye una fila sintética de solo lectura sincronizada desde pedidos-data.js
+ * para ítems de pedidos históricos cuyo costo ya forma parte de Total Prov.
+ */
+function buildHistoricalOrderSyncRow(order, item, qty, unitSalePrice, unitCost, clientLabel, canRemoveFromSalesSheet = false) {
+  const safeQty = Math.max(1, Number(qty) || 1);
+  const totalSale = unitSalePrice * safeQty;
+  const totalCost = unitCost * safeQty;
+  const [year, month, day] = String(order.date || "2026-10-31").split("-");
+  const legibleDate = `${day}-${month}-${year}`;
+  const isoStr = `${order.date}T${order.time || "12:00"}:00.000Z`;
+  const normCode = normalizeProductCode(item.code);
+
+  return {
+    saleId: `HIST-${order.id || order.date}-${normCode}`,
+    codigoVenta: order.webOrderId ? `Web #${order.webOrderId}` : (order.id || order.date),
+    fecha: legibleDate,
+    fechaISO: isoStr,
+    createdAtDate: new Date(isoStr),
+    code: item.code || "-",
+    fragrance: item.name || "Producto pedido",
+    size: item.size || "Estándar",
+    qty: safeQty,
+    clientName: clientLabel,
+    clientPhone: "",
+    institution: "-",
+    precioVenta: totalSale,
+    costo: totalCost,
+    ganancia: totalSale - totalCost,
+    estado: "Entregado",
+    avisoRecepcionEnviado: true,
+    pagado: true,
+    montoPagado: totalSale,
+    saldoPendiente: 0,
+    confirmado: true,
+    fechaPedidoProveedor: order.date,
+    idPedidoProveedor: order.id || null,
+    isReadOnly: true,
+    isHistoricalOrderAdjustment: true,
+    canRemoveFromSalesSheet
+  };
+}
+
+/**
+ * Incluye en memoria ítems faltantes de pedidos históricos (08-11-2026 Z-34 al costo,
+ * y faltantes de 31-10-2026) cuando ya están en Total Prov pero aún no existen en Firestore.
+ * Los regalos del proveedor ($0 venta, $0 costo, $0 ganancia) no se agregan ni suman gastos.
+ */
+function appendMissingHistoricalOrderRows(rows) {
+  if (!Array.isArray(rows) || !Array.isArray(window.HISTORIAL_PEDIDOS)) return rows;
+  const removedAdjustments = getRemovedHistoricalAdjustments();
+
+  const getExistingQtyByCode = (batchKey) => {
+    const qtyMap = new Map();
+    rows.forEach(r => {
+      if (resolveSupplierBatch(r).batchKey !== batchKey) return;
+      const key = normalizeProductCode(r.code);
+      if (!key) return;
+      qtyMap.set(key, (qtyMap.get(key) || 0) + (Number(r.qty) || 1));
+    });
+    return qtyMap;
+  };
+
+  // 1. Pedido 08-11-2026 (Web #865454): Z-34 vendido al costo ($3.900 venta, $3.900 costo, $0 ganancia)
+  const novOrder = window.HISTORIAL_PEDIDOS.find(item => item.date === "2026-11-08");
+  if (novOrder && Array.isArray(novOrder.items)) {
+    const novExisting = getExistingQtyByCode("2026-11-08");
+    const z34Item = novOrder.items.find(it => normalizeProductCode(it.code) === "z34" && !it.isGift);
+    const z34SaleId = `HIST-${novOrder.id || novOrder.date}-z34`;
+    if (z34Item && !(novExisting.get("z34") > 0) && !removedAdjustments.has(z34SaleId)) {
+      const unitCost = Number(z34Item.unitPrice) || 3900;
+      rows.push(buildHistoricalOrderSyncRow(
+        novOrder,
+        z34Item,
+        Number(z34Item.qty) || 1,
+        unitCost,
+        unitCost,
+        `Venta al costo (Pedido #${novOrder.webOrderId || "865454"})`,
+        true
+      ));
+    }
+  }
+
+  // 2. Pedido 31-10-2026 (Web #863113): agregar ítems facturados faltantes del historial
+  const oct5Order = window.HISTORIAL_PEDIDOS.find(item => item.date === "2026-10-31");
+  if (oct5Order && Array.isArray(oct5Order.items)) {
+    const oct5Existing = getExistingQtyByCode("2026-10-31");
+    const removableAdjustmentCodes = new Set(["q58", "q52", "h41", "q51"]);
+    oct5Order.items.forEach(it => {
+      if (it.isGift) return;
+      const codeKey = normalizeProductCode(it.code);
+      if (!codeKey) return;
+
+      const adjustmentSaleId = `HIST-${oct5Order.id || oct5Order.date}-${codeKey}`;
+      if (removedAdjustments.has(adjustmentSaleId)) return;
+
+      const orderedQty = Math.max(1, Number(it.qty) || 1);
+      const alreadyPresent = oct5Existing.get(codeKey) || 0;
+      const missingQty = Math.max(0, orderedQty - alreadyPresent);
+      oct5Existing.set(codeKey, Math.max(0, alreadyPresent - orderedQty));
+      if (missingQty <= 0) return;
+
+      const unitCost = Number(it.unitPrice) || 0;
+      const pricing = calculateItemPricing(it.code, it.size, null, null, unitCost);
+      rows.push(buildHistoricalOrderSyncRow(
+        oct5Order,
+        it,
+        missingQty,
+        pricing.unitPrice,
+        pricing.unitCost,
+        `Faltante historial (Pedido #${oct5Order.webOrderId || "863113"})`,
+        removableAdjustmentCodes.has(codeKey)
+      ));
+    });
+  }
+
+  return rows;
 }
 
 // Monto de compra mayorista al proveedor
@@ -191,6 +309,16 @@ function resolveSupplierBatch(row) {
     return { isPending: true, batchKey: "PENDIENTE", title: "PENDIENTES" };
   }
 
+  // "ANTERIOR" es una etiqueta heredada, no un lote; asignar esas ventas por su fecha real.
+  const customDate = String(row.fechaPedidoProveedor || "").trim();
+  if (customDate && customDate.toUpperCase() !== "ANTERIOR") {
+    const histMatch = HISTORICAL_SUPPLIER_BATCHES.find(b => b.key === customDate);
+    if (histMatch) {
+      return { isPending: false, batchKey: histMatch.key, title: histMatch.title };
+    }
+    return { isPending: false, batchKey: customDate, title: getSupplierBatchTitle(customDate) };
+  }
+
   // Obtener fecha de la venta en formato YYYY-MM-DD
   let dateStr = "";
   if (row.fechaISO) {
@@ -216,18 +344,7 @@ function resolveSupplierBatch(row) {
     }
   }
 
-  // 2. Para ventas posteriores al 08-11-2026:
-  // Si se le asignó un lote específico mediante el botón/modal "Pasar a Pedido Proveedor"
-  if (row.fechaPedidoProveedor) {
-    const customDate = row.fechaPedidoProveedor;
-    const histMatch = HISTORICAL_SUPPLIER_BATCHES.find(b => b.key === customDate);
-    if (histMatch) {
-      return { isPending: false, batchKey: histMatch.key, title: histMatch.title };
-    }
-    return { isPending: false, batchKey: customDate, title: getSupplierBatchTitle(customDate) };
-  }
-
-  // 3. Ventas posteriores al 08-11-2026 que ya están en pedido/entregado pero sin lote explícito
+  // Ventas posteriores al 08-11-2026 que ya están en pedido/entregado pero sin lote explícito
   if (dateStr) {
     return { isPending: false, batchKey: dateStr, title: getSupplierBatchTitle(dateStr) };
   }
@@ -285,6 +402,10 @@ const calcTotalCost = document.getElementById("calcTotalCost");
 const calcTotalProfit = document.getElementById("calcTotalProfit");
 const btnDeleteInModal = document.getElementById("btnDeleteInModal");
 const btnSubmitModal = document.getElementById("btnSubmitModal");
+const btnAddProductToOrder = document.getElementById("btnAddProductToOrder");
+const newOrderProductsPanel = document.getElementById("newOrderProductsPanel");
+const newOrderProductsList = document.getElementById("newOrderProductsList");
+let newOrderItems = [];
 
 let toastTimeout = null;
 function showToast(msg) {
@@ -787,6 +908,11 @@ async function initCatalog() {
       opt.textContent = `[${p.code}] ${p.name} (${p.sub || p.cat})`;
       manualProductSelect.appendChild(opt);
     });
+    if (!modalNewSale.hidden && modalMode === "new" && !manualProductSelect.value && catalogProducts.length > 0) {
+      manualProductSelect.selectedIndex = 1;
+      populateSizeSelectForProduct(catalogProducts[0], "100 ml");
+      updateModalFinancialPreview(true);
+    }
   }
 }
 
@@ -886,6 +1012,9 @@ async function loadSales() {
       });
     });
 
+    // Incorporar ítems faltantes/al costo de pedidos históricos si aún no están en Firestore
+    appendMissingHistoricalOrderRows(rows);
+
     // Ordenar de más reciente a más antigua
     rows.sort((a, b) => b.createdAtDate - a.createdAtDate);
     allSaleRows = rows;
@@ -974,6 +1103,7 @@ function getAllAvailableProducts() {
   const seenCodes = new Set(catalogProducts.map(p => (p.code || "").toUpperCase().trim()));
 
   allSaleRows.forEach(r => {
+    if (r.isHistoricalOrderAdjustment) return;
     const code = (r.code || "").toUpperCase().trim();
     if (code && !seenCodes.has(code)) {
       seenCodes.add(code);
@@ -1220,7 +1350,7 @@ function fuseRowsByCustomer(rowsList, batchKey = "") {
     const normPhone = normalizeCustomerPhone(row.clientPhone);
     const normInst = normalizeCustomerString(row.institution);
 
-    const canFuse = normName && normName !== "-" && normName !== "cliente" && normName !== "sin cliente";
+    const canFuse = !row.isReadOnly && normName && normName !== "-" && normName !== "cliente" && normName !== "sin cliente";
     const fusionKey = canFuse ? `${batchKey}__${normName}__${normPhone}__${normInst}` : `solo_${originalIdx}_${row.saleId}_${row.code}`;
 
     if (!groupsMap.has(fusionKey)) {
@@ -1368,11 +1498,17 @@ function renderTableRow(row, rowNum, isPending) {
     : `<span class="size-tag">${escapeAttr(row.size)}</span>`;
 
   const fusionAttr = row.fusionKey ? `data-fusion-key="${escapeAttr(row.fusionKey)}"` : '';
+  const isReadOnlyRow = Boolean(row.isReadOnly);
+  const canRemoveHistoricalAdjustment = Boolean(row.canRemoveFromSalesSheet);
 
   return `
     <tr data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr}>
       <td class="td-num">
-        <span>${rowNum}</span>
+        ${canRemoveHistoricalAdjustment
+          ? `<span class="td-row-number">${rowNum}</span>`
+          : `<button type="button" class="btn-move-sale-row" data-action="select-batch-move" data-sale-id="${escapeAttr(row.saleId)}" data-code="${escapeAttr(row.code)}" ${fusionAttr} draggable="${!isUnpaidViewActive && !isReadOnlyRow}" ${isUnpaidViewActive || isReadOnlyRow ? "disabled" : ""} aria-label="Mover pedido ${rowNum}" title="${isReadOnlyRow ? "Sincronizado desde Pedidos (al costo)" : (isUnpaidViewActive ? "Disponible en la tabla de ventas" : "Haz clic y luego elige el pedido proveedor, o arrastra hasta él")}">
+             ${rowNum}
+           </button>`}
       </td>
       <td class="td-date">${row.fecha || "-"}</td>
       <td class="td-code">
@@ -1402,28 +1538,38 @@ function renderTableRow(row, rowNum, isPending) {
       </td>
       <td class="profit-cell ${row.ganancia === 0 ? 'profit-zero' : ''}">${row.ganancia > 0 ? '+' : ''}${formatCLP(row.ganancia)}</td>
       <td class="td-status">
-        <div class="status-select-wrap">
-          <span class="status-dot dot-${statusSlug}"></span>
-          <select class="status-dropdown opt-${statusSlug}" data-action="change-status" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr}>
-            <option value="Pedido" ${statusSlug === "pedido" ? "selected" : ""}>Pedido</option>
-            <option value="Recepcionado" ${statusSlug === "recepcionado" ? "selected" : ""}>Recepcionado</option>
-            <option value="Pendiente" ${statusSlug === "pendiente" ? "selected" : ""}>Pendiente</option>
-            <option value="Entregado" ${statusSlug === "entregado" ? "selected" : ""}>Entregado</option>
-            <option value="Cancelado" ${statusSlug === "cancelado" ? "selected" : ""}>Cancelado</option>
-            <option value="Faltante" ${statusSlug === "faltante" ? "selected" : ""}>Faltante</option>
-          </select>
-        </div>
+        ${canRemoveHistoricalAdjustment
+          ? `<span class="item-status-badge status-facturado">Entregado</span>`
+          : `<div class="status-select-wrap">
+               <span class="status-dot dot-${statusSlug}"></span>
+               <select class="status-dropdown opt-${statusSlug}" data-action="change-status" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr} ${isReadOnlyRow ? "disabled" : ""}>
+                 <option value="Pedido" ${statusSlug === "pedido" ? "selected" : ""}>Pedido</option>
+                 <option value="Recepcionado" ${statusSlug === "recepcionado" ? "selected" : ""}>Recepcionado</option>
+                 <option value="Pendiente" ${statusSlug === "pendiente" ? "selected" : ""}>Pendiente</option>
+                 <option value="Entregado" ${statusSlug === "entregado" ? "selected" : ""}>Entregado</option>
+                 <option value="Cancelado" ${statusSlug === "cancelado" ? "selected" : ""}>Cancelado</option>
+                 <option value="Faltante" ${statusSlug === "faltante" ? "selected" : ""}>Faltante</option>
+               </select>
+             </div>`}
       </td>
       <td class="cell-check td-paid">
-        <button type="button" class="btn-pay-status ${row.pagado ? 'status-paid' : (hasAbono ? 'status-partial' : 'status-unpaid')}" data-action="open-payment-modal" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr} title="${row.pagado ? 'Pagado al 100% (Click para editar o gestionar cuotas)' : (hasAbono ? 'Abono: ' + formatCLP(row.montoPagado) + ' (Resta: ' + formatCLP(row.saldoPendiente) + ')' : 'Pendiente de pago (Click para pagar o abonar)')}">
-          <i data-lucide="${row.pagado ? 'check' : (hasAbono ? 'clock' : 'circle')}"></i>
-        </button>
+        ${canRemoveHistoricalAdjustment
+          ? `<span class="btn-pay-status status-paid" title="Venta al costo registrada"><i data-lucide="check"></i></span>`
+          : `<button type="button" class="btn-pay-status ${row.pagado ? 'status-paid' : (hasAbono ? 'status-partial' : 'status-unpaid')}" data-action="open-payment-modal" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr} ${isReadOnlyRow ? "disabled" : ""} title="${isReadOnlyRow ? 'Sincronizado desde Pedidos (al costo)' : (row.pagado ? 'Pagado al 100% (Click para editar o gestionar cuotas)' : (hasAbono ? 'Abono: ' + formatCLP(row.montoPagado) + ' (Resta: ' + formatCLP(row.saldoPendiente) + ')' : 'Pendiente de pago (Click para pagar o abonar)'))}">
+             <i data-lucide="${row.pagado ? 'check' : (hasAbono ? 'clock' : 'circle')}"></i>
+           </button>`}
       </td>
       ${!isUnpaidViewActive ? `
         <td class="td-action" style="text-align: center; white-space: nowrap;">
-          <button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr} title="Editar venta o eliminar">
-            <i data-lucide="pencil" aria-hidden="true"></i>
-          </button>
+          ${canRemoveHistoricalAdjustment
+            ? `<button type="button" class="btn-edit-row btn-remove-historical-adjustment" data-action="remove-historical-adjustment" data-sale-id="${escapeAttr(row.saleId)}" title="Quitar de la planilla de Ventas">
+                 <i data-lucide="trash-2" aria-hidden="true"></i>
+               </button>`
+            : isReadOnlyRow
+              ? `<span class="badge-supplier-tag tag-locked" title="Ítem al costo sincronizado desde Pedidos (${escapeAttr(row.codigoVenta || 'Pedido')})"><i data-lucide="lock" aria-hidden="true"></i></span>`
+            : `<button class="btn-edit-row" data-action="edit-row" data-sale-id="${row.saleId}" data-code="${row.code}" ${fusionAttr} title="Editar venta o eliminar">
+                <i data-lucide="pencil" aria-hidden="true"></i>
+              </button>`}
         </td>
       ` : ''}
     </tr>
@@ -1432,6 +1578,7 @@ function renderTableRow(row, rowNum, isPending) {
 
 // 5. Renderizar filas en la tabla con controles interactivos y agrupación por lotes proveedor
 function renderTable(rows) {
+  clearMoveSelection();
   if (rows.length === 0) {
     tableBody.innerHTML = "";
     emptyState.hidden = false;
@@ -1644,26 +1791,21 @@ function renderTable(rows) {
     const bTitle = batchObj.title || getSupplierBatchTitle(batchKey);
     const isCollapsed = collapsedSupplierBatches.has(batchKey);
 
-    // Cálculos de Descuento Martes (10%) y Costo de Envío ($6.000 si < meta $120.000)
-    const isTuesdayDiscountActive = tuesdayBatches.has(batchKey);
-    const discountPct = getNumericConfigValue(currentBalancesConfig?.descuentoMartesPorcentaje, 10);
-    const discountAmt = isTuesdayDiscountActive ? Math.round(bCost * (discountPct / 100)) : 0;
-    const costAfterDiscount = bCost - discountAmt;
-
+    // Costo de proveedor más envío, si no se alcanza el mínimo.
     const minShipping = getNumericConfigValue(currentBalancesConfig?.envioGratisMinimo, 120000);
     const shippingFeeAmt = getNumericConfigValue(currentBalancesConfig?.costoEnvioFijo, 6000);
     const historicalSupplierTotal = getHistoricalSupplierTotalPaid(batchKey);
-    const shippingThresholdTotal = historicalSupplierTotal ?? costAfterDiscount;
+    const shippingThresholdTotal = historicalSupplierTotal ?? bCost;
     const hasFreeShipping = shippingThresholdTotal >= minShipping;
     const shippingFee = (bCost > 0 && !hasFreeShipping) ? shippingFeeAmt : 0;
 
     const totalCostoFinal = historicalSupplierTotal !== null
       ? Math.max(0, historicalSupplierTotal - shippingFee)
-      : costAfterDiscount;
+      : bCost;
     const bProfit = bSale - totalCostoFinal;
     const supplierTotalTitle = historicalSupplierTotal !== null
       ? `Pago registrado en Pedidos: ${formatCLP(historicalSupplierTotal)}${shippingFee > 0 ? `; sin envío: ${formatCLP(totalCostoFinal)}` : ''}`
-      : `Total proveedor sin envío (${isTuesdayDiscountActive ? `Desc. martes: -${formatCLP(discountAmt)}. ` : ''}${hasFreeShipping ? 'Envío gratis. ' : ''}Costo base: ${formatCLP(bCost)})`;
+      : `Total proveedor sin envío (${hasFreeShipping ? 'Envío gratis. ' : ''}Costo base: ${formatCLP(bCost)})`;
 
     html += `
       <tr class="tr-supplier-header group-ordered" data-batch-key="${batchKey}">
@@ -1732,6 +1874,139 @@ function renderTable(rows) {
   ensureLucideIconsReady();
 }
 
+let selectedRowsForMove = null;
+let lastMoveDragAt = 0;
+let isSavingMove = false;
+
+function clearMoveSelection() {
+  selectedRowsForMove = null;
+  tableBody.querySelectorAll(".move-selected-row, .move-drop-hover").forEach(element => {
+    element.classList.remove("move-selected-row", "move-drop-hover");
+  });
+  tableBody.querySelectorAll(".move-drop-target").forEach(element => {
+    element.classList.remove("move-drop-target");
+  });
+}
+
+function selectRowsForMove(button) {
+  const fusionKey = button.dataset.fusionKey;
+  const fusedGroup = fusionKey ? activeFusedRowsMap.get(fusionKey) : null;
+  const singleRow = allSaleRows.find(row =>
+    row.saleId === button.dataset.saleId && row.code === button.dataset.code
+  );
+  const rows = fusedGroup?.items || (singleRow ? [singleRow] : []);
+  const uniqueRows = [...new Map(rows.map(row => [`${row.saleId}__${row.code}`, row])).values()]
+    .filter(row => row.saleId && row.code && !row.isReadOnly);
+
+  if (uniqueRows.length === 0) {
+    showToast("No se pudo identificar el producto para mover");
+    return false;
+  }
+
+  clearMoveSelection();
+  selectedRowsForMove = uniqueRows;
+  const renderedRow = button.closest("tr");
+  if (renderedRow) renderedRow.classList.add("move-selected-row");
+  tableBody.querySelectorAll(".tr-supplier-header.group-ordered[data-batch-key]").forEach(header => {
+    header.classList.add("move-drop-target");
+  });
+  showToast("Pedido seleccionado: arrástralo o elige el pedido proveedor de destino");
+  return true;
+}
+
+async function moveSelectedRowsToBatch(batchKey) {
+  if (!selectedRowsForMove || !batchKey || isSavingMove) return;
+
+  const rowsToMove = selectedRowsForMove.filter(row =>
+    resolveSupplierBatch(row).batchKey !== batchKey
+  );
+  if (rowsToMove.length === 0) {
+    clearMoveSelection();
+    showToast("Ese producto ya pertenece a este pedido");
+    return;
+  }
+
+  const rowUpdates = rowsToMove.map(row => ({
+    saleId: row.saleId,
+    code: row.code,
+    changes: {
+      fechaPedidoProveedor: batchKey,
+      ...(resolveSupplierBatch(row).isPending ? { estado: "Pedido" } : {})
+    }
+  }));
+
+  isSavingMove = true;
+  try {
+    await updateMultipleSaleRows(rowUpdates);
+    rowsToMove.forEach(row => {
+      row.fechaPedidoProveedor = batchKey;
+      if (resolveSupplierBatch(row).isPending) row.estado = "Pedido";
+    });
+    clearMoveSelection();
+    applyFilters();
+    showToast(`Pedido movido a ${getSupplierBatchTitle(batchKey)} ✓`);
+  } catch (error) {
+    console.error("Error al mover productos entre pedidos proveedor:", error);
+    showToast(`No se pudo mover el pedido: ${error.message}`);
+  } finally {
+    isSavingMove = false;
+  }
+}
+
+tableBody.addEventListener("click", event => {
+  const moveButton = event.target.closest('[data-action="select-batch-move"]');
+  if (moveButton) {
+    if (Date.now() - lastMoveDragAt < 500) return;
+    event.preventDefault();
+    if (selectedRowsForMove) {
+      clearMoveSelection();
+    } else {
+      selectRowsForMove(moveButton);
+    }
+    return;
+  }
+
+  const targetHeader = event.target.closest(".tr-supplier-header.group-ordered[data-batch-key]");
+  if (!selectedRowsForMove || !targetHeader || event.target.closest("button, a")) return;
+  event.preventDefault();
+  moveSelectedRowsToBatch(targetHeader.dataset.batchKey);
+});
+
+tableBody.addEventListener("dragstart", event => {
+  const moveButton = event.target.closest('[data-action="select-batch-move"]');
+  if (!moveButton) return;
+  if (!selectRowsForMove(moveButton)) {
+    event.preventDefault();
+    return;
+  }
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", `${moveButton.dataset.saleId}__${moveButton.dataset.code}`);
+});
+
+tableBody.addEventListener("dragover", event => {
+  const targetHeader = event.target.closest(".tr-supplier-header.group-ordered[data-batch-key]");
+  if (!selectedRowsForMove || !targetHeader) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+  tableBody.querySelectorAll(".move-drop-hover").forEach(header => header.classList.remove("move-drop-hover"));
+  targetHeader.classList.add("move-drop-hover");
+});
+
+tableBody.addEventListener("dragleave", event => {
+  const targetHeader = event.target.closest(".tr-supplier-header.group-ordered[data-batch-key]");
+  if (targetHeader && !targetHeader.contains(event.relatedTarget)) {
+    targetHeader.classList.remove("move-drop-hover");
+  }
+});
+
+tableBody.addEventListener("drop", event => {
+  const targetHeader = event.target.closest(".tr-supplier-header.group-ordered[data-batch-key]");
+  if (!selectedRowsForMove || !targetHeader) return;
+  event.preventDefault();
+  lastMoveDragAt = Date.now();
+  moveSelectedRowsToBatch(targetHeader.dataset.batchKey);
+});
+
 // 6. Actualizar métricas totales
 function updateMetrics(rows) {
   let totalVentas = 0;
@@ -1790,8 +2065,9 @@ function renderAnalyticsDashboard(rows) {
     return;
   }
 
-  // Filtrar pedidos no cancelados
+  // Filtrar pedidos no cancelados ni ajustes históricos de solo lectura
   const activeRows = (rows || []).filter(r => {
+    if (r.isHistoricalOrderAdjustment) return false;
     const st = (r.estado || "").toLowerCase().trim();
     return st !== "cancelado";
   });
@@ -2280,25 +2556,7 @@ function initAnalyticsControls() {
     if (e.key === "notes_theme" && allSaleRows && allSaleRows.length > 0) {
       renderAnalyticsDashboard(allSaleRows);
     }
-    if (e.key === "notes_tuesday_batches" || e.key === "notes_sales_updated") {
-      const fresh = getSavedTuesdayBatches();
-      tuesdayBatches.clear();
-      fresh.forEach(k => tuesdayBatches.add(k));
-      applyFilters();
-    }
-  });
-
-  window.addEventListener("focus", () => {
-    const fresh = getSavedTuesdayBatches();
-    let hasChanged = fresh.size !== tuesdayBatches.size;
-    if (!hasChanged) {
-      for (const k of fresh) {
-        if (!tuesdayBatches.has(k)) { hasChanged = true; break; }
-      }
-    }
-    if (hasChanged) {
-      tuesdayBatches.clear();
-      fresh.forEach(k => tuesdayBatches.add(k));
+    if (e.key === "notes_sales_updated") {
       applyFilters();
     }
   });
@@ -2317,6 +2575,8 @@ tableBody.addEventListener("change", async event => {
   const code = target.dataset.code;
 
   if (action === "change-status") {
+    const targetRowObj = allSaleRows.find(r => r.saleId === saleId && r.code === code);
+    if (targetRowObj?.isReadOnly) return;
     const newStatus = target.value;
     const newSlug = getStatusSlug(newStatus);
     const fusionKey = target.dataset.fusionKey;
@@ -2610,21 +2870,6 @@ function renderSupplierBatchModal() {
     }
   }
 
-  // Sincronizar estado del checkbox y etiqueta de descuento martes
-  const dateInput = document.getElementById("batchSupplierDate");
-  const chosenDate = (dateInput && dateInput.value) ? dateInput.value : new Date().toISOString().split("T")[0];
-  const d = new Date(chosenDate + "T12:00:00");
-  const isTue = (d.getDay() === 2);
-  const cbTuesday = document.getElementById("batchModalTuesdayDiscount");
-  if (cbTuesday) {
-    cbTuesday.checked = isTue || tuesdayBatches.has(chosenDate);
-  }
-  const discountPct = Number(currentBalancesConfig?.descuentoMartesPorcentaje) || 10;
-  const badgeDiscount = document.getElementById("batchModalDiscountBadge");
-  if (badgeDiscount) {
-    badgeDiscount.textContent = `-${discountPct}% proveedor`;
-  }
-
   if (listEl) {
     if (summaryItems.length === 0) {
       listEl.innerHTML = `
@@ -2704,20 +2949,6 @@ document.addEventListener("click", event => {
   const msg = badge.dataset.shippingInfo;
   if (msg) showToast(msg);
 });
-
-// Listener de cambio de fecha en el modal de pedido proveedor para auto-detectar martes
-const batchSupplierDateInput = document.getElementById("batchSupplierDate");
-if (batchSupplierDateInput) {
-  batchSupplierDateInput.addEventListener("change", () => {
-    const chosenVal = batchSupplierDateInput.value;
-    if (chosenVal) {
-      const d = new Date(chosenVal + "T12:00:00");
-      const isTue = (d.getDay() === 2);
-      const cb = document.getElementById("batchModalTuesdayDiscount");
-      if (cb) cb.checked = isTue || tuesdayBatches.has(chosenVal);
-    }
-  });
-}
 
 // Modificar el estado de un perfume individual (Pendiente <-> En Carrito)
 document.addEventListener("click", async event => {
@@ -2876,15 +3107,6 @@ if (btnConfirmBatch) {
 
       await updateMultipleSaleRows(rowUpdates);
 
-      // Persistir descuento martes si estaba marcado en el modal
-      const cbTuesday = document.getElementById("batchModalTuesdayDiscount");
-      if (cbTuesday && cbTuesday.checked) {
-        tuesdayBatches.add(chosenDate);
-      } else {
-        tuesdayBatches.delete(chosenDate);
-      }
-      persistTuesdayBatches();
-
       const m = document.getElementById("modalSupplierBatch");
       if (m) m.hidden = true;
 
@@ -2957,7 +3179,7 @@ function openPaymentModal(saleId, code, fusionKey = null) {
     }
   }
 
-  if (!row) return;
+  if (!row || row.isReadOnly) return;
 
   currentPaymentSaleId = saleId;
   currentPaymentCode = code;
@@ -3398,9 +3620,6 @@ function syncBalancesModalInputs() {
   const inputCostoEnvio = document.getElementById("cfgCostoEnvioFijo");
   if (inputCostoEnvio) inputCostoEnvio.value = getNumericConfigValue(cfg.costoEnvioFijo, 6000);
 
-  const inputDescuentoMartes = document.getElementById("cfgDescuentoMartes");
-  if (inputDescuentoMartes) inputDescuentoMartes.value = getNumericConfigValue(cfg.descuentoMartesPorcentaje, 10);
-
   const bank = cfg.datosBancarios || DEFAULT_BALANCES_CONFIG.datosBancarios;
   const bankTitular = document.getElementById("bankTitular");
   const bankRut = document.getElementById("bankRut");
@@ -3475,24 +3694,21 @@ function renderExpensesTable() {
   `).join("");
 }
 
-// Guardar configuración de envío gratis, flete y descuentos
+// Guardar configuración de envío gratis y flete
 const formShippingConfig = document.getElementById("formShippingConfig");
 if (formShippingConfig) {
   formShippingConfig.addEventListener("submit", async e => {
     e.preventDefault();
     const val = getNumericConfigValue(document.getElementById("cfgEnvioGratisMinimo")?.value, 120000);
     const costoEnvioFijo = getNumericConfigValue(document.getElementById("cfgCostoEnvioFijo")?.value, 6000);
-    const descuentoMartesPorcentaje = getNumericConfigValue(document.getElementById("cfgDescuentoMartes")?.value, 10);
     try {
       await saveBalancesConfig({
         envioGratisMinimo: val,
-        costoEnvioFijo,
-        descuentoMartesPorcentaje
+        costoEnvioFijo
       });
       currentBalancesConfig.envioGratisMinimo = val;
       currentBalancesConfig.costoEnvioFijo = costoEnvioFijo;
-      currentBalancesConfig.descuentoMartesPorcentaje = descuentoMartesPorcentaje;
-      showToast("Ajustes de envíos y descuento martes guardados en Firestore ✓");
+      showToast("Ajustes de envío guardados en Firestore ✓");
       applyFilters();
     } catch (err) {
       alert("Error al guardar ajustes de envío y descuento: " + err.message);
@@ -3607,23 +3823,6 @@ document.addEventListener("click", event => {
   if (msg) showToast(msg);
 });
 
-// Toggle descuento martes en un lote
-document.addEventListener("change", event => {
-  const toggle = event.target.closest(".check-tuesday-toggle");
-  if (!toggle) return;
-
-  const batchKey = toggle.dataset.batchKey;
-  if (!batchKey) return;
-
-  if (toggle.checked) {
-    tuesdayBatches.add(batchKey);
-  } else {
-    tuesdayBatches.delete(batchKey);
-  }
-  persistTuesdayBatches();
-  applyFilters();
-});
-
 // 8. Exportar a CSV compatible con Excel
 function exportToCSV() {
   const query = (searchInput.value || "").trim();
@@ -3668,53 +3867,49 @@ function exportToCSV() {
   URL.revokeObjectURL(url);
 }
 
-// 9. Lógica de Precios, Costos y Cálculos Dinámicos
+// 9. Lógica de Precios, Costos y Cálculos Dinámicos (leyendo tarifas desde config/catalogo)
 function calculateItemPricing(code, size, product, overridePrice = null, overrideCost = null) {
   const normCode = (code || "").toUpperCase().trim();
+  const hyphenCode = normCode.replace(/^([A-Z]+)-?(\d+)$/, "$1-$2");
   const cleanSize = (size || "").toLowerCase().replace(/\s+/g, "");
+  const cfg = getCatalogPricingConfig();
+  const { standardPrices, linePrices, specialPrices } = cfg;
 
-  let defaultPrice = 17000;
+  const explicitSpecial =
+    (typeof specialPrices[normCode] === "number" ? specialPrices[normCode] : null) ??
+    (typeof specialPrices[hyphenCode] === "number" ? specialPrices[hyphenCode] : null) ??
+    (normCode.startsWith("SPLASH") && typeof specialPrices.SPLASH === "number" ? specialPrices.SPLASH : null);
 
-  if (product) {
+  let defaultPrice = standardPrices["100ml"] ?? 17000;
+
+  if (explicitSpecial !== null) {
+    defaultPrice = explicitSpecial;
+  } else if (product) {
     if (product.tiered) {
-      if (cleanSize === "50ml") defaultPrice = 11000;
-      else if (cleanSize === "20ml") defaultPrice = 6500;
-      else defaultPrice = 17000;
+      defaultPrice = standardPrices[cleanSize] ?? standardPrices["100ml"] ?? 17000;
     } else if (normCode.startsWith("Q")) {
-      if (cleanSize === "50ml") defaultPrice = 17000;
-      else if (cleanSize === "20ml") defaultPrice = 9500;
-      else defaultPrice = product.price || 26000;
+      defaultPrice = linePrices.Q?.[cleanSize] ?? (cleanSize === "100ml" ? (product.price || linePrices.Q?.["100ml"] || 26000) : 26000);
     } else if (normCode.startsWith("J")) {
-      if (cleanSize === "20ml") defaultPrice = 5000;
-      else defaultPrice = product.price || 8000;
-    } else if (/^S-?0[1-6]/.test(normCode)) {
-      if (cleanSize === "500ml") defaultPrice = 7000;
-      else defaultPrice = product.price || 6000;
+      defaultPrice = linePrices.J?.[cleanSize] ?? product.price ?? linePrices.J?.default ?? 8000;
+    } else if (/^S-?\d+/.test(normCode)) {
+      defaultPrice = linePrices.S?.[cleanSize] ?? product.price ?? linePrices.S?.default ?? 6000;
+    } else if (/^Z-?\d+/.test(normCode)) {
+      defaultPrice = linePrices.Z?.default ?? product.price ?? 3900;
     } else {
-      defaultPrice = product.price || 17000;
+      defaultPrice = product.price ?? standardPrices["100ml"] ?? 17000;
     }
   } else {
-    // Estimación por código si es producto histórico
+    // Estimación por código desde config/catalogo si es producto histórico
     if (normCode.startsWith("Q")) {
-      if (cleanSize === "50ml") defaultPrice = 17000;
-      else if (cleanSize === "20ml") defaultPrice = 9500;
-      else defaultPrice = 26000;
+      defaultPrice = linePrices.Q?.[cleanSize] ?? linePrices.Q?.["100ml"] ?? 26000;
     } else if (normCode.startsWith("J")) {
-      if (cleanSize === "20ml") defaultPrice = 5000;
-      else defaultPrice = 8000;
-    } else if (normCode === "T-03") {
-      defaultPrice = 13600;
-    } else if (normCode === "T-04") {
-      defaultPrice = 7650;
-    } else if (normCode.startsWith("SPLASH") || normCode === "B101" || normCode === "B-101") {
-      defaultPrice = 6600;
+      defaultPrice = linePrices.J?.[cleanSize] ?? linePrices.J?.default ?? 8000;
     } else if (/^S-?\d+/.test(normCode)) {
-      if (cleanSize === "500ml") defaultPrice = 7000;
-      else defaultPrice = 6000;
+      defaultPrice = linePrices.S?.[cleanSize] ?? linePrices.S?.default ?? 6000;
+    } else if (/^Z-?\d+/.test(normCode)) {
+      defaultPrice = linePrices.Z?.default ?? 3900;
     } else {
-      if (cleanSize === "50ml") defaultPrice = 11000;
-      else if (cleanSize === "20ml") defaultPrice = 6500;
-      else defaultPrice = 17000;
+      defaultPrice = standardPrices[cleanSize] ?? standardPrices["100ml"] ?? 17000;
     }
   }
 
@@ -3864,38 +4059,40 @@ function populateSizeSelectForProduct(p, currentSelectedSize) {
   let sizes = [];
 
   const normCode = (p?.code || "").toUpperCase().trim();
+  const { standardPrices, linePrices } = getCatalogPricingConfig();
 
   if (p?.tiered) {
     sizes = [
-      { size: "100 ml", label: "100 ml ($17.000)" },
-      { size: "50 ml", label: "50 ml ($11.000)" },
-      { size: "20 ml", label: "20 ml ($6.500)" }
+      { size: "100 ml", label: `100 ml (${formatCLP(standardPrices["100ml"] ?? 17000)})` },
+      { size: "50 ml", label: `50 ml (${formatCLP(standardPrices["50ml"] ?? 11000)})` },
+      { size: "20 ml", label: `20 ml (${formatCLP(standardPrices["20ml"] ?? 6500)})` }
     ];
   } else if (normCode.startsWith("Q")) {
     sizes = [
-      { size: "100 ml", label: "100 ml ($26.000)" },
-      { size: "50 ml", label: "50 ml ($17.000)" },
-      { size: "20 ml", label: "20 ml ($9.500)" }
+      { size: "100 ml", label: `100 ml (${formatCLP(linePrices.Q?.["100ml"] ?? 26000)})` },
+      { size: "50 ml", label: `50 ml (${formatCLP(linePrices.Q?.["50ml"] ?? 17000)})` },
+      { size: "20 ml", label: `20 ml (${formatCLP(linePrices.Q?.["20ml"] ?? 9500)})` }
     ];
   } else if (normCode.startsWith("J")) {
     sizes = [
-      { size: "50 ml", label: "50 ml ($8.000)" },
-      { size: "20 ml", label: "20 ml ($5.000)" }
+      { size: "50 ml", label: `50 ml (${formatCLP(linePrices.J?.["50ml"] ?? 8000)})` },
+      { size: "20 ml", label: `20 ml (${formatCLP(linePrices.J?.["20ml"] ?? 5000)})` }
     ];
   } else if (/^S-?\d+/.test(normCode)) {
     sizes = [
-      { size: "400 ml", label: "400 ml ($6.000)" },
-      { size: "500 ml", label: "500 ml ($7.000)" }
+      { size: "400 ml", label: `400 ml (${formatCLP(linePrices.S?.["400ml"] ?? 6000)})` },
+      { size: "500 ml", label: `500 ml (${formatCLP(linePrices.S?.["500ml"] ?? 7000)})` }
     ];
   } else if (p?.fixedSize) {
+    const fixedPrice = calculateItemPricing(normCode, p.fixedSize, p).defaultPrice;
     sizes = [
-      { size: p.fixedSize, label: `${p.fixedSize} (${formatCLP(p.price)})` }
+      { size: p.fixedSize, label: `${p.fixedSize} (${formatCLP(fixedPrice)})` }
     ];
   } else {
     sizes = [
-      { size: "100 ml", label: "100 ml ($17.000)" },
-      { size: "50 ml", label: "50 ml ($11.000)" },
-      { size: "20 ml", label: "20 ml ($6.500)" }
+      { size: "100 ml", label: `100 ml (${formatCLP(standardPrices["100ml"] ?? 17000)})` },
+      { size: "50 ml", label: `50 ml (${formatCLP(standardPrices["50ml"] ?? 11000)})` },
+      { size: "20 ml", label: `20 ml (${formatCLP(standardPrices["20ml"] ?? 6500)})` }
     ];
   }
 
@@ -4081,14 +4278,18 @@ function openNewSaleModal() {
   currentEditCode = null;
   currentModalEditItems = [];
   currentModalActiveItemIdx = 0;
+  newOrderItems = [];
+  renderNewOrderItems();
 
   const multiContainer = document.getElementById("modalMultiProductsContainer");
   if (multiContainer) multiContainer.hidden = true;
 
-  modalSaleTitle.textContent = "Registrar Nueva Venta en Firestore";
+  modalSaleTitle.textContent = "Crear pedido de cliente";
   modalSaleCodeBadge.hidden = true;
   btnDeleteInModal.hidden = true;
-  btnSubmitModal.textContent = "Guardar en Firestore";
+  btnSubmitModal.textContent = "Guardar pedido";
+  if (newOrderProductsPanel) newOrderProductsPanel.hidden = false;
+  if (btnAddProductToOrder) btnAddProductToOrder.hidden = false;
 
   manualDate.value = new Date().toISOString().slice(0, 10);
   manualCustomerName.value = "";
@@ -4107,7 +4308,7 @@ function openNewSaleModal() {
   }
 
   manualQty.value = "1";
-  manualStatus.value = "Entregado";
+  manualStatus.value = "Pendiente";
   if (manualConfirmed) manualConfirmed.checked = true;
   if (btnSetAtCost) btnSetAtCost.classList.remove("active");
   if (btnSetZeroCost) btnSetZeroCost.classList.remove("active");
@@ -4135,6 +4336,10 @@ function openEditSaleModal(saleId, code, fusionKey) {
 
   if (!targetRow) {
     alert("No se encontró el registro seleccionado en la tabla.");
+    return;
+  }
+  if (targetRow.isReadOnly) {
+    showToast("Este ítem al costo está sincronizado desde Pedidos");
     return;
   }
 
@@ -4166,6 +4371,8 @@ function openEditSaleModal(saleId, code, fusionKey) {
   modalSaleCodeBadge.hidden = false;
   btnDeleteInModal.hidden = false;
   btnSubmitModal.textContent = "Guardar Cambios";
+  if (newOrderProductsPanel) newOrderProductsPanel.hidden = true;
+  if (btnAddProductToOrder) btnAddProductToOrder.hidden = true;
 
   // 4. Datos generales del cliente (comunes a todos sus perfumes)
   manualDate.value = toInputDateFormat(targetRow.fecha, targetRow.fechaISO);
@@ -4195,6 +4402,65 @@ function openEditSaleModal(saleId, code, fusionKey) {
 
 if (btnNewManualSale) {
   btnNewManualSale.addEventListener("click", openNewSaleModal);
+}
+
+function renderNewOrderItems() {
+  if (!newOrderProductsPanel || !newOrderProductsList) return;
+  newOrderProductsPanel.hidden = newOrderItems.length === 0;
+  newOrderProductsList.innerHTML = newOrderItems.map((item, index) => `
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.8rem;">
+      <span>${escapeHTML(item.name)} (${escapeHTML(item.size)}) x${item.qty}</span>
+      <button type="button" class="btn-subtle-link" data-action="remove-new-order-item" data-index="${index}" aria-label="Quitar ${escapeAttr(item.name)} del pedido">Quitar</button>
+    </div>
+  `).join("");
+}
+
+if (btnAddProductToOrder) {
+  btnAddProductToOrder.addEventListener("click", () => {
+    const productValue = manualProductSelect.value;
+    const product = catalogProducts.find(item => item.id === productValue || item.code === productValue);
+    if (!product) {
+      showToast("Selecciona un perfume del catálogo");
+      return;
+    }
+
+    const size = manualSizeSelect.value || "100 ml";
+    const unitPriceInput = manualUnitPrice?.value.trim() || "";
+    const unitCostInput = manualUnitCost?.value.trim() || "";
+    const pricing = calculateItemPricing(
+      product.code,
+      size,
+      product,
+      unitPriceInput ? Number(unitPriceInput) : null,
+      unitCostInput ? Number(unitCostInput) : null
+    );
+
+    newOrderItems.push({
+      code: product.code,
+      name: product.name,
+      size,
+      qty: parseInt(manualQty.value, 10) || 1,
+      unitPrice: pricing.unitPrice,
+      unitCost: pricing.unitCost,
+      unitProfit: pricing.unitProfit,
+      estado: manualStatus.value,
+      pagado: false,
+      confirmado: Boolean(manualConfirmed?.checked)
+    });
+    renderNewOrderItems();
+    showToast(`${product.name} agregado al pedido`);
+  });
+}
+
+if (newOrderProductsList) {
+  newOrderProductsList.addEventListener("click", event => {
+    const removeButton = event.target.closest('[data-action="remove-new-order-item"]');
+    if (!removeButton) return;
+    const index = Number(removeButton.dataset.index);
+    if (!Number.isInteger(index) || index < 0 || index >= newOrderItems.length) return;
+    newOrderItems.splice(index, 1);
+    renderNewOrderItems();
+  });
 }
 
 const multiProductsList = document.getElementById("multiProductsList");
@@ -4403,7 +4669,7 @@ newSaleForm.addEventListener("submit", async e => {
   const estado = document.getElementById("manualStatus").value;
   const existingPaid = modalMode === "edit"
     ? currentModalEditItems?.[currentModalActiveItemIdx]?.pagado
-    : true;
+    : false;
   const pagado = typeof existingPaid === "boolean" ? existingPaid : true;
   const confirmado = document.getElementById("manualConfirmed")?.checked || true;
 
@@ -4492,6 +4758,18 @@ newSaleForm.addEventListener("submit", async e => {
     }
   } else {
     // Modo Nueva Venta
+    const itemsToSave = newOrderItems.length > 0 ? newOrderItems : [{
+      code: p.code,
+      name: p.name,
+      size,
+      qty,
+      unitPrice,
+      unitCost,
+      unitProfit,
+      estado,
+      pagado,
+      confirmado
+    }];
     const salePayload = {
       customerName,
       customerPhone,
@@ -4499,22 +4777,9 @@ newSaleForm.addEventListener("submit", async e => {
       origin: institution ? `Venta Directa (${institution})` : "Venta Directa",
       notes: institution ? `Institución: ${institution}` : "",
       estado,
-      pagado,
+      pagado: itemsToSave.every(item => item.pagado),
       confirmado,
-      items: [
-        {
-          code: p.code,
-          name: p.name,
-          size: size,
-          qty: qty,
-          unitPrice: unitPrice,
-          unitCost: unitCost,
-          unitProfit: unitProfit,
-          estado: estado,
-          pagado: pagado,
-          confirmado: confirmado
-        }
-      ]
+      items: itemsToSave
     };
 
     try {
@@ -4535,18 +4800,19 @@ newSaleForm.addEventListener("submit", async e => {
       }
 
       modalNewSale.hidden = true;
+      newOrderItems = [];
       newSaleForm.reset();
       if (backfillCount > 0) {
-        showToast(`Venta agregada (y sincronizados ${backfillCount} pedidos anteriores de ${customerName}) ✓`);
+        showToast(`Pedido registrado (y sincronizados ${backfillCount} pedidos anteriores de ${customerName}) ✓`);
       } else {
-        showToast("Venta agregada con éxito ✓");
+        showToast("Pedido registrado con éxito ✓");
       }
       await loadSales();
     } catch (err) {
       alert("Error al registrar la venta en Firestore: " + err.message);
     } finally {
       btnSubmitModal.disabled = false;
-      btnSubmitModal.textContent = "Guardar en Firestore";
+      btnSubmitModal.textContent = "Guardar pedido";
     }
   }
 });
@@ -4616,6 +4882,36 @@ btnDeleteInModal.addEventListener("click", async () => {
 
 // Abrir edición o gestión de pago al hacer clic en los controles de la fila
 tableBody.addEventListener("click", async e => {
+  const removeHistoricalAdjustmentBtn = e.target.closest('[data-action="remove-historical-adjustment"]');
+  if (removeHistoricalAdjustmentBtn) {
+    const saleId = removeHistoricalAdjustmentBtn.dataset.saleId;
+    const targetRow = allSaleRows.find(row =>
+      row.saleId === saleId && row.canRemoveFromSalesSheet
+    );
+    if (!targetRow) {
+      showToast("No se encontró el ajuste histórico que quieres quitar");
+      return;
+    }
+
+    const confirmed = confirm(
+      `¿Quitar ${targetRow.code} ${targetRow.fragrance} de la planilla de Ventas? El pedido oficial del proveedor no se modificará.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const removedAdjustments = getRemovedHistoricalAdjustments();
+      removedAdjustments.add(saleId);
+      persistRemovedHistoricalAdjustments(removedAdjustments);
+      allSaleRows = allSaleRows.filter(row => row.saleId !== saleId);
+      applyFilters();
+      showToast(`${targetRow.code} quitado de la planilla de Ventas`);
+    } catch (error) {
+      console.error("No se pudo quitar el ajuste histórico de la planilla:", error);
+      alert(`No se pudo quitar el producto: ${error.message}`);
+    }
+    return;
+  }
+
   const btnReceived = e.target.closest('[data-action="send-wa-received"]');
   if (btnReceived) {
     const isCurrentlyGreen = btnReceived.classList.contains("phone-received-green");
@@ -4903,9 +5199,10 @@ function setVentasAuthState(user) {
     if (btnNewManualSale) btnNewManualSale.disabled = false;
     if (btnExportCSV) btnExportCSV.disabled = false;
 
-    // Cargar datos una vez validada la autenticación
-    initCatalog();
-    loadSales();
+    // Cargar catálogo/tarifas desde config/catalogo antes de cargar ventas
+    initCatalog().finally(() => {
+      loadSales();
+    });
     ensureLucideIconsReady();
   } else {
     isVentasAuthenticated = false;

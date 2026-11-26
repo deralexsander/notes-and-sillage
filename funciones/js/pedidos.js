@@ -48,22 +48,6 @@ const dayNames = [
   "Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"
 ];
 
-// Control de lotes con Descuento de Proveedor los Martes (10%)
-function getSavedTuesdayBatches() {
-  try {
-    const raw = localStorage.getItem("notes_tuesday_batches");
-    return new Set(raw ? JSON.parse(raw) : ["2026-11-18", "2026-11-17"]);
-  } catch (e) {
-    return new Set(["2026-11-18", "2026-11-17"]);
-  }
-}
-
-function persistTuesdayBatches(batchesSet) {
-  try {
-    localStorage.setItem("notes_tuesday_batches", JSON.stringify([...batchesSet]));
-  } catch (e) {}
-}
-
 // Control de acordeones colapsados / expandidos por interacción del usuario
 const userExpandedCards = new Set();
 const userCollapsedCards = new Set();
@@ -163,7 +147,7 @@ function buildOrdersFromSales(salesList) {
       const isOrdered = slug === "pedido" || slug === "entregado" || slug === "recibido" || slug === "recepcionado" || slug === "encamino";
       if (!isOrdered) return;
 
-      // Extraer fecha original de la venta para respetar el corte histórico (<= 2026-11-08)
+      // Extraer fecha original de la venta para respetar el corte histórico (<= 2026-11-17)
       let saleDateStr = "";
       if (sale.fechaISO) {
         saleDateStr = sale.fechaISO.slice(0, 10);
@@ -175,13 +159,16 @@ function buildOrdersFromSales(salesList) {
           saleDateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
       }
-      if (saleDateStr && saleDateStr <= "2026-11-08") return;
+      if (saleDateStr && saleDateStr <= "2026-11-17") return;
 
       // Obtener fecha del lote o de la venta
       const batchDate = item.fechaPedidoProveedor || sale.fechaPedidoProveedor || saleDateStr;
 
-      // Las ventas del 08-11-2026 hacia atrás ya están registradas en BASE_HISTORIAL_PEDIDOS
-      if (!batchDate || batchDate <= "2026-11-08") return;
+      // Las ventas registradas en BASE_HISTORIAL_PEDIDOS (hasta 17-11-2026) no se duplican
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(batchDate) || batchDate <= "2026-11-17") return;
+      if (BASE_HISTORIAL_PEDIDOS.some(o => o.date === batchDate)) return;
+      const batchDateValue = new Date(`${batchDate}T00:00:00.000Z`);
+      if (Number.isNaN(batchDateValue.getTime()) || batchDateValue.toISOString().slice(0, 10) !== batchDate) return;
 
       const qty = Number(item.qty) || 1;
       const unitCost = Number(item.unitCost) || 0;
@@ -226,9 +213,7 @@ function buildOrdersFromSales(salesList) {
     batchesMap[r.batchDate].push(r);
   });
 
-  const tuesdayBatches = getSavedTuesdayBatches();
   const getNumCfg = (v, fb) => (v !== undefined && v !== null && v !== "" && Number.isFinite(Number(v))) ? Number(v) : fb;
-  const discountPct = getNumCfg(currentBalancesConfig?.descuentoMartesPorcentaje, 10);
   const minShipping = getNumCfg(currentBalancesConfig?.envioGratisMinimo, 120000);
   const shippingFeeAmt = getNumCfg(currentBalancesConfig?.costoEnvioFijo, 6000);
 
@@ -293,21 +278,13 @@ function buildOrdersFromSales(salesList) {
     const giftItems = items.filter(it => it.isGift).reduce((sum, it) => sum + it.qty, 0);
     const totalCostBase = items.reduce((sum, it) => sum + it.subtotal, 0);
 
-    // Calcular descuento de martes (editable mediante checkbox de usuario)
-    const isTuesday = tuesdayBatches.has(dateStr);
-    const discountAmt = isTuesday ? Math.round(totalCostBase * (discountPct / 100)) : 0;
-    const costAfterDiscount = totalCostBase - discountAmt;
-
     // Calcular flete
-    const hasFreeShipping = costAfterDiscount >= minShipping;
+    const hasFreeShipping = totalCostBase >= minShipping;
     const shippingFee = (totalCostBase > 0 && !hasFreeShipping) ? shippingFeeAmt : 0;
-    const totalPaid = costAfterDiscount + shippingFee;
+    const totalPaid = totalCostBase + shippingFee;
 
     // Notas explicativas
     const notesArr = [];
-    if (isTuesday) {
-      notesArr.push(`Descuento Martes -${discountPct}% (-$${discountAmt.toLocaleString("es-CL")})`);
-    }
     if (shippingFee > 0) {
       notesArr.push(`Flete: +$${shippingFee.toLocaleString("es-CL")} (compra menor a $${minShipping.toLocaleString("es-CL")})`);
     } else if (totalCostBase > 0) {
@@ -330,9 +307,6 @@ function buildOrdersFromSales(salesList) {
       totalItems: totalItems,
       giftItems: giftItems,
       totalCostBase: totalCostBase,
-      discountAmt: discountAmt,
-      discountPct: discountPct,
-      isTuesdayDiscountActive: isTuesday,
       shippingFee: shippingFee,
       hasFreeShipping: hasFreeShipping,
       status: "Pedido / Facturado",
@@ -526,11 +500,8 @@ function renderOrdersView() {
       const totalBase = order.totalCostBase !== undefined
         ? order.totalCostBase
         : (order.items || []).reduce((sum, it) => sum + (it.isGift ? 0 : (it.subtotal || 0)), 0);
-      const discountAmt = order.discountAmt || 0;
-      const isTue = Boolean(order.isTuesdayDiscountActive);
       const shippingFee = order.shippingFee || 0;
       const totalPaid = order.totalPaid;
-      const batchKey = order.date || order.id;
 
       const tableRowsHtml = order.items.map((item, itemIdx) => {
         let statusClass = "status-facturado";
@@ -588,26 +559,11 @@ function renderOrdersView() {
           </div>
         </div>
         <div class="order-card-body">
-          <!-- Desglose Financiero con Editor de Descuento Martes 10% -->
+          <!-- Desglose financiero del pedido -->
           <div class="order-financial-breakdown-bar">
             <div class="order-breakdown-item">
               <span class="breakdown-label">Base</span>
               <span class="breakdown-val">${formatCLP(totalBase)}</span>
-            </div>
-            <div class="order-breakdown-item">
-              <span class="breakdown-label">Descuento</span>
-              <div class="breakdown-tuesday-wrap">
-                ${order.isLiveOrder ? `
-                  <label class="check-tuesday-label ${isTue ? 'is-active' : ''}" style="cursor: pointer;" title="Activar/desactivar descuento del 10% de proveedor">
-                    <input type="checkbox" class="check-tuesday-toggle" data-batch-key="${batchKey}" ${isTue ? 'checked' : ''}>
-                    <i data-lucide="${isTue ? 'check' : 'tag'}" style="width: 12px; height: 12px;"></i>
-                    <span>10%</span>
-                  </label>
-                ` : ''}
-                <span class="breakdown-val breakdown-discount ${isTue ? 'has-discount' : ''}">
-                  ${isTue ? `-${formatCLP(discountAmt)}` : '$0'}
-                </span>
-              </div>
             </div>
             <div class="order-breakdown-item">
               <span class="breakdown-label">Flete / Envío</span>
@@ -734,7 +690,7 @@ renderOrdersView();
 
 // 3. Sincronización cruzada por eventos locales (si ventas.html actualiza en otra pestaña)
 window.addEventListener("storage", (e) => {
-  if (e.key === "notes_sales_updated" || e.key === "notes_tuesday_batches") {
+  if (e.key === "notes_sales_updated") {
     getSalesHistory().then(sales => refreshAllOrders(sales));
   }
 });
@@ -756,31 +712,6 @@ if (monthFilterChipsEl) {
     renderOrdersView();
   });
 }
-
-// Event Listener: Editor de Check Descuento Martes 10%
-document.addEventListener("change", (e) => {
-  const toggle = e.target.closest(".check-tuesday-toggle");
-  if (!toggle) return;
-
-  const batchKey = toggle.dataset.batchKey;
-  if (!batchKey) return;
-
-  const tuesdayBatches = getSavedTuesdayBatches();
-  if (toggle.checked) {
-    tuesdayBatches.add(batchKey);
-  } else {
-    tuesdayBatches.delete(batchKey);
-  }
-  persistTuesdayBatches(tuesdayBatches);
-
-  // Sincronizar con otras pestañas
-  try {
-    localStorage.setItem("notes_sales_updated", Date.now().toString());
-  } catch (err) {}
-
-  // Recalcular y re-renderizar manteniendo datos
-  refreshAllOrders(liveSalesList);
-});
 
 // Event Listener: Acordeones de pedidos (colapsar / desplegar tarjeta)
 document.addEventListener("click", e => {

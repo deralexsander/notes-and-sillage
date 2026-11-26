@@ -491,7 +491,7 @@
 /* Barra de Desglose Financiero del Pedido */
 .order-financial-breakdown-bar {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
@@ -529,15 +529,6 @@
   color: var(--text-main);
 }
 
-.breakdown-val.breakdown-discount {
-  color: var(--text-muted);
-}
-
-.breakdown-val.breakdown-discount.has-discount {
-  color: #9333ea;
-  font-weight: 800;
-}
-
 .breakdown-val.breakdown-shipping {
   color: #d97706;
 }
@@ -551,43 +542,6 @@
   font-size: 1.15rem;
   font-weight: 800;
   color: var(--gold-primary);
-}
-
-.breakdown-tuesday-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-/* Editor Check Descuento Martes 10% */
-.check-tuesday-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  cursor: pointer;
-  color: #9333ea;
-  background: rgba(147, 51, 234, 0.10);
-  border: 1px solid rgba(147, 51, 234, 0.3);
-  padding: 2px 7px;
-  border-radius: var(--radius-sm);
-  transition: all 0.2s ease;
-  user-select: none;
-}
-
-.check-tuesday-label:hover {
-  background: rgba(147, 51, 234, 0.18);
-  border-color: #9333ea;
-}
-
-.check-tuesday-label input[type="checkbox"] {
-  cursor: pointer;
-  accent-color: #9333ea;
-  width: 13px;
-  height: 13px;
-  margin: 0;
 }
 
 /* Responsive */

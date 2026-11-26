@@ -96,7 +96,76 @@ export function getCurrentUser() {
   return auth.currentUser;
 }
 
-const CACHE_KEY = "notes_catalog_cache_v3";
+const CACHE_KEY = "notes_catalog_cache_v4";
+
+export const DEFAULT_CATALOG_CONFIG = {
+  vendedorWhatsApp: "56968787862",
+  standardPrices: {
+    "100ml": 17000,
+    "50ml": 11000,
+    "20ml": 6500
+  },
+  linePrices: {
+    Q: { "100ml": 26000, "50ml": 17000, "20ml": 9500 },
+    J: { "50ml": 8000, "20ml": 5000, default: 8000 },
+    S: { "400ml": 6000, "500ml": 7000, default: 6000 },
+    Z: { default: 3900 }
+  },
+  specialPrices: {
+    "T-03": 13600,
+    "T-04": 7650,
+    "SPLASH": 6600,
+    "B-101": 6600,
+    "B101": 6600
+  },
+  supplierCosts: {
+    standard: { "100ml": 8500, "50ml": 5500, "20ml": 3250 },
+    Q: { "100ml": 13000, "50ml": 8500, "20ml": 4750 },
+    J: { "50ml": 4000, "20ml": 2500, default: 4000 },
+    S: { default: 3000 },
+    Z: { default: 3900 },
+    "T-03": 8000,
+    "T-04": 4500,
+    "SPLASH": 3300,
+    "B-101": 3300,
+    "B101": 3300
+  }
+};
+
+function mergeCatalogConfig(rawCfg = {}) {
+  const rawLines = rawCfg.linePrices || {};
+  const rawCosts = rawCfg.supplierCosts || {};
+  return {
+    vendedorWhatsApp: rawCfg.vendedorWhatsApp || DEFAULT_CATALOG_CONFIG.vendedorWhatsApp,
+    standardPrices: {
+      ...DEFAULT_CATALOG_CONFIG.standardPrices,
+      ...(rawCfg.standardPrices || {})
+    },
+    linePrices: {
+      Q: { ...DEFAULT_CATALOG_CONFIG.linePrices.Q, ...(rawLines.Q || {}) },
+      J: { ...DEFAULT_CATALOG_CONFIG.linePrices.J, ...(rawLines.J || {}) },
+      S: { ...DEFAULT_CATALOG_CONFIG.linePrices.S, ...(rawLines.S || {}) },
+      Z: { ...DEFAULT_CATALOG_CONFIG.linePrices.Z, ...(rawLines.Z || {}) }
+    },
+    specialPrices: {
+      ...DEFAULT_CATALOG_CONFIG.specialPrices,
+      ...(rawCfg.specialPrices || {})
+    },
+    supplierCosts: {
+      ...DEFAULT_CATALOG_CONFIG.supplierCosts,
+      ...rawCosts,
+      standard: { ...DEFAULT_CATALOG_CONFIG.supplierCosts.standard, ...(rawCosts.standard || {}) },
+      Q: { ...DEFAULT_CATALOG_CONFIG.supplierCosts.Q, ...(rawCosts.Q || {}) },
+      J: { ...DEFAULT_CATALOG_CONFIG.supplierCosts.J, ...(rawCosts.J || {}) },
+      S: { ...DEFAULT_CATALOG_CONFIG.supplierCosts.S, ...(rawCosts.S || {}) },
+      Z: { ...DEFAULT_CATALOG_CONFIG.supplierCosts.Z, ...(rawCosts.Z || {}) }
+    }
+  };
+}
+
+export function getCatalogPricingConfig() {
+  return mergeCatalogConfig(window.CatalogData || {});
+}
 
 // 1. Cargar caché previo de inmediato para render ultra rápido
 try {
@@ -104,8 +173,11 @@ try {
   if (cached) {
     const parsed = JSON.parse(cached);
     if (parsed && Array.isArray(parsed.products) && parsed.products.length > 0) {
-      window.CatalogData = parsed;
-      window.dispatchEvent(new CustomEvent("catalog:ready", { detail: parsed }));
+      window.CatalogData = {
+        ...mergeCatalogConfig(parsed),
+        products: parsed.products
+      };
+      window.dispatchEvent(new CustomEvent("catalog:ready", { detail: window.CatalogData }));
     }
   }
 } catch (e) {
@@ -115,17 +187,30 @@ try {
 // 2. Función para obtener catálogo en vivo desde Firestore
 export async function loadCatalogFromFirestore() {
   try {
-    let vendedorWhatsApp = "56968787862";
-    let standardPrices = { "100ml": 17000, "50ml": 11000, "20ml": 6500 };
+    let mergedCfg = mergeCatalogConfig();
 
-    // A. Obtener configuración general
+    // A. Obtener configuración general (y completar mapas faltantes en config/catalogo si hay sesión admin)
     try {
       const configRef = doc(db, "config", "catalogo");
       const configSnap = await getDoc(configRef);
       if (configSnap.exists()) {
         const cfgData = configSnap.data();
-        if (cfgData.vendedorWhatsApp) vendedorWhatsApp = cfgData.vendedorWhatsApp;
-        if (cfgData.standardPrices) standardPrices = cfgData.standardPrices;
+        mergedCfg = mergeCatalogConfig(cfgData);
+
+        if (auth.currentUser) {
+          const missingFields = {};
+          if (!cfgData.linePrices) missingFields.linePrices = mergedCfg.linePrices;
+          if (!cfgData.specialPrices) missingFields.specialPrices = mergedCfg.specialPrices;
+          if (!cfgData.supplierCosts) missingFields.supplierCosts = mergedCfg.supplierCosts;
+
+          if (Object.keys(missingFields).length > 0) {
+            try {
+              await setDoc(configRef, missingFields, { merge: true });
+            } catch (syncErr) {
+              console.warn("No se pudieron guardar tarifas faltantes en config/catalogo:", syncErr);
+            }
+          }
+        }
       }
     } catch (cfgErr) {
       console.warn("No se pudo obtener config/catalogo:", cfgErr);
@@ -146,8 +231,7 @@ export async function loadCatalogFromFirestore() {
 
     if (products.length > 0) {
       const catalogData = {
-        vendedorWhatsApp,
-        standardPrices,
+        ...mergedCfg,
         products
       };
 
@@ -171,45 +255,32 @@ export async function loadCatalogFromFirestore() {
   return window.CatalogData || null;
 }
 
-// Helper para calcular costos y ganancias unitarias según tarifas del negocio
+// Helper para calcular costos y ganancias unitarias según tarifas leídas desde config/catalogo
 export function getUnitFinancials(code, size, unitPrice) {
   const normCode = (code || "").toUpperCase().trim();
+  const hyphenCode = normCode.replace(/^([A-Z]+)-?(\d+)$/, "$1-$2");
   const cleanSize = (size || "").toLowerCase().replace(/\s+/g, "");
+  const costs = getCatalogPricingConfig().supplierCosts;
 
   let unitCost = 0;
 
-  // Cremas
-  if (normCode === "T-03") {
-    unitCost = 8000;
-  } else if (normCode === "T-04") {
-    unitCost = 4500;
-  }
-  // Body Splash
-  else if (normCode.startsWith("SPLASH") || normCode === "B101" || normCode === "B-101") {
-    unitCost = 3300;
-  }
-  // Colonias Corporales S-400
-  else if (/^S-?\d+/.test(normCode)) {
-    unitCost = 3000;
-  }
-  // Alta Gama / Nicho Q
-  else if (normCode.startsWith("Q")) {
-    if (cleanSize === "50ml") unitCost = 8500;
-    else if (cleanSize === "20ml") unitCost = 4750;
-    else unitCost = 13000;
-  }
-  // Línea Juvenil J
-  else if (normCode.startsWith("J")) {
-    if (cleanSize === "20ml") unitCost = 2500;
-    else unitCost = 4000;
-  }
-  // Perfumería Tradicional F y H
-  else if (cleanSize === "100ml") {
-    unitCost = 8500;
-  } else if (cleanSize === "50ml") {
-    unitCost = 5500;
-  } else if (cleanSize === "20ml") {
-    unitCost = 3250;
+  // Tarifas explícitas por código en config/catalogo (T-03, T-04, SPLASH, B-101, etc.)
+  if (typeof costs[normCode] === "number") {
+    unitCost = costs[normCode];
+  } else if (typeof costs[hyphenCode] === "number") {
+    unitCost = costs[hyphenCode];
+  } else if (normCode.startsWith("SPLASH")) {
+    unitCost = costs.SPLASH ?? 3300;
+  } else if (/^S-?\d+/.test(normCode)) {
+    unitCost = costs.S?.default ?? 3000;
+  } else if (/^Z-?\d+/.test(normCode)) {
+    unitCost = costs.Z?.default ?? 3900;
+  } else if (normCode.startsWith("Q")) {
+    unitCost = costs.Q?.[cleanSize] ?? costs.Q?.["100ml"] ?? 13000;
+  } else if (normCode.startsWith("J")) {
+    unitCost = costs.J?.[cleanSize] ?? costs.J?.default ?? 4000;
+  } else if (typeof costs.standard?.[cleanSize] === "number") {
+    unitCost = costs.standard[cleanSize];
   } else {
     // Estimación genérica de 50% de margen si no coincide
     unitCost = Math.round((Number(unitPrice) || 0) * 0.5);
@@ -447,10 +518,10 @@ export async function updateMultipleSaleRows(rowUpdates) {
 
         // Aplicar cambios que correspondan a nivel de documento raíz
         for (const ch of codeChangesMap.values()) {
-          if (ch.fechaPedidoProveedor !== undefined) {
+          if (ch.fechaPedidoProveedor !== undefined && !Array.isArray(data.items)) {
             rootChanges.fechaPedidoProveedor = ch.fechaPedidoProveedor;
           }
-          if (ch.idPedidoProveedor !== undefined) {
+          if (ch.idPedidoProveedor !== undefined && !Array.isArray(data.items)) {
             rootChanges.idPedidoProveedor = ch.idPedidoProveedor;
           }
           if (ch.pagado !== undefined && !Array.isArray(data.items)) {
@@ -477,7 +548,10 @@ export async function updateMultipleSaleRows(rowUpdates) {
       })());
     }
 
-    await Promise.all(docPromises);
+    const results = await Promise.all(docPromises);
+    if (results.some(result => !result)) {
+      throw new Error("No se encontró una o más ventas para actualizar en Firestore");
+    }
     return true;
   } catch (err) {
     console.error("Error al actualizar filas de venta en Firestore:", err);
@@ -877,7 +951,6 @@ export async function syncCustomerInfoToPastSales(customerName, phone, instituti
 export const DEFAULT_BALANCES_CONFIG = {
   envioGratisMinimo: 120000,
   costoEnvioFijo: 6000,
-  descuentoMartesPorcentaje: 10,
   capitalOctubre: 150000,
   datosBancarios: {
     titular: "Christian Eduardo Fuentealba Reyes",
@@ -898,7 +971,6 @@ export async function getBalancesConfig() {
       const missingDefaults = {};
       if (data.envioGratisMinimo === undefined) missingDefaults.envioGratisMinimo = DEFAULT_BALANCES_CONFIG.envioGratisMinimo;
       if (data.costoEnvioFijo === undefined) missingDefaults.costoEnvioFijo = DEFAULT_BALANCES_CONFIG.costoEnvioFijo;
-      if (data.descuentoMartesPorcentaje === undefined) missingDefaults.descuentoMartesPorcentaje = DEFAULT_BALANCES_CONFIG.descuentoMartesPorcentaje;
       if (data.capitalOctubre === undefined) missingDefaults.capitalOctubre = DEFAULT_BALANCES_CONFIG.capitalOctubre;
 
       if (auth.currentUser && Object.keys(missingDefaults).length > 0) {
@@ -1073,6 +1145,7 @@ window.updateSaleWithMultipleItems = updateSaleWithMultipleItems;
 window.deleteSaleRow = deleteSaleRow;
 window.syncCustomerInfoToPastSales = syncCustomerInfoToPastSales;
 window.getUnitFinancials = getUnitFinancials;
+window.getCatalogPricingConfig = getCatalogPricingConfig;
 window.loadCatalogFromFirestore = loadCatalogFromFirestore;
 window.loginWithEmail = loginWithEmail;
 window.logoutUser = logoutUser;
