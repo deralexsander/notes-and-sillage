@@ -2413,6 +2413,12 @@ i[data-lucide] {
   border-color: rgba(22, 163, 74, 0.25);
 }
 
+.badge-supplier-tag.tag-shipping-separate {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
 .supplier-header-actions {
   display: flex;
   align-items: center;

@@ -140,6 +140,15 @@ const HISTORICAL_SUPPLIER_BATCHES = [
   }
 ];
 
+function getHistoricalSupplierTotalPaid(batchKey) {
+  if (!Array.isArray(window.HISTORIAL_PEDIDOS)) return null;
+
+  const order = window.HISTORIAL_PEDIDOS.find(item => item.date === batchKey);
+  return typeof order?.totalPaid === "number" && Number.isFinite(order.totalPaid)
+    ? order.totalPaid
+    : null;
+}
+
 // Monto de compra mayorista al proveedor
 function getNumericConfigValue(val, fallback) {
   if (val === undefined || val === null || val === "") return fallback;
@@ -1643,11 +1652,18 @@ function renderTable(rows) {
 
     const minShipping = getNumericConfigValue(currentBalancesConfig?.envioGratisMinimo, 120000);
     const shippingFeeAmt = getNumericConfigValue(currentBalancesConfig?.costoEnvioFijo, 6000);
-    const hasFreeShipping = costAfterDiscount >= minShipping;
+    const historicalSupplierTotal = getHistoricalSupplierTotalPaid(batchKey);
+    const shippingThresholdTotal = historicalSupplierTotal ?? costAfterDiscount;
+    const hasFreeShipping = shippingThresholdTotal >= minShipping;
     const shippingFee = (bCost > 0 && !hasFreeShipping) ? shippingFeeAmt : 0;
 
-    const totalCostoFinal = costAfterDiscount + shippingFee;
+    const totalCostoFinal = historicalSupplierTotal !== null
+      ? Math.max(0, historicalSupplierTotal - shippingFee)
+      : costAfterDiscount;
     const bProfit = bSale - totalCostoFinal;
+    const supplierTotalTitle = historicalSupplierTotal !== null
+      ? `Pago registrado en Pedidos: ${formatCLP(historicalSupplierTotal)}${shippingFee > 0 ? `; sin envío: ${formatCLP(totalCostoFinal)}` : ''}`
+      : `Total proveedor sin envío (${isTuesdayDiscountActive ? `Desc. martes: -${formatCLP(discountAmt)}. ` : ''}${hasFreeShipping ? 'Envío gratis. ' : ''}Costo base: ${formatCLP(bCost)})`;
 
     html += `
       <tr class="tr-supplier-header group-ordered" data-batch-key="${batchKey}">
@@ -1663,6 +1679,11 @@ function renderTable(rows) {
                 </span>
               </div>
               <div class="supplier-header-actions">
+                ${shippingFee > 0 ? `
+                  <span class="badge-supplier-tag tag-shipping-separate" title="Costo de envío separado; no incluido en Total Prov ni en la ganancia">
+                    +${formatCLP(shippingFee)}
+                  </span>
+                ` : ''}
                 <a href="pedidos.html?batch=${batchKey}" class="badge-supplier-tag" style="text-decoration: none; color: var(--gold-primary); display: inline-flex; align-items: center; gap: 3px;" title="Ver en Historial de Pedidos">
                   <i data-lucide="external-link"></i>
                 </a>
@@ -1682,7 +1703,7 @@ function renderTable(rows) {
                 <span class="stat-label">Venta</span>
                 <span class="stat-value">${formatCLP(bSale)}</span>
               </div>
-              <div class="batch-mobile-stat" title="Total a pagar al proveedor (${isTuesdayDiscountActive ? `Desc Martes: -${formatCLP(discountAmt)}. ` : ''}${shippingFee > 0 ? `Flete: +${formatCLP(shippingFee)}. ` : (hasFreeShipping ? 'Envío Gratis. ' : '')}Costo base: ${formatCLP(bCost)})">
+              <div class="batch-mobile-stat" title="${supplierTotalTitle}">
                 <span class="stat-label">Total Prov</span>
                 <span class="stat-value val-cost">${formatCLP(totalCostoFinal)}</span>
               </div>
