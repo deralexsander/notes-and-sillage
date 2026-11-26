@@ -82,7 +82,9 @@ function getStatusSlug(estado) {
   const norm = String(estado || "").toLowerCase().trim();
   if (norm.includes("carrito") || norm.includes("carro")) return "encarrito";
   if (norm.includes("faltante") || norm.includes("sin stock") || norm.includes("agotado")) return "faltante";
+  if (norm.includes("cancelad")) return "cancelado";
   if (norm.includes("entreg")) return "entregado";
+  if (norm.includes("recep")) return "recepcionado";
   if (norm.includes("recib") || norm.includes("listo")) return "recibido";
   if (norm.includes("camino") || norm.includes("despach") || norm.includes("enviado")) return "encamino";
   if (norm.includes("pedid") || norm.includes("solicit") || norm.includes("comprad")) return "pedido";
@@ -97,6 +99,7 @@ function formatCLP(val) {
 // Limpia el estado del pedido para que sea una sola palabra clara
 function getCleanStatus(status) {
   const s = String(status || "").toLowerCase();
+  if (s.includes("recep")) return "Recepcionado";
   if (s.includes("recib")) return "Recibido";
   if (s.includes("entreg")) return "Entregado";
   if (s.includes("factur")) return "Facturado";
@@ -156,24 +159,26 @@ function buildOrdersFromSales(salesList) {
 
     items.forEach(item => {
       const slug = getStatusSlug(item.estado || sale.estado);
-      // Solo perfumes que efectivamente fueron pedidos o entregados
-      const isOrdered = slug === "pedido" || slug === "entregado" || slug === "recibido" || slug === "encamino";
+      // Solo perfumes que efectivamente fueron pedidos, recepcionados o entregados
+      const isOrdered = slug === "pedido" || slug === "entregado" || slug === "recibido" || slug === "recepcionado" || slug === "encamino";
       if (!isOrdered) return;
 
-      // Obtener fecha del lote o de la venta
-      let batchDate = item.fechaPedidoProveedor || sale.fechaPedidoProveedor;
-      if (!batchDate) {
-        if (sale.fechaISO) {
-          batchDate = sale.fechaISO.slice(0, 10);
-        } else if (sale.createdAtDate && sale.createdAtDate.toISOString) {
-          batchDate = sale.createdAtDate.toISOString().slice(0, 10);
-        } else if (sale.fechaLegible) {
-          const parts = String(sale.fechaLegible).split(",")[0].trim().split("-");
-          if (parts.length === 3 && parts[2].length === 4) {
-            batchDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-          }
+      // Extraer fecha original de la venta para respetar el corte histórico (<= 2026-11-08)
+      let saleDateStr = "";
+      if (sale.fechaISO) {
+        saleDateStr = sale.fechaISO.slice(0, 10);
+      } else if (sale.createdAtDate && sale.createdAtDate.toISOString) {
+        saleDateStr = sale.createdAtDate.toISOString().slice(0, 10);
+      } else if (sale.fechaLegible) {
+        const parts = String(sale.fechaLegible).split(",")[0].trim().replace(/\//g, "-").split("-");
+        if (parts.length === 3 && parts[2].length === 4) {
+          saleDateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
       }
+      if (saleDateStr && saleDateStr <= "2026-11-08") return;
+
+      // Obtener fecha del lote o de la venta
+      const batchDate = item.fechaPedidoProveedor || sale.fechaPedidoProveedor || saleDateStr;
 
       // Las ventas del 08-11-2026 hacia atrás ya están registradas en BASE_HISTORIAL_PEDIDOS
       if (!batchDate || batchDate <= "2026-11-08") return;
@@ -222,9 +227,10 @@ function buildOrdersFromSales(salesList) {
   });
 
   const tuesdayBatches = getSavedTuesdayBatches();
-  const discountPct = Number(currentBalancesConfig?.descuentoMartesPorcentaje) || 10;
-  const minShipping = Number(currentBalancesConfig?.envioGratisMinimo) || 120000;
-  const shippingFeeAmt = Number(currentBalancesConfig?.costoEnvioFijo) || 6000;
+  const getNumCfg = (v, fb) => (v !== undefined && v !== null && v !== "" && Number.isFinite(Number(v))) ? Number(v) : fb;
+  const discountPct = getNumCfg(currentBalancesConfig?.descuentoMartesPorcentaje, 10);
+  const minShipping = getNumCfg(currentBalancesConfig?.envioGratisMinimo, 120000);
+  const shippingFeeAmt = getNumCfg(currentBalancesConfig?.costoEnvioFijo, 6000);
 
   // Determinar número correlativo de pedidos por mes partiendo de los base
   const baseCountByMonth = {};

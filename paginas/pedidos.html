@@ -34,7 +34,7 @@
     })();
   </script>
 </head>
-<body class="sales-table-view pedidos-dashboard-view">
+<body class="sales-table-view pedidos-dashboard-view auth-checking">
   <div class="container-fluid">
     <!-- Encabezado Principal -->
     <header class="dashboard-header">
@@ -136,6 +136,8 @@
   <script src="../funciones/js/pedidos-data.js?v=20261118_01"></script>
   <!-- Firebase Config (Firestore & Auth) -->
   <script type="module" src="../funciones/js/firebase-config.js?v=20261118_pedidos_sync"></script>
+  <!-- Protección: exige una sesión registrada -->
+  <script type="module" src="../funciones/js/private-page-guard.js"></script>
   <!-- Modal unificado de Ajustes y Tamaño de Letra -->
   <script type="module" src="../funciones/js/settings-modal.js?v=20261118_font_and_icons_scale"></script>
   <!-- Lógica y Sincronización en Vivo de Pedidos -->

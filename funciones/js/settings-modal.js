@@ -324,14 +324,15 @@ async function syncBalancesModalInputs() {
   }
 
   const cfg = currentLoadedBalancesConfig;
+  const getNumCfg = (v, fb) => (v !== undefined && v !== null && v !== "" && Number.isFinite(Number(v))) ? Number(v) : fb;
   const inputShipping = document.getElementById("cfgEnvioGratisMinimo");
-  if (inputShipping) inputShipping.value = cfg.envioGratisMinimo || 120000;
+  if (inputShipping) inputShipping.value = getNumCfg(cfg.envioGratisMinimo, 120000);
 
   const inputCostoEnvio = document.getElementById("cfgCostoEnvioFijo");
-  if (inputCostoEnvio) inputCostoEnvio.value = cfg.costoEnvioFijo !== undefined ? cfg.costoEnvioFijo : 6000;
+  if (inputCostoEnvio) inputCostoEnvio.value = getNumCfg(cfg.costoEnvioFijo, 6000);
 
   const inputDescuentoMartes = document.getElementById("cfgDescuentoMartes");
-  if (inputDescuentoMartes) inputDescuentoMartes.value = cfg.descuentoMartesPorcentaje !== undefined ? cfg.descuentoMartesPorcentaje : 10;
+  if (inputDescuentoMartes) inputDescuentoMartes.value = getNumCfg(cfg.descuentoMartesPorcentaje, 10);
 
   const bank = cfg.datosBancarios || DEFAULT_BALANCES_CONFIG.datosBancarios;
   const bankTitular = document.getElementById("bankTitular");
@@ -517,9 +518,10 @@ function initSettingsModal() {
       }
 
       try {
-        const valEnvioGratis = Number(document.getElementById("cfgEnvioGratisMinimo")?.value) || 120000;
-        const valCostoEnvio = Number(document.getElementById("cfgCostoEnvioFijo")?.value) || 6000;
-        const valDescMartes = Number(document.getElementById("cfgDescuentoMartes")?.value) || 10;
+        const parseNum = (v, fb) => (v !== undefined && v !== null && v !== "" && Number.isFinite(Number(v))) ? Number(v) : fb;
+        const valEnvioGratis = parseNum(document.getElementById("cfgEnvioGratisMinimo")?.value, 120000);
+        const valCostoEnvio = parseNum(document.getElementById("cfgCostoEnvioFijo")?.value, 6000);
+        const valDescMartes = parseNum(document.getElementById("cfgDescuentoMartes")?.value, 10);
 
         await saveBalancesConfig({
           envioGratisMinimo: valEnvioGratis,

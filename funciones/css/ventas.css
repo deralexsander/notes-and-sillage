@@ -1615,33 +1615,6 @@ i[data-lucide] {
   color: var(--text-muted) !important;
 }
 
-.modal-checks-bar {
-  display: flex;
-  gap: 24px;
-  margin-top: 14px;
-  padding: 12px 14px;
-  background: var(--bg-primary);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
-}
-
-.modal-checks-bar .checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 0.85rem;
-  color: var(--text-main);
-  user-select: none;
-}
-
-.modal-checks-bar input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--gold-primary);
-  cursor: pointer;
-}
-
 .btn-modal-delete {
   display: inline-flex;
   align-items: center;
@@ -2440,6 +2413,12 @@ i[data-lucide] {
   border-color: rgba(22, 163, 74, 0.25);
 }
 
+.badge-supplier-tag.tag-shipping-separate {
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
 .supplier-header-actions {
   display: flex;
   align-items: center;
@@ -3043,7 +3022,8 @@ i[data-lucide] {
 
 .batch-items-table-header {
   display: grid;
-  grid-template-columns: 80px 85px 80px 1fr;
+  grid-template-columns: 60px minmax(100px, 1fr) 58px 68px 150px;
+  gap: 8px;
   padding: 8px 12px;
   background: var(--table-thead-bg);
   border: 1px solid var(--border-color);
@@ -3068,7 +3048,8 @@ i[data-lucide] {
 
 .batch-item-row {
   display: grid;
-  grid-template-columns: 80px 85px 80px 1fr;
+  grid-template-columns: 60px minmax(100px, 1fr) 58px 68px 150px;
+  gap: 8px;
   padding: 9px 12px;
   align-items: center;
   border-bottom: 1px solid var(--border-subtle);
@@ -3094,6 +3075,7 @@ i[data-lucide] {
 .batch-col-code {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .batch-col-code .code-chip {
@@ -3102,20 +3084,33 @@ i[data-lucide] {
   font-weight: 700;
 }
 
+.batch-col-name {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.batch-col-name .item-name {
+  overflow-wrap: anywhere;
+}
+
 .batch-col-size {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .batch-col-size .size-tag {
   font-size: 0.80rem;
   font-weight: 600;
   color: var(--text-main);
+  white-space: nowrap;
 }
 
 .batch-col-qty {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .batch-col-qty .qty-badge {
@@ -3133,6 +3128,7 @@ i[data-lucide] {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  min-width: 0;
 }
 
 .btn-cart-toggle {
@@ -3196,27 +3192,94 @@ i[data-lucide] {
 }
 
 @media (max-width: 540px) {
-  .batch-items-table-header,
   .batch-item-row {
-    grid-template-columns: 65px 65px 55px 1fr;
+    grid-template-columns: 40px minmax(0, 1fr) 40px 44px;
+    grid-template-areas:
+      "code name size qty"
+      "action action action action";
     padding: 8px 6px;
-    gap: 4px;
+    gap: 3px;
+  }
+
+  .batch-items-table-header {
+    grid-template-columns: 40px minmax(0, 1fr) 40px 44px;
+    padding: 8px 6px;
+    gap: 3px;
+    font-size: 0;
+    letter-spacing: 0;
+  }
+
+  .batch-items-table-header .batch-col-code::after {
+    content: "Cód.";
+  }
+
+  .batch-items-table-header .batch-col-name::after {
+    content: "Perfume";
+  }
+
+  .batch-items-table-header .batch-col-size::after {
+    content: "ml";
+  }
+
+  .batch-items-table-header .batch-col-qty::after {
+    content: "Un.";
+  }
+
+  .batch-items-table-header .batch-col-code::after,
+  .batch-items-table-header .batch-col-name::after,
+  .batch-items-table-header .batch-col-size::after,
+  .batch-items-table-header .batch-col-qty::after {
+    font-size: 0.56rem;
+  }
+
+  .batch-items-table-header .batch-col-action {
+    display: none;
+  }
+
+  .batch-item-row .batch-col-code {
+    grid-area: code;
+  }
+
+  .batch-item-row .batch-col-name {
+    grid-area: name;
+  }
+
+  .batch-item-row .batch-col-size {
+    grid-area: size;
+  }
+
+  .batch-item-row .batch-col-qty {
+    grid-area: qty;
+  }
+
+  .batch-item-row .batch-col-action {
+    grid-area: action;
+    justify-content: flex-start;
+  }
+  .batch-col-name .item-name {
+    font-size: 0.72rem !important;
   }
   .batch-col-code .code-chip {
-    font-size: 0.74rem;
-    padding: 2px 4px;
+    font-size: 0.65rem;
+    padding: 2px 3px;
   }
   .batch-col-size .size-tag {
-    font-size: 0.72rem;
+    font-size: 0.65rem;
   }
   .batch-col-qty .qty-badge {
-    font-size: 0.74rem;
-    padding: 2px 4px;
+    font-size: 0.68rem;
+    padding: 2px 3px;
   }
   .btn-cart-toggle {
-    padding: 5px 7px;
-    font-size: 0.70rem;
-    gap: 3px;
+    padding: 5px 4px;
+    font-size: 0.62rem;
+    gap: 2px;
+    max-width: 100%;
+  }
+  .btn-cart-toggle svg {
+    flex-shrink: 0;
+    width: 10px !important;
+    height: 10px !important;
   }
 }
 

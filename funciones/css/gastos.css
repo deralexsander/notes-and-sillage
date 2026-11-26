@@ -92,6 +92,156 @@
   color: var(--text-main);
 }
 
+.monthly-outstanding-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-left: 4px solid var(--gold-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.monthly-outstanding-card h2 {
+  margin: 0 0 4px;
+  color: var(--text-title);
+  font-size: 0.9rem;
+}
+
+.monthly-outstanding-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.monthly-outstanding-card strong {
+  flex-shrink: 0;
+  color: var(--gold-primary);
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+}
+
+.partner-distribution-section {
+  margin-bottom: 22px;
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.partner-distribution-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.partner-distribution-header h2 {
+  margin: 0 0 5px;
+  color: var(--text-title);
+  font-size: 1rem;
+}
+
+.partner-distribution-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.partner-split-badge {
+  flex-shrink: 0;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--green-main);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.partner-distribution-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.partner-share-card {
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.partner-share-card h3 {
+  margin: 0 0 12px;
+  color: var(--text-title);
+  font-size: 0.95rem;
+}
+
+.partner-share-card dl {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+}
+
+.partner-share-card dl div,
+.partner-share-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.partner-share-card dt {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.partner-share-card dd {
+  margin: 0;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.partner-share-card dd.partner-deduction {
+  color: #ea580c;
+}
+
+.partner-share-total {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+  color: var(--text-title);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.partner-share-total strong {
+  color: var(--green-main);
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+}
+
+.partner-unassigned-notice {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(234, 88, 12, 0.35);
+  border-radius: var(--radius-sm);
+  background: rgba(234, 88, 12, 0.1);
+  color: #c2410c;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 /* Tarjeta Principal de Liquidación / Balance */
 .balance-summary-card {
   background: var(--bg-card);
@@ -481,6 +631,14 @@
     padding: 12px 10px 50px;
   }
 
+  .monthly-outstanding-card {
+    padding: 14px;
+  }
+
+  .partner-distribution-section {
+    padding: 14px;
+  }
+
   .dashboard-header {
     flex-direction: column;
     align-items: stretch;
@@ -594,6 +752,25 @@
 
   .brand-title h1 {
     font-size: 1.05rem !important;
+  }
+
+  .monthly-outstanding-card {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .partner-distribution-header {
+    flex-direction: column;
+  }
+
+  .partner-distribution-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .monthly-outstanding-card strong {
+    font-size: 1.2rem;
   }
 
   .gastos-header-badge {
@@ -866,4 +1043,3 @@
     min-height: 42px !important;
   }
 }
-

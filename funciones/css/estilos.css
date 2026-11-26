@@ -417,20 +417,26 @@
     }
 
     .card-male .card-top,
-    .card-female .card-top {
+    .card-female .card-top,
+    .card-top-selling .card-top {
       height: 52px;
       min-height: 52px;
       box-sizing: border-box;
     }
 
     .card-male .card-title,
-    .card-female .card-title {
+    .card-female .card-title,
+    .card-top-selling .card-title {
       min-height: 2.7em;
     }
 
     .card-male .card-subtitle,
     .card-female .card-subtitle {
       min-height: 2.1em;
+    }
+
+    .card-top-selling .card-subtitle {
+      min-height: 2.8em;
     }
 
     .card-male .card-notes,
@@ -2984,7 +2990,8 @@
   }
 
   .card-male .card-top,
-  .card-female .card-top {
+  .card-female .card-top,
+  .card-top-selling .card-top {
     height: 46px;
     min-height: 46px;
   }
@@ -3995,7 +4002,8 @@
   }
 
   .card-male .card-top,
-  .card-female .card-top {
+  .card-female .card-top,
+  .card-top-selling .card-top {
     height: 60px;
     min-height: 60px;
   }
