@@ -216,17 +216,28 @@ export async function loadCatalogFromFirestore() {
       console.warn("No se pudo obtener config/catalogo:", cfgErr);
     }
 
-    // B. Obtener lista de productos ordenados
+    // B. Obtener lista de productos (incluyendo los que no tienen campo "order", como los Z)
     const prodCol = collection(db, "productos");
-    const q = query(prodCol, orderBy("order", "asc"));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(prodCol);
 
     const products = [];
     querySnapshot.forEach(docSnap => {
       const data = docSnap.data();
       if (data.active !== false) {
-        products.push(data);
+        products.push({
+          id: docSnap.id,
+          ...data,
+          code: data.code || docSnap.id,
+          name: data.name || data.fragrance || docSnap.id
+        });
       }
+    });
+
+    products.sort((a, b) => {
+      const orderA = typeof a.order === "number" ? a.order : 999999;
+      const orderB = typeof b.order === "number" ? b.order : 999999;
+      if (orderA !== orderB) return orderA - orderB;
+      return String(a.code || "").localeCompare(String(b.code || ""), "es", { numeric: true });
     });
 
     if (products.length > 0) {
@@ -254,7 +265,6 @@ export async function loadCatalogFromFirestore() {
 
   return window.CatalogData || null;
 }
-
 // Helper para calcular costos y ganancias unitarias según tarifas leídas desde config/catalogo
 export function getUnitFinancials(code, size, unitPrice) {
   const normCode = (code || "").toUpperCase().trim();
